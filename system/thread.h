@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "global.h"
 
@@ -23,6 +23,8 @@ public:
 	// to run with pthread.
 	// conversion is done within the function.
 	RC 			run();
+
+	::mica::util::Latency inter_commit_latency;
 private:
 	uint64_t 	_host_cid;
 	uint64_t 	_cur_cid;

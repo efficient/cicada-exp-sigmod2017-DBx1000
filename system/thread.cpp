@@ -76,6 +76,10 @@ RC thread_t::run() {
 	uint64_t thd_txn_id = 0;
 	UInt64 txn_cnt = 0;
 
+#if CC_ALG != MICA
+  ts_t last_commit_time = 0;
+#endif
+
 	while (true) {
 		ts_t starttime = get_sys_clock();
 		if (WORKLOAD != TEST) {
@@ -224,6 +228,14 @@ RC thread_t::run() {
 			INC_STATS(get_thd_id(), txn_cnt, 1);
 			stats.commit(get_thd_id());
 			txn_cnt ++;
+
+#if CC_ALG != MICA
+      ts_t now = get_server_clock();
+      if (last_commit_time != 0)
+        inter_commit_latency.update((now - last_commit_time) / 1000);
+      // printf("%" PRIu64 "\n", (now - last_commit_time) / 1000);
+      last_commit_time = now;
+#endif
 		} else if (rc == Abort) {
 			INC_STATS(get_thd_id(), time_abort, timespan);
 			INC_STATS(get_thd_id(), abort_cnt, 1);

@@ -92,6 +92,9 @@ int main(int argc, char* argv[])
 
 #if CC_ALG == MICA
 	m_wl->mica_db->reset_stats();
+#else
+	for (uint32_t i = 0; i < thd_cnt; i++)
+		m_thds[i]->inter_commit_latency.reset();
 #endif
 
 	// spawn and run txns again.
@@ -119,6 +122,19 @@ int main(int argc, char* argv[])
 #if CC_ALG == MICA
 	double t = (double)(endtime - starttime) / 1000000000.;
 	m_wl->mica_db->print_stats(t, t * thd_cnt);
+#else
+	::mica::util::Latency inter_commit_latency;
+	for (uint32_t i = 0; i < thd_cnt; i++)
+		inter_commit_latency += m_thds[i]->inter_commit_latency;
+
+  // printf("sum: %" PRIu64 " (us)\n", inter_commit_latency.sum());
+  printf("inter-commit latency (us): min=%" PRIu64 ", max=%" PRIu64
+         ", avg=%" PRIu64 "; 50-th=%" PRIu64 ", 95-th=%" PRIu64
+         ", 99-th=%" PRIu64 ", 99.9-th=%" PRIu64 "\n",
+         inter_commit_latency.min(), inter_commit_latency.max(),
+         inter_commit_latency.avg(), inter_commit_latency.perc(0.50),
+         inter_commit_latency.perc(0.95), inter_commit_latency.perc(0.99),
+         inter_commit_latency.perc(0.999));
 #endif
 	return 0;
 }

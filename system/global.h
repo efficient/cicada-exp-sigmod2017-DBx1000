@@ -52,7 +52,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 
   // static constexpr bool kBackoff = false;
 
-  // static constexpr bool kCollectStats = true;
+  static constexpr bool kCollectStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
 };
 typedef DBConfig::Alloc MICAAlloc;
@@ -63,6 +63,8 @@ typedef ::mica::transaction::Table<DBConfig> MICATable;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
 typedef ::mica::transaction::Result MICAResult;
+#else
+#include "mica/util/latency.h"
 #endif
 
 using namespace std;
