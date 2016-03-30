@@ -17,7 +17,7 @@ Plock part_lock_man;
 OptCC occ_man;
 #if CC_ALG == VLL
 VLLMan vll_man;
-#endif 
+#endif
 
 bool volatile warmup_finish = false;
 bool volatile enable_thread_mem_pool = false;
@@ -52,7 +52,11 @@ UInt32 g_thread_cnt = THREAD_CNT;
 UInt64 g_synth_table_size = SYNTH_TABLE_SIZE;
 UInt32 g_req_per_query = REQ_PER_QUERY;
 UInt32 g_field_per_tuple = FIELD_PER_TUPLE;
+// #if CC_ALG == MICA
+// UInt32 g_init_parallelism = 1;
+// #else
 UInt32 g_init_parallelism = INIT_PARALLELISM;
+// #endif
 
 UInt32 g_num_wh = NUM_WH;
 double g_perc_payment = PERC_PAYMENT;
@@ -64,7 +68,7 @@ map<string, string> g_params;
 #if TPCC_SMALL
 UInt32 g_max_items = 10000;
 UInt32 g_cust_per_dist = 2000;
-#else 
+#else
 UInt32 g_max_items = 100000;
 UInt32 g_cust_per_dist = 3000;
 #endif

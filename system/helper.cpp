@@ -30,13 +30,13 @@ int get_thdid_from_txnid(uint64_t txnid) {
 }
 
 uint64_t get_part_id(void * addr) {
-	return ((uint64_t)addr / PAGE_SIZE) % g_part_cnt; 
+	return ((uint64_t)addr / PAGE_SIZE) % g_part_cnt;
 }
 
 uint64_t key_to_part(uint64_t key) {
 	if (g_part_alloc)
 		return key % g_part_cnt;
-	else 
+	else
 		return 0;
 }
 
@@ -73,7 +73,7 @@ inline uint64_t get_server_clock() {
     __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
     uint64_t ret = ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
 	ret = (uint64_t) ((double)ret / CPU_FREQ);
-#else 
+#else
 	timespec * tp = new timespec;
     clock_gettime(CLOCK_REALTIME, tp);
     uint64_t ret = tp->tv_sec * 1000000000 + tp->tv_nsec;
@@ -90,7 +90,7 @@ inline uint64_t get_sys_clock() {
 		return ATOM_ADD_FETCH(fake_clock, 100);
 	}
 #else
-	if (TIME_ENABLE) 
+	if (TIME_ENABLE)
 		return get_server_clock();
 	return 0;
 #endif

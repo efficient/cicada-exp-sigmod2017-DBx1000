@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "stdint.h"
 #include <unistd.h>
@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <time.h> 
+#include <time.h>
 #include <sys/time.h>
 #include <math.h>
 
@@ -27,6 +27,41 @@
 #include "dl_detect.h"
 #ifndef NOGRAPHITE
 #include "carbon_user.h"
+#endif
+
+#if CC_ALG == MICA
+#define NDEBUG
+#include "mica/transaction/db.h"
+#undef NDEBUG
+struct DBConfig : public ::mica::transaction::BasicDBConfig {
+  // static constexpr bool kVerbose = true;
+
+  // static constexpr bool kPreValidation = false;
+  // static constexpr bool kAbortByGetRow = false;
+  // static constexpr bool kAbortByDeferredVersionInsert = false;
+  // static constexpr bool kDeferredVersionInsert = false;
+  // static constexpr bool kInsertNewestVersionOnly = false;
+  // static constexpr bool kSortWriteSetByContention = false;
+  // static constexpr bool kNarrowValidationRange = false;
+  // static constexpr bool kStragglerAvoidance = false;
+  // static constexpr bool kSpeculativeDataCopy = false;
+
+  // typedef ::mica::transaction::WideTimestamp Timestamp;
+  // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
+  // typedef ::mica::transaction::WideTimestampConst TimestampConst;
+
+  // static constexpr bool kBackoff = false;
+
+  // static constexpr bool kCollectStats = true;
+  // typedef ::mica::transaction::ActiveTiming Timing;
+};
+typedef DBConfig::Alloc MICAAlloc;
+typedef DBConfig::TimestampConst TimestampConst;
+typedef ::mica::transaction::DB<DBConfig> MICADB;
+typedef ::mica::transaction::Table<DBConfig> MICATable;
+typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
+typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
+typedef ::mica::transaction::Result MICAResult;
 #endif
 
 using namespace std;
@@ -48,7 +83,7 @@ typedef int64_t SInt64;
 typedef uint64_t ts_t; // time stamp type
 
 /******************************************/
-// Global Data Structure 
+// Global Data Structure
 /******************************************/
 extern mem_alloc mem_allocator;
 extern Stats stats;
@@ -77,7 +112,7 @@ extern bool g_prt_lat_distr;
 extern UInt32 g_part_cnt;
 extern UInt32 g_virtual_part_cnt;
 extern UInt32 g_thread_cnt;
-extern ts_t g_abort_penalty; 
+extern ts_t g_abort_penalty;
 extern bool g_central_man;
 extern UInt32 g_ts_alloc;
 extern bool g_key_order;
@@ -136,14 +171,14 @@ enum access_t {RD, WR, XP, SCAN};
 /* LOCK */
 enum lock_t {LOCK_EX, LOCK_SH, LOCK_NONE };
 /* TIMESTAMP */
-enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ}; 
+enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 
 
 #define MSG(str, args...) { \
 	printf("[%s : %d] " str, __FILE__, __LINE__, args); } \
 //	printf(args); }
 
-// principal index structure. The workload may decide to use a different 
+// principal index structure. The workload may decide to use a different
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
 #if (INDEX_STRUCT == IDX_BTREE)
 #define INDEX		index_btree

@@ -2,7 +2,7 @@
 #include "helper.h"
 #include "global.h"
 
-// Assume the data is strided across the L2 slices, stride granularity 
+// Assume the data is strided across the L2 slices, stride granularity
 // is the size of a page
 void mem_alloc::init(uint64_t part_cnt, uint64_t bytes_per_part) {
 	if (g_thread_cnt < g_init_parallelism)
@@ -19,7 +19,7 @@ void mem_alloc::init(uint64_t part_cnt, uint64_t bytes_per_part) {
 	}
 }
 
-void 
+void
 Arena::init(int arena_id, int size) {
 	_buffer = NULL;
 	_arena_id = arena_id;
@@ -96,9 +96,9 @@ void mem_alloc::unregister() {
 	}
 }
 
-int 
+int
 mem_alloc::get_arena_id() {
-	int arena_id; 
+	int arena_id;
 #if NOGRAPHITE
 	pthread_t pid = pthread_self();
 	int entry = pid % _bucket_cnt;
@@ -108,25 +108,26 @@ mem_alloc::get_arena_id() {
 		entry = (entry + 1) % _bucket_cnt;
 	}
 	arena_id = pid_arena[entry].second;
-#else 
+#else
 	arena_id = CarbonGetTileId();
 #endif
 	return arena_id;
 }
 
-int 
+int
 mem_alloc::get_size_id(UInt32 size) {
 	for (int i = 0; i < SizeNum; i++) {
-		if (size <= BlockSizes[i]) 
+		if (size <= BlockSizes[i])
 			return i;
 	}
     printf("size = %d\n", size);
 	assert( false );
+	return 0;
 }
 
 
 void mem_alloc::free(void * ptr, uint64_t size) {
-	if (NO_FREE) {} 
+	if (NO_FREE) {}
 	else if (THREAD_ALLOC) {
 		int arena_id = get_arena_id();
 		FreeBlock * block = (FreeBlock *)((UInt64)ptr - sizeof(FreeBlock));
@@ -140,7 +141,7 @@ void mem_alloc::free(void * ptr, uint64_t size) {
 
 //TODO the program should not access more than a PAGE
 // to guanrantee correctness
-// lock is used for consistency (multiple threads may alloc simultaneously and 
+// lock is used for consistency (multiple threads may alloc simultaneously and
 // cause trouble)
 void * mem_alloc::alloc(uint64_t size, uint64_t part_id) {
 	void * ptr;

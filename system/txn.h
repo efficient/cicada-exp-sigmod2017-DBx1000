@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "global.h"
 #include "helper.h"
@@ -10,7 +10,7 @@ class table_t;
 class base_query;
 class INDEX;
 
-// each thread has a txn_man. 
+// each thread has a txn_man.
 // a txn_man corresponds to a single transaction.
 
 //For VLL
@@ -30,7 +30,7 @@ public:
 	ts_t 		tid;
 	ts_t 		epoch;
 #elif CC_ALG == HEKATON
-	void * 		history_entry;	
+	void * 		history_entry;
 #endif
 
 };
@@ -63,7 +63,7 @@ public:
 	bool volatile 	lock_ready;
 	bool volatile 	lock_abort; // forces another waiting txn to abort.
 	// [TIMESTAMP, MVCC]
-	bool volatile 	ts_ready; 
+	bool volatile 	ts_ready;
 	// [HSTORE]
 	int volatile 	ready_part;
 	RC 				finish(RC rc);
@@ -75,8 +75,10 @@ public:
 	ts_t 			last_rts;
 #elif CC_ALG == SILO
 	ts_t 			last_tid;
+#elif CC_ALG == MICA
+  MICATransaction* mica_tx;
 #endif
-	
+
 	// For OCC
 	uint64_t 		start_ts;
 	uint64_t 		end_ts;
@@ -91,7 +93,12 @@ public:
 	itemid_t *		index_read(INDEX * index, idx_key_t key, int part_id);
 	void 			index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item);
 	row_t * 		get_row(row_t * row, access_t type);
-protected:	
+
+#if CC_ALG == MICA
+	row_t * 		get_row(itemid_t * item, access_t type);
+#endif
+
+protected:
 	void 			insert_row(row_t * row, table_t * table);
 private:
 	// insert rows

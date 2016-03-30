@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <cassert>
 #include "global.h"
@@ -32,6 +32,8 @@ class Row_tictoc;
 class Row_silo;
 class Row_vll;
 
+class itemid_t;
+
 class row_t
 {
 public:
@@ -60,7 +62,7 @@ public:
 	void set_value(const char * col_name, void * ptr);
 	char * get_value(int id);
 	char * get_value(char * col_name);
-	
+
 	DECL_SET_VALUE(uint64_t);
 	DECL_SET_VALUE(int64_t);
 	DECL_SET_VALUE(double);
@@ -82,7 +84,12 @@ public:
 	// for concurrency control. can be lock, timestamp etc.
 	RC get_row(access_t type, txn_man * txn, row_t *& row);
 	void return_row(access_t type, txn_man * txn, row_t * row);
-	
+
+#if CC_ALG == MICA
+	static RC get_row(access_t type, txn_man * txn, row_t *& row, itemid_t* item);
+#endif
+
+
   #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
     Row_lock * manager;
   #elif CC_ALG == TIMESTAMP
@@ -100,6 +107,9 @@ public:
   #elif CC_ALG == VLL
   	Row_vll * manager;
   #endif
+  #if CC_ALG == MICA
+		MICARowVersion* mica_rv;
+	#endif
 	char * data;
 	table_t * table;
 private:

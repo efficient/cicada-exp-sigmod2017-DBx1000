@@ -29,7 +29,7 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 		_validation_no_wait = true;
 	else if (g_params["validation_lock"] == "waiting")
 		_validation_no_wait = false;
-	else 
+	else
 		assert(false);
 #endif
 #if CC_ALG == TICTOC
@@ -38,6 +38,9 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	_atomic_timestamp = (g_params["atomic_timestamp"] == "true");
 #elif CC_ALG == SILO
 	_cur_tid = 0;
+#elif CC_ALG == MICA
+	// printf("thd_id=%" PRIu64 "\n", thd_id);
+	mica_tx = new MICATransaction(h_wl->mica_db->context(thd_id));
 #endif
 
 }
@@ -87,15 +90,15 @@ void txn_man::cleanup(RC rc) {
 #endif
 
 		if (ROLL_BACK && type == XP &&
-					(CC_ALG == DL_DETECT || 
-					CC_ALG == NO_WAIT || 
-					CC_ALG == WAIT_DIE)) 
+					(CC_ALG == DL_DETECT ||
+					CC_ALG == NO_WAIT ||
+					CC_ALG == WAIT_DIE))
 		{
 			orig_r->return_row(type, this, accesses[rid]->orig_data);
 		} else {
 			orig_r->return_row(type, this, accesses[rid]->data);
 		}
-#if CC_ALG != TICTOC && CC_ALG != SILO
+#if CC_ALG != TICTOC && CC_ALG != SILO && CC_ALG != MICA
 		accesses[rid]->data = NULL;
 #endif
 	}
@@ -104,7 +107,7 @@ void txn_man::cleanup(RC rc) {
 		for (UInt32 i = 0; i < insert_cnt; i ++) {
 			row_t * row = insert_rows[i];
 			assert(g_part_alloc == false);
-#if CC_ALG != HSTORE && CC_ALG != OCC
+#if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA
 			mem_allocator.free(row->manager, 0);
 #endif
 			row->free_row();
@@ -122,6 +125,10 @@ void txn_man::cleanup(RC rc) {
 row_t * txn_man::get_row(row_t * row, access_t type) {
 	if (CC_ALG == HSTORE)
 		return row;
+#if CC_ALG == MICA
+	if (row_cnt == 0)
+		mica_tx->begin();
+#endif
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
 	if (accesses[row_cnt] == NULL) {
@@ -135,10 +142,12 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 #elif (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE)
 		access->orig_data = (row_t *) _mm_malloc(sizeof(row_t), 64);
 		access->orig_data->init(MAX_TUPLE_SIZE);
+#elif (CC_ALG == MICA)
+		access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
 #endif
 		num_accesses_alloc ++;
 	}
-	
+
 	rc = row->get_row(type, this, accesses[ row_cnt ]->data);
 
 
@@ -167,7 +176,7 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 	if (type == RD)
 		row->return_row(type, this, accesses[ row_cnt ]->data);
 #endif
-	
+
 	row_cnt ++;
 	if (type == WR)
 		wr_cnt ++;
@@ -177,9 +186,46 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 	return accesses[row_cnt - 1]->data;
 }
 
+#if CC_ALG == MICA
+row_t *
+txn_man::get_row(itemid_t * item, access_t type)
+{
+	if (row_cnt == 0)
+		mica_tx->begin();
+	uint64_t starttime = get_sys_clock();
+	RC rc = RCOK;
+	if (accesses[row_cnt] == NULL) {
+		Access * access = (Access *) _mm_malloc(sizeof(Access), 64);
+		accesses[row_cnt] = access;
+		access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		num_accesses_alloc ++;
+	}
+
+	rc = row_t::get_row(type, this, accesses[ row_cnt ]->data, item);
+
+	if (rc == Abort) {
+		return NULL;
+	}
+	accesses[row_cnt]->type = type;
+	accesses[row_cnt]->orig_row = (row_t*)item->location;
+
+	row_cnt ++;
+	if (type == WR)
+		wr_cnt ++;
+
+	uint64_t timespan = get_sys_clock() - starttime;
+	INC_TMP_STATS(get_thd_id(), time_man, timespan);
+	return accesses[row_cnt - 1]->data;
+}
+#endif
+
+
 void txn_man::insert_row(row_t * row, table_t * table) {
 	if (CC_ALG == HSTORE)
 		return;
+	if (CC_ALG == MICA) {
+		assert(false);
+	}
 	assert(insert_cnt < MAX_ROW_PER_TXN);
 	insert_rows[insert_cnt ++] = row;
 }
@@ -193,7 +239,7 @@ txn_man::index_read(INDEX * index, idx_key_t key, int part_id) {
 	return item;
 }
 
-void 
+void
 txn_man::index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item) {
 	uint64_t starttime = get_sys_clock();
 	index->index_read(key, item, part_id, get_thd_id());
@@ -208,22 +254,28 @@ RC txn_man::finish(RC rc) {
 #if CC_ALG == OCC
 	if (rc == RCOK)
 		rc = occ_man.validate(this);
-	else 
+	else
 		cleanup(rc);
 #elif CC_ALG == TICTOC
 	if (rc == RCOK)
 		rc = validate_tictoc();
-	else 
+	else
 		cleanup(rc);
 #elif CC_ALG == SILO
 	if (rc == RCOK)
 		rc = validate_silo();
-	else 
+	else
 		cleanup(rc);
 #elif CC_ALG == HEKATON
 	rc = validate_hekaton(rc);
 	cleanup(rc);
-#else 
+#elif CC_ALG == MICA
+	if (rc == RCOK)
+		rc = mica_tx->commit() == MICAResult::kCommitted ? RCOK : Abort;
+	else
+		mica_tx->abort();
+	cleanup(rc);
+#else
 	cleanup(rc);
 #endif
 	uint64_t timespan = get_sys_clock() - starttime;

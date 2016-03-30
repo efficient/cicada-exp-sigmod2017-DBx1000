@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <cstdlib>
 #include <iostream>
@@ -97,7 +97,7 @@
 /************************************************/
 // malloc helper
 /************************************************/
-// In order to avoid false sharing, any unshared read/write array residing on the same 
+// In order to avoid false sharing, any unshared read/write array residing on the same
 // cache line should be modified to be read only array with pointers to thread local data block.
 // TODO. in order to have per-thread malloc, this needs to be modified !!!
 
@@ -139,7 +139,10 @@
 enum Data_type {DT_table, DT_page, DT_row };
 
 // TODO currently, only DR_row supported
-// data item type. 
+// data item type.
+#if CC_ALG == MICA
+class table_t;
+#endif
 class itemid_t {
 public:
 	itemid_t() { };
@@ -149,6 +152,10 @@ public:
     };
 	Data_type type;
 	void * location; // points to the table | page | row
+#if CC_ALG == MICA
+	table_t* table;
+	uint64_t row_id;
+#endif
 	itemid_t * next;
 	bool valid;
 	void init();
@@ -177,7 +184,7 @@ inline uint64_t get_server_clock() {
     __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
     uint64_t ret = ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
 	ret = (uint64_t) ((double)ret / CPU_FREQ);
-#else 
+#else
 	timespec * tp = new timespec;
     clock_gettime(CLOCK_REALTIME, tp);
     uint64_t ret = tp->tv_sec * 1000000000 + tp->tv_nsec;
@@ -213,12 +220,12 @@ inline void set_affinity(uint64_t thd_id) {
 	return;
 	/*
 	// TOOD. the following mapping only works for swarm
-	// which has 4-socket, 10 physical core per socket, 
+	// which has 4-socket, 10 physical core per socket,
 	// 80 threads in total with hyper-threading
 	uint64_t a = thd_id % 40;
 	uint64_t processor_id = a / 10 + (a % 10) * 4;
 	processor_id += (thd_id / 40) * 40;
-	
+
 	cpu_set_t  mask;
 	CPU_ZERO(&mask);
 	CPU_SET(processor_id, &mask);

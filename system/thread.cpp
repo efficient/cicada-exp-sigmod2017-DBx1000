@@ -13,12 +13,24 @@
 #include "mem_alloc.h"
 #include "test.h"
 
+static uint64_t rdtsc() {
+  union {
+    uint64_t u64;
+    struct {
+      uint32_t a;
+      uint32_t d;
+    };
+  } u;
+  asm volatile("rdtsc" : "=a"(u.a), "=d"(u.d));
+  return u.u64;
+}
+
 void thread_t::init(uint64_t thd_id, workload * workload) {
 	_thd_id = thd_id;
 	_wl = workload;
 	srand48_r((_thd_id + 1) * get_sys_clock(), &buffer);
 	_abort_buffer_size = ABORT_BUFFER_SIZE;
-	_abort_buffer = (AbortBufferEntry *) _mm_malloc(sizeof(AbortBufferEntry) * _abort_buffer_size, 64); 
+	_abort_buffer = (AbortBufferEntry *) _mm_malloc(sizeof(AbortBufferEntry) * _abort_buffer_size, 64);
 	for (int i = 0; i < _abort_buffer_size; i++)
 		_abort_buffer[i].query = NULL;
 	_abort_buffer_empty_slots = _abort_buffer_size;
@@ -42,7 +54,15 @@ RC thread_t::run() {
 	stats.init(get_thd_id());
 	pthread_barrier_wait( &warmup_bar );
 
+#if CC_ALG == MICA
+  ::mica::util::lcore.pin_thread(get_thd_id() % g_thread_cnt);
+#else
 	set_affinity(get_thd_id());
+#endif
+
+
+  // constexpr int64_t kBaseBackoffTime = 300;
+	// double backoff_factor = 1.;
 
 	myrand rdm;
 	rdm.init(get_thd_id());
@@ -59,6 +79,7 @@ RC thread_t::run() {
 	while (true) {
 		ts_t starttime = get_sys_clock();
 		if (WORKLOAD != TEST) {
+#if 0
 			int trial = 0;
 			if (_abort_buffer_enable) {
 				m_query = NULL;
@@ -72,8 +93,8 @@ RC thread_t::run() {
 								_abort_buffer[i].query = NULL;
 								_abort_buffer_empty_slots ++;
 								break;
-							} else if (_abort_buffer_empty_slots == 0 
-									  && _abort_buffer[i].ready_time < min_ready_time) 
+							} else if (_abort_buffer_empty_slots == 0
+									  && _abort_buffer[i].ready_time < min_ready_time)
 								min_ready_time = _abort_buffer[i].ready_time;
 						}
 					}
@@ -91,6 +112,10 @@ RC thread_t::run() {
 				if (rc == RCOK)
 					m_query = query_queue->get_next_query( _thd_id );
 			}
+#else
+		if (m_query == nullptr)
+			m_query = query_queue->get_next_query( _thd_id );
+#endif
 		}
 		INC_STATS(_thd_id, time_query, get_sys_clock() - starttime);
 		m_txn->abort_cnt = 0;
@@ -101,9 +126,9 @@ RC thread_t::run() {
 		thd_txn_id ++;
 
 		if ((CC_ALG == HSTORE && !HSTORE_LOCAL_TS)
-				|| CC_ALG == MVCC 
+				|| CC_ALG == MVCC
 				|| CC_ALG == HEKATON
-				|| CC_ALG == TIMESTAMP) 
+				|| CC_ALG == TIMESTAMP)
 			m_txn->set_ts(get_next_ts());
 
 		rc = RCOK;
@@ -111,7 +136,7 @@ RC thread_t::run() {
 		if (WORKLOAD == TEST) {
 			uint64_t part_to_access[1] = {0};
 			rc = part_lock_man.lock(m_txn, &part_to_access[0], 1);
-		} else 
+		} else
 			rc = part_lock_man.lock(m_txn, m_query->part_to_access, m_query->part_num);
 #elif CC_ALG == VLL
 		vll_man.vllMainLoop(m_txn, m_query);
@@ -121,25 +146,26 @@ RC thread_t::run() {
 		// In the original OCC paper, start_ts only reads the current ts without advancing it.
 		// But we advance the global ts here to simplify the implementation. However, the final
 		// results should be the same.
-		m_txn->start_ts = get_next_ts(); 
+		m_txn->start_ts = get_next_ts();
 #endif
-		if (rc == RCOK) 
+		if (rc == RCOK)
 		{
 #if CC_ALG != VLL
 			if (WORKLOAD == TEST)
 				rc = runTest(m_txn);
-			else 
+			else
 				rc = m_txn->run_txn(m_query);
 #endif
 #if CC_ALG == HSTORE
 			if (WORKLOAD == TEST) {
 				uint64_t part_to_access[1] = {0};
 				part_lock_man.unlock(m_txn, &part_to_access[0], 1);
-			} else 
+			} else
 				part_lock_man.unlock(m_txn, m_query->part_to_access, m_query->part_num);
 #endif
 		}
 		if (rc == Abort) {
+#if 0
 			uint64_t penalty = 0;
 			if (ABORT_PENALTY != 0)  {
 				double r;
@@ -159,7 +185,35 @@ RC thread_t::run() {
 					}
 				}
 			}
+#endif
+
+#if CC_ALG != MICA
+			// backoff_factor++;
+			// const double max_backoff_time = static_cast<double>(
+			// 		kBaseBackoffTime * backoff_factor);
+			//
+			// double r;
+			// drand48_r(&buffer, &r);
+			//
+			// uint64_t now = rdtsc();
+			// uint64_t ready = now + static_cast<uint64_t>(max_backoff_time * r);
+			//
+			// while (ready > now) {
+			// 	PAUSE;
+			// 	now = rdtsc();
+			// }
+#endif
 		}
+
+#if 1
+	if (rc == RCOK) {
+		m_query = nullptr;
+#if CC_ALG != MICA
+		// backoff_factor /= 2;
+		// if (backoff_factor < 1) backoff_factor = 1;
+#endif
+	}
+#endif
 
 		ts_t endtime = get_sys_clock();
 		uint64_t timespan = endtime - starttime;
@@ -179,7 +233,7 @@ RC thread_t::run() {
 
 		if (rc == FINISH)
 			return rc;
-		if (!warmup_finish && txn_cnt >= WARMUP / g_thread_cnt) 
+		if (!warmup_finish && txn_cnt >= WARMUP / g_thread_cnt)
 		{
 			stats.clear( get_thd_id() );
 			return FINISH;
@@ -200,6 +254,10 @@ RC thread_t::run() {
 
 ts_t
 thread_t::get_next_ts() {
+#if CC_ALG == MICA
+	printf("oops\n");
+	assert(false);
+#endif
 	if (g_ts_batch_alloc) {
 		if (_curr_ts % g_ts_batch_num == 0) {
 			_curr_ts = glob_manager->get_ts(get_thd_id());
@@ -220,7 +278,7 @@ RC thread_t::runTest(txn_man * txn)
 	if (g_test_case == READ_WRITE) {
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 0);
 #if CC_ALG == OCC
-		txn->start_ts = get_next_ts(); 
+		txn->start_ts = get_next_ts();
 #endif
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 1);
 		printf("READ_WRITE TEST PASSED\n");
@@ -230,7 +288,7 @@ RC thread_t::runTest(txn_man * txn)
 		rc = ((TestTxnMan *)txn)->run_txn(g_test_case, 0);
 		if (rc == RCOK)
 			return FINISH;
-		else 
+		else
 			return rc;
 	}
 	assert(false);

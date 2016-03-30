@@ -51,24 +51,32 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		WHERE w_id=:w_id;
 	+===================================================================*/
 
-	// TODO for variable length variable (string). Should store the size of 
+	// TODO for variable length variable (string). Should store the size of
 	// the variable.
 	key = query->w_id;
-	INDEX * index = _wl->i_warehouse; 
+	INDEX * index = _wl->i_warehouse;
 	item = index_read(index, key, wh_to_part(w_id));
 	assert(item != NULL);
 	row_t * r_wh = ((row_t *)item->location);
 	row_t * r_wh_local;
+#if CC_ALG != MICA
 	if (g_wh_update)
 		r_wh_local = get_row(r_wh, WR);
-	else 
+	else
 		r_wh_local = get_row(r_wh, RD);
+#else
+	(void)r_wh;
+	if (g_wh_update)
+		r_wh_local = get_row(item, WR);
+	else
+		r_wh_local = get_row(item, RD);
+#endif
 
 	if (r_wh_local == NULL) {
 		return finish(Abort);
 	}
 	double w_ytd;
-	
+
 	r_wh_local->get_value(W_YTD, w_ytd);
 	if (g_wh_update) {
 		r_wh_local->set_value(W_YTD, w_ytd + query->h_amount);
@@ -85,7 +93,12 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	item = index_read(_wl->i_district, key, wh_to_part(w_id));
 	assert(item != NULL);
 	row_t * r_dist = ((row_t *)item->location);
+#if CC_ALG != MICA
 	row_t * r_dist_local = get_row(r_dist, WR);
+#else
+	(void)r_dist;
+	row_t * r_dist_local = get_row(item, WR);
+#endif
 	if (r_dist_local == NULL) {
 		return finish(Abort);
 	}
@@ -106,7 +119,10 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	+====================================================================*/
 
 	row_t * r_cust;
-	if (query->by_last_name) { 
+#if CC_ALG == MICA
+	row_t * r_cust_local;
+#endif
+	if (query->by_last_name) {
 		/*==========================================================+
 			EXEC SQL SELECT count(c_id) INTO :namecnt
 			FROM customer
@@ -123,12 +139,12 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		+===========================================================================*/
 
 		uint64_t key = custNPKey(query->c_last, query->c_d_id, query->c_w_id);
-		// XXX: the list is not sorted. But let's assume it's sorted... 
+		// XXX: the list is not sorted. But let's assume it's sorted...
 		// The performance won't be much different.
 		INDEX * index = _wl->i_customer_last;
 		item = index_read(index, key, wh_to_part(c_w_id));
 		assert(item != NULL);
-		
+
 		int cnt = 0;
 		itemid_t * it = item;
 		itemid_t * mid = item;
@@ -139,7 +155,12 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 				mid = mid->next;
 		}
 		r_cust = ((row_t *)mid->location);
-		
+
+#if CC_ALG == MICA
+		(void)r_cust;
+		r_cust_local = get_row(item, WR);
+#endif
+
 		/*============================================================================+
 			for (n=0; n<namecnt/2; n++) {
 				EXEC SQL FETCH c_byname
@@ -167,13 +188,20 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		item = index_read(index, key, wh_to_part(c_w_id));
 		assert(item != NULL);
 		r_cust = (row_t *) item->location;
+
+#if CC_ALG == MICA
+		(void)r_cust;
+		r_cust_local = get_row(item, WR);
+#endif
 	}
 
   	/*======================================================================+
 	   	EXEC SQL UPDATE customer SET c_balance = :c_balance, c_data = :c_new_data
    		WHERE c_w_id = :c_w_id AND c_d_id = :c_d_id AND c_id = :c_id;
    	+======================================================================*/
+#if CC_ALG != MICA
 	row_t * r_cust_local = get_row(r_cust, WR);
+#endif
 	if (r_cust_local == NULL) {
 		return finish(Abort);
 	}
@@ -191,7 +219,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	char * c_credit = r_cust_local->get_value(C_CREDIT);
 
 	if ( strstr(c_credit, "BC") ) {
-	
+
 		/*=====================================================+
 		    EXEC SQL SELECT c_data
 			INTO :c_data
@@ -204,9 +232,9 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 //		char * c_data = r_cust->get_value("C_DATA");
 //	  	strncat(c_new_data, c_data, 500 - strlen(c_new_data));
 //		r_cust->set_value("C_DATA", c_new_data);
-			
+
 	}
-	
+
 	char h_data[25];
 	strncpy(h_data, w_name, 10);
 	int length = strlen(h_data);
@@ -227,7 +255,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 //	r_hist->set_value(H_C_W_ID, c_w_id);
 //	r_hist->set_value(H_D_ID, d_id);
 //	r_hist->set_value(H_W_ID, w_id);
-//	int64_t date = 2013;		
+//	int64_t date = 2013;
 //	r_hist->set_value(H_DATE, date);
 //	r_hist->set_value(H_AMOUNT, h_amount);
 #if !TPCC_SMALL
@@ -244,7 +272,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	uint64_t key;
 	itemid_t * item;
 	INDEX * index;
-	
+
 	bool remote = query->remote;
 	uint64_t w_id = query->w_id;
     uint64_t d_id = query->d_id;
@@ -257,26 +285,36 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		WHERE w_id = :w_id AND c_w_id = w_id AND c_d_id = :d_id AND c_id = :c_id;
 	+========================================================================*/
 	key = w_id;
-	index = _wl->i_warehouse; 
+	index = _wl->i_warehouse;
 	item = index_read(index, key, wh_to_part(w_id));
 	assert(item != NULL);
 	row_t * r_wh = ((row_t *)item->location);
+#if CC_ALG != MICA
 	row_t * r_wh_local = get_row(r_wh, RD);
+#else
+	(void)r_wh;
+	row_t * r_wh_local = get_row(item, RD);
+#endif
 	if (r_wh_local == NULL) {
 		return finish(Abort);
 	}
 
 
 	double w_tax;
-	r_wh_local->get_value(W_TAX, w_tax); 
+	r_wh_local->get_value(W_TAX, w_tax);
 	key = custKey(c_id, d_id, w_id);
 	index = _wl->i_customer_id;
 	item = index_read(index, key, wh_to_part(w_id));
 	assert(item != NULL);
 	row_t * r_cust = (row_t *) item->location;
+#if CC_ALG != MICA
 	row_t * r_cust_local = get_row(r_cust, RD);
+#else
+	(void)r_cust;
+	row_t * r_cust_local = get_row(item, RD);
+#endif
 	if (r_cust_local == NULL) {
-		return finish(Abort); 
+		return finish(Abort);
 	}
 	uint64_t c_discount;
 	//char * c_last;
@@ -284,7 +322,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	r_cust_local->get_value(C_DISCOUNT, c_discount);
 	//c_last = r_cust_local->get_value(C_LAST);
 	//c_credit = r_cust_local->get_value(C_CREDIT);
- 	
+
 	/*==================================================+
 	EXEC SQL SELECT d_next_o_id, d_tax
 		INTO :d_next_o_id, :d_tax
@@ -296,7 +334,12 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	item = index_read(_wl->i_district, key, wh_to_part(w_id));
 	assert(item != NULL);
 	row_t * r_dist = ((row_t *)item->location);
+#if CC_ALG != MICA
 	row_t * r_dist_local = get_row(r_dist, WR);
+#else
+	(void)r_dist;
+	row_t * r_dist_local = get_row(item, WR);
+#endif
 	if (r_dist_local == NULL) {
 		return finish(Abort);
 	}
@@ -349,7 +392,12 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		assert(item != NULL);
 		row_t * r_item = ((row_t *)item->location);
 
+#if CC_ALG != MICA
 		row_t * r_item_local = get_row(r_item, RD);
+#else
+		(void)r_item;
+		row_t * r_item_local = get_row(item, RD);
+#endif
 		if (r_item_local == NULL) {
 			return finish(Abort);
 		}
@@ -380,11 +428,16 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		index_read(stock_index, stock_key, wh_to_part(ol_supply_w_id), stock_item);
 		assert(item != NULL);
 		row_t * r_stock = ((row_t *)stock_item->location);
+#if CC_ALG != MICA
 		row_t * r_stock_local = get_row(r_stock, WR);
+#else
+		(void)r_stock;
+		row_t * r_stock_local = get_row(stock_item, WR);
+#endif
 		if (r_stock_local == NULL) {
 			return finish(Abort);
 		}
-		
+
 		// XXX s_dist_xx are not retrieved.
 		UInt64 s_quantity;
 		int64_t s_remote_cnt;
@@ -436,14 +489,14 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 //		r_ol->set_value(OL_SUPPLY_W_ID, &ol_supply_w_id);
 //		r_ol->set_value(OL_QUANTITY, &ol_quantity);
 //		r_ol->set_value(OL_AMOUNT, &ol_amount);
-#endif		
+#endif
 //		insert_row(r_ol, _wl->t_orderline);
 	}
 	assert( rc == RCOK );
 	return finish(rc);
 }
 
-RC 
+RC
 tpcc_txn_man::run_order_status(tpcc_query * query) {
 /*	row_t * r_cust;
 	if (query->by_last_name) {
@@ -461,7 +514,7 @@ tpcc_txn_man::run_order_status(tpcc_query * query) {
 		// EXEC SQL CLOSE c_name;
 
 		uint64_t key = custNPKey(query->c_last, query->c_d_id, query->c_w_id);
-		// XXX: the list is not sorted. But let's assume it's sorted... 
+		// XXX: the list is not sorted. But let's assume it's sorted...
 		// The performance won't be much different.
 		INDEX * index = _wl->i_customer_last;
 		uint64_t thd_id = get_thd_id();
@@ -507,7 +560,7 @@ tpcc_txn_man::run_order_status(tpcc_query * query) {
 	row_t * r_order = (row_t *) item->location;
 	row_t * r_order_local = get_row(r_order, RD);
 	if (r_order_local == NULL) {
-		assert(false); 
+		assert(false);
 		return finish(Abort);
 	}
 
@@ -567,7 +620,7 @@ final:
 //TODO concurrency for index related operations is not completely supported yet.
 // In correct states may happen with the current code.
 
-RC 
+RC
 tpcc_txn_man::run_delivery(tpcc_query * query) {
 /*
 	// XXX HACK if another delivery txn is running on this warehouse, simply commit.
@@ -592,7 +645,7 @@ tpcc_txn_man::run_delivery(tpcc_query * query) {
 		row_t * r_orderline = (row_t *)item->location;
 		r_orderling->get_value(OL_O_ID, no_o_id);
 		// TODO the orderline row should be removed from the table and indexes.
-		
+
 		index = _wl->i_order;
 		key = orderPrimaryKey(query->w_id, d_id, no_o_id);
 		itemid_t * item = index_read(index, key, wh_to_part(query->w_id));
@@ -613,7 +666,7 @@ tpcc_txn_man::run_delivery(tpcc_query * query) {
 			r_orderline->get_value(OL_AMOUNT, ol_amount);
 			sum_ol_amount += ol_amount;
 		}
-		
+
 		key = custKey(o_c_id, d_id, query->w_id);
 		itemid_t * item = index_read(_wl->i_customer_id, key, wh_to_part(query->w_id));
 		row_t * r_cust = (row_t *)item->location;
@@ -624,7 +677,7 @@ tpcc_txn_man::run_delivery(tpcc_query * query) {
 	return RCOK;
 }
 
-RC 
+RC
 tpcc_txn_man::run_stock_level(tpcc_query * query) {
 	return RCOK;
 }
