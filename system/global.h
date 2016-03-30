@@ -57,6 +57,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 };
 typedef DBConfig::Alloc MICAAlloc;
 typedef DBConfig::TimestampConst TimestampConst;
+typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
