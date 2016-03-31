@@ -68,8 +68,9 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 						char * data = row_local->get_data();
 #if CC_ALG != MICA
 						// We give an advantage of not copying data here because Silo and TicToc always copy the entire row even for reads, which could be avoided.
-						int fid = 0;
-						__attribute__((unused)) uint64_t fval = *(uint64_t *)(&data[fid * 10]);
+						// int fid = 0;
+						// __attribute__((unused)) uint64_t fval = *(uint64_t *)(&data[fid * 10]);
+						v[0] = data[0];
 #else
 						memcpy(v, data, 100);
 #endif
