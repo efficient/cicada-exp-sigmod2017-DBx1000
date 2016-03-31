@@ -65,10 +65,14 @@ RC ycsb_txn_man::run_txn(base_query * query) {
             if (m_query->request_cnt > 1) {
                 if (req->rtype == RD || req->rtype == SCAN) {
 //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
-						//int fid = 0;
 						char * data = row_local->get_data();
-						//__attribute__((unused)) uint64_t fval = *(uint64_t *)(&data[fid * 10]);
+#if CC_ALG != MICA
+						// We give an advantage of not copying data here because Silo and TicToc always copy the entire row even for reads, which could be avoided.
+						int fid = 0;
+						__attribute__((unused)) uint64_t fval = *(uint64_t *)(&data[fid * 10]);
+#else
 						memcpy(v, data, 100);
+#endif
 //                  }
                 } else {
                     assert(req->rtype == WR);
