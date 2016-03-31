@@ -8,6 +8,7 @@
 #include "row.h"
 #include "index_hash.h"
 #include "index_btree.h"
+#include "index_cuckoo.h"
 #include "catalog.h"
 #include "manager.h"
 #include "row_lock.h"

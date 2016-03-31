@@ -4,6 +4,7 @@
 #include "mem_alloc.h"
 #include "index_hash.h"
 #include "index_btree.h"
+#include "index_cuckoo.h"
 #include "thread.h"
 
 RC TestWorkload::init() {

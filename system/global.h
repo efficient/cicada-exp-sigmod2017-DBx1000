@@ -185,6 +185,8 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
 #if (INDEX_STRUCT == IDX_BTREE)
 #define INDEX		index_btree
+#elif (INDEX_STRUCT == IDX_CUCKOO)
+#define INDEX		IndexCuckoo
 #else  // IDX_HASH
 #define INDEX		IndexHash
 #endif

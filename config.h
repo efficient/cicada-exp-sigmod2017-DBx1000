@@ -4,7 +4,7 @@
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
-#define THREAD_CNT					56
+#define THREAD_CNT				56
 #define PART_CNT					1
 // each transaction only accesses 1 virtual partition. But the lock/ts manager and index are not aware of such partitioning. VIRTUAL_PART_CNT describes the request distribution and is only used to generate queries. For HSTORE, VIRTUAL_PART_CNT should be the same as PART_CNT.
 #define VIRTUAL_PART_CNT			1
@@ -15,8 +15,7 @@
 
 // # of transactions to run for warmup
 // #define WARMUP						0
-#define WARMUP						1000		// for TPCC
-// #define WARMUP						1000000	// for YCSB
+#define WARMUP						1000000	// for YCSB, TPCC
 // YCSB or TPCC
 #define WORKLOAD 					TPCC
 // print the transaction latency distribution
@@ -41,7 +40,7 @@
 /***********************************************/
 // WAIT_DIE, NO_WAIT, DL_DETECT, TIMESTAMP, MVCC, HEKATON, HSTORE, OCC, VLL, TICTOC, SILO, MICA
 // TODO TIMESTAMP does not work at this moment
-#define CC_ALG 						MICA
+#define CC_ALG 						TICTOC
 #define ISOLATION_LEVEL 			SERIALIZABLE
 
 // all transactions acquire tuples according to the primary key order.
@@ -59,6 +58,7 @@
 #define CENTRAL_INDEX				false
 #define CENTRAL_MANAGER 			false
 #define INDEX_STRUCT				IDX_HASH
+// #define INDEX_STRUCT				IDX_CUCKOO
 #define BTREE_ORDER 				16
 
 // [DL_DETECT]
@@ -90,6 +90,8 @@
 // [TICTOC, SILO]
 #define VALIDATION_LOCK				"no-wait" // no-wait or waiting
 #define PRE_ABORT					"true"
+// #define VALIDATION_LOCK				"waiting" // no-wait or waiting
+// #define PRE_ABORT					"false"
 #define ATOMIC_WORD					true
 // [HSTORE]
 // when set to true, hstore will not access the global timestamp.
@@ -117,9 +119,9 @@
 // ==== [YCSB] ====
 #define INIT_PARALLELISM			1
 #define SYNTH_TABLE_SIZE 			(1024 * 1024 * 10)
-#define ZIPF_THETA 					0.9
-#define READ_PERC 					0.5
-#define WRITE_PERC 					0.5
+#define ZIPF_THETA 					0.8
+#define READ_PERC 					0.9
+#define WRITE_PERC 					0.1
 #define SCAN_PERC 					0
 #define SCAN_LEN					20
 #define PART_PER_TXN 				1

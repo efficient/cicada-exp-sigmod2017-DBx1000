@@ -5,6 +5,7 @@
 #include "table.h"
 #include "index_hash.h"
 #include "index_btree.h"
+#include "index_cuckoo.h"
 #include "catalog.h"
 #include "mem_alloc.h"
 
@@ -102,7 +103,7 @@ RC workload::init_schema(string schema_file) {
 			int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
 			if (tname == "ITEM")
 				part_cnt = 1;
-#if INDEX_STRUCT == IDX_HASH
+#if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_CUCKOO
 	#if WORKLOAD == YCSB
 			index->init(part_cnt, tables[tname], g_synth_table_size * 2);
 	#elif WORKLOAD == TPCC

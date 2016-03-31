@@ -13,7 +13,6 @@ INCLUDE = -I. -I./benchmarks -I./concurrency_control -I./storage -I./system -I./
 CFLAGS += $(INCLUDE) -D NOGRAPHITE=1 -Wno-unused-function -O3
 #LDFLAGS = -Wall -L. -L./libs -pthread -g -lrt -std=c++0x -O3 -ljemalloc
 LDFLAGS = -Wall -L. -L./libs -L./mica/build -pthread -g -lrt -std=c++14 -lcommon -lnuma -ljemalloc -O3
-#LDFLAGS = -Wall -L. -L./libs -L./mica/build -pthread -g -lrt -std=c++14 -lcommon -lnuma -O3
 LDFLAGS += $(CFLAGS)
 
 CPPS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)*.cpp))
