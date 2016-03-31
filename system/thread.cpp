@@ -13,6 +13,12 @@
 #include "mem_alloc.h"
 #include "test.h"
 
+// The default backoff scheme is very slow.
+#define DISABLE_BUILTIN_BACKOFF
+
+// Apply MICA's AIMD backoff if enabled, but this also makes things slower than without any backoff.
+// #define USE_AIMD_BACKOFF
+
 static uint64_t rdtsc() {
   union {
     uint64_t u64;
@@ -60,9 +66,10 @@ RC thread_t::run() {
 	set_affinity(get_thd_id());
 #endif
 
-
-  // constexpr int64_t kBaseBackoffTime = 300;
-	// double backoff_factor = 1.;
+#ifdef USE_AIMD_BACKOFF
+  constexpr int64_t kBaseBackoffTime = 260;
+	double backoff_factor = 1.;
+#endif
 
 	myrand rdm;
 	rdm.init(get_thd_id());
@@ -83,7 +90,7 @@ RC thread_t::run() {
 	while (true) {
 		ts_t starttime = get_sys_clock();
 		if (WORKLOAD != TEST) {
-#if 0
+#ifndef DISABLE_BUILTIN_BACKOFF
 			int trial = 0;
 			if (_abort_buffer_enable) {
 				m_query = NULL;
@@ -169,7 +176,7 @@ RC thread_t::run() {
 #endif
 		}
 		if (rc == Abort) {
-#if 0
+#ifndef DISABLE_BUILTIN_BACKOFF
 			uint64_t penalty = 0;
 			if (ABORT_PENALTY != 0)  {
 				double r;
@@ -191,30 +198,32 @@ RC thread_t::run() {
 			}
 #endif
 
-#if CC_ALG != MICA
-			// backoff_factor++;
-			// const double max_backoff_time = static_cast<double>(
-			// 		kBaseBackoffTime * backoff_factor);
-			//
-			// double r;
-			// drand48_r(&buffer, &r);
-			//
-			// uint64_t now = rdtsc();
-			// uint64_t ready = now + static_cast<uint64_t>(max_backoff_time * r);
-			//
-			// while (ready > now) {
-			// 	PAUSE;
-			// 	now = rdtsc();
-			// }
+#if CC_ALG != MICA && defined(USE_AIMD_BACKOFF)
+			backoff_factor++;
+			const double max_backoff_time = static_cast<double>(
+					kBaseBackoffTime * backoff_factor);
+
+			double r;
+			drand48_r(&buffer, &r);
+
+			uint64_t now = rdtsc();
+			uint64_t ready = now + static_cast<uint64_t>(max_backoff_time * r);
+
+			while (ready > now) {
+				PAUSE;
+				now = rdtsc();
+			}
 #endif
 		}
 
-#if 1
+#ifdef DISABLE_BUILTIN_BACKOFF
 	if (rc == RCOK) {
 		m_query = nullptr;
 #if CC_ALG != MICA
-		// backoff_factor /= 2;
-		// if (backoff_factor < 1) backoff_factor = 1;
+#ifdef USE_AIMD_BACKOFF
+		backoff_factor /= 2;
+		if (backoff_factor < 1) backoff_factor = 1;
+#endif
 #endif
 	}
 #endif
