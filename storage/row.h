@@ -3,6 +3,14 @@
 #include <cassert>
 #include "global.h"
 
+#define USE_INLINED_DATA
+
+#ifdef USE_INLINED_DATA
+class row_t;
+#include "row_tictoc.h"
+#include "row_silo.h"
+#endif
+
 #define DECL_SET_VALUE(type) \
 	void set_value(int col_id, type value);
 
@@ -112,6 +120,17 @@ public:
 	#endif
 	char * data;
 	table_t * table;
+
+#ifdef USE_INLINED_DATA
+  #if CC_ALG == TICTOC
+  	Row_tictoc inlined_manager;
+		char inlined_data[MAX_TUPLE_SIZE];
+  #elif CC_ALG == SILO
+  	Row_silo inlined_manager;
+		char inlined_data[MAX_TUPLE_SIZE];
+	#endif
+#endif
+
 private:
 	// primary key should be calculated from the data stored in the row.
 	uint64_t 		_primary_key;

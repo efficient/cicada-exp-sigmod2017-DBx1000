@@ -37,7 +37,16 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 #else
 	Catalog * schema = host_table->get_schema();
 	int tuple_size = schema->get_tuple_size();
+#ifdef USE_INLINED_DATA
+	if (sizeof(inlined_data) < size_t(tuple_size)) {
+		printf("too small row_t::inlined_data for tuple size %d\n", tuple_size);
+		assert(false);
+		return ERROR;
+	}
+	data = inlined_data;
+#else
 	data = (char *) _mm_malloc(sizeof(char) * tuple_size, 64);
+#endif
 #endif
 	return RCOK;
 }
@@ -45,7 +54,15 @@ void
 row_t::init(int size)
 {
 #if CC_ALG != MICA
+#ifdef USE_INLINED_DATA
+	if (sizeof(inlined_data) < size_t(size)) {
+		printf("too small row_t::inlined_data for tuple size %d\n", size);
+		assert(false);
+	}
+	data = inlined_data;
+#else
 	data = (char *) _mm_malloc(size, 64);
+#endif
 #else
 	assert(false);
 #endif
@@ -73,9 +90,17 @@ void row_t::init_manager(row_t * row) {
 #elif CC_ALG == OCC
     manager = (Row_occ *) mem_allocator.alloc(sizeof(Row_occ), _part_id);
 #elif CC_ALG == TICTOC
+#ifdef USE_INLINED_DATA
+	manager = &inlined_manager;
+#else
 	manager = (Row_tictoc *) _mm_malloc(sizeof(Row_tictoc), 64);
+#endif
 #elif CC_ALG == SILO
+#ifdef USE_INLINED_DATA
+	manager = &inlined_manager;
+#else
 	manager = (Row_silo *) _mm_malloc(sizeof(Row_silo), 64);
+#endif
 #elif CC_ALG == VLL
     manager = (Row_vll *) mem_allocator.alloc(sizeof(Row_vll), _part_id);
 #endif
@@ -162,7 +187,10 @@ void row_t::copy(row_t * src) {
 
 void row_t::free_row() {
 #if CC_ALG != MICA
+#ifdef USE_INLINED_DATA
+#else
 	free(data);
+#endif
 #endif
 }
 
