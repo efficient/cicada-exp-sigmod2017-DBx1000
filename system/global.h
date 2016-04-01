@@ -52,7 +52,8 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 
   // static constexpr bool kBackoff = false;
 
-  static constexpr bool kCollectStats = true;
+  static constexpr bool kCollectCommitStats = true;
+  // static constexpr bool kCollectProcessingStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
 };
 typedef DBConfig::Alloc MICAAlloc;
