@@ -4,6 +4,8 @@
 /***********************************************/
 // Simulation + Hardware
 /***********************************************/
+// #define THREAD_CNT				20
+// #define THREAD_CNT				28
 #define THREAD_CNT				56
 #define PART_CNT					1
 // each transaction only accesses 1 virtual partition. But the lock/ts manager and index are not aware of such partitioning. VIRTUAL_PART_CNT describes the request distribution and is only used to generate queries. For HSTORE, VIRTUAL_PART_CNT should be the same as PART_CNT.
@@ -40,7 +42,10 @@
 /***********************************************/
 // WAIT_DIE, NO_WAIT, DL_DETECT, TIMESTAMP, MVCC, HEKATON, HSTORE, OCC, VLL, TICTOC, SILO, MICA
 // TODO TIMESTAMP does not work at this moment
-#define CC_ALG 						TICTOC
+// #define CC_ALG 						HEKATON
+// #define CC_ALG 						SILO
+// #define CC_ALG 						TICTOC
+#define CC_ALG 						MICA
 #define ISOLATION_LEVEL 			SERIALIZABLE
 
 // all transactions acquire tuples according to the primary key order.
@@ -57,8 +62,8 @@
 #define ENABLE_LATCH				false
 #define CENTRAL_INDEX				false
 #define CENTRAL_MANAGER 			false
-#define INDEX_STRUCT				IDX_HASH
-// #define INDEX_STRUCT				IDX_CUCKOO
+// #define INDEX_STRUCT				IDX_HASH
+#define INDEX_STRUCT				IDX_MICA
 #define BTREE_ORDER 				16
 
 // [DL_DETECT]
@@ -119,9 +124,9 @@
 // ==== [YCSB] ====
 #define INIT_PARALLELISM			1
 #define SYNTH_TABLE_SIZE 			(1024 * 1024 * 10)
-#define ZIPF_THETA 					0.8
-#define READ_PERC 					0.9
-#define WRITE_PERC 					0.1
+#define ZIPF_THETA 					0.90
+#define READ_PERC 					0.5
+#define WRITE_PERC 					0.5
 #define SCAN_PERC 					0
 #define SCAN_LEN					20
 #define PART_PER_TXN 				1

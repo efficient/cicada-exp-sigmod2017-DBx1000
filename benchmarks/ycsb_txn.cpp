@@ -27,6 +27,11 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 	ycsb_wl * wl = (ycsb_wl *) h_wl;
 	itemid_t * m_item = NULL;
   	row_cnt = 0;
+#if INDEX_STRUCT == IDX_MICA
+	RC idx_rc;
+	itemid_t idx_item;
+	m_item = &idx_item;
+#endif
 
 	char v[100] = {0,};
 
@@ -37,7 +42,12 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 		UInt32 iteration = 0;
 		while ( !finish_req ) {
 			if (iteration == 0) {
+#if INDEX_STRUCT != IDX_MICA
 				m_item = index_read(_wl->the_index, req->key, part_id);
+#else
+				idx_rc = index_read(_wl->the_index, req->key, m_item, part_id);
+				assert(idx_rc == RCOK);
+#endif
 			}
 #if INDEX_STRUCT == IDX_BTREE
 			else {
@@ -53,6 +63,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 #if CC_ALG != MICA
 			row_local = get_row(row, type);
 #else
+			(void)row;
 			row_local = get_row(m_item, type);
 #endif
 			if (row_local == NULL) {
@@ -79,7 +90,8 @@ RC ycsb_txn_man::run_txn(base_query * query) {
                     assert(req->rtype == WR);
 //					for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 						//int fid = 0;
-						char * data = row->get_data();
+						// char * data = row->get_data();
+						char * data = row_local->get_data();
 						//*(uint64_t *)(&data[fid * 10]) = 0;
 						memset(data, v[0], 100);
 //					}

@@ -6,7 +6,7 @@
 #include "table.h"
 #include "index_hash.h"
 #include "index_btree.h"
-#include "index_cuckoo.h"
+#include "index_mica.h"
 #include "tpcc_helper.h"
 #include "row.h"
 #include "query.h"

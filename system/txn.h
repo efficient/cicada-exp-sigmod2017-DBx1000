@@ -90,8 +90,15 @@ public:
 
 	// For VLL
 	TxnType 		vll_txn_type;
+
+#if INDEX_STRUCT != IDX_MICA
 	itemid_t *		index_read(INDEX * index, idx_key_t key, int part_id);
 	void 			index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item);
+#else
+	RC		index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
+	RC		index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
+#endif
+
 	row_t * 		get_row(row_t * row, access_t type);
 
 #if CC_ALG == MICA

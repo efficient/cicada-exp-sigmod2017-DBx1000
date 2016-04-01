@@ -38,6 +38,12 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	uint64_t key;
 	itemid_t * item;
 
+#if INDEX_STRUCT == IDX_MICA
+	RC idx_rc;
+	itemid_t idx_item;
+	item = &idx_item;
+#endif
+
 	uint64_t w_id = query->w_id;
     uint64_t c_w_id = query->c_w_id;
 	/*====================================================+
@@ -55,8 +61,13 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	// the variable.
 	key = query->w_id;
 	INDEX * index = _wl->i_warehouse;
+#if INDEX_STRUCT != IDX_MICA
 	item = index_read(index, key, wh_to_part(w_id));
 	assert(item != NULL);
+#else
+	idx_rc = index_read(index, key, item, wh_to_part(w_id));
+	assert(idx_rc == RCOK);
+#endif
 	row_t * r_wh = ((row_t *)item->location);
 	row_t * r_wh_local;
 #if CC_ALG != MICA
@@ -90,8 +101,13 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		WHERE d_w_id=:w_id AND d_id=:d_id;
 	+=====================================================*/
 	key = distKey(query->d_id, query->d_w_id);
+#if INDEX_STRUCT != IDX_MICA
 	item = index_read(_wl->i_district, key, wh_to_part(w_id));
 	assert(item != NULL);
+#else
+	idx_rc = index_read(_wl->i_district, key, item, wh_to_part(w_id));
+	assert(idx_rc == RCOK);
+#endif
 	row_t * r_dist = ((row_t *)item->location);
 #if CC_ALG != MICA
 	row_t * r_dist_local = get_row(r_dist, WR);
@@ -142,6 +158,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		// XXX: the list is not sorted. But let's assume it's sorted...
 		// The performance won't be much different.
 		INDEX * index = _wl->i_customer_last;
+#if INDEX_STRUCT != IDX_MICA
 		item = index_read(index, key, wh_to_part(c_w_id));
 		assert(item != NULL);
 
@@ -154,11 +171,29 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 			if (cnt % 2 == 0)
 				mid = mid->next;
 		}
+#else
+		idx_rc = index_read(index, key, item, wh_to_part(c_w_id));
+		assert(idx_rc == RCOK);
+
+		const int max_row_ids_count = 100;
+		uint64_t row_ids[max_row_ids_count];
+
+		int cnt = 0;
+		while (idx_rc == RCOK) {
+			assert(cnt < max_row_ids_count);
+			row_ids[cnt] = item->row_id;
+			cnt ++;
+			idx_rc = index_read_next(index, key, item, wh_to_part(c_w_id));
+		}
+		// printf("%d\n", cnt);
+		itemid_t* mid = item;
+		mid->row_id = row_ids[cnt / 2];
+#endif
 		r_cust = ((row_t *)mid->location);
 
 #if CC_ALG == MICA
 		(void)r_cust;
-		r_cust_local = get_row(item, WR);
+		r_cust_local = get_row(mid, WR);
 #endif
 
 		/*============================================================================+
@@ -185,8 +220,13 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		+======================================================================*/
 		key = custKey(query->c_id, query->c_d_id, query->c_w_id);
 		INDEX * index = _wl->i_customer_id;
+#if INDEX_STRUCT != IDX_MICA
 		item = index_read(index, key, wh_to_part(c_w_id));
 		assert(item != NULL);
+#else
+		idx_rc = index_read(index, key, item, wh_to_part(c_w_id));
+		assert(idx_rc == RCOK);
+#endif
 		r_cust = (row_t *) item->location;
 
 #if CC_ALG == MICA
@@ -273,6 +313,12 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	itemid_t * item;
 	INDEX * index;
 
+#if INDEX_STRUCT == IDX_MICA
+	RC idx_rc;
+	itemid_t idx_item;
+	item = &idx_item;
+#endif
+
 	bool remote = query->remote;
 	uint64_t w_id = query->w_id;
     uint64_t d_id = query->d_id;
@@ -286,7 +332,14 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	+========================================================================*/
 	key = w_id;
 	index = _wl->i_warehouse;
+#if INDEX_STRUCT != IDX_MICA
 	item = index_read(index, key, wh_to_part(w_id));
+	assert(item != NULL);
+#else
+	idx_rc = index_read(index, key, item, wh_to_part(w_id));
+	assert(idx_rc == RCOK);
+#endif
+
 	assert(item != NULL);
 	row_t * r_wh = ((row_t *)item->location);
 #if CC_ALG != MICA
@@ -304,8 +357,13 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	r_wh_local->get_value(W_TAX, w_tax);
 	key = custKey(c_id, d_id, w_id);
 	index = _wl->i_customer_id;
+#if INDEX_STRUCT != IDX_MICA
 	item = index_read(index, key, wh_to_part(w_id));
 	assert(item != NULL);
+#else
+	idx_rc = index_read(index, key, item, wh_to_part(w_id));
+	assert(idx_rc == RCOK);
+#endif
 	row_t * r_cust = (row_t *) item->location;
 #if CC_ALG != MICA
 	row_t * r_cust_local = get_row(r_cust, RD);
@@ -331,8 +389,13 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		WH ERE d _id = :d_id AN D d _w _id = :w _id ;
 	+===================================================*/
 	key = distKey(d_id, w_id);
+#if INDEX_STRUCT != IDX_MICA
 	item = index_read(_wl->i_district, key, wh_to_part(w_id));
 	assert(item != NULL);
+#else
+	idx_rc = index_read(_wl->i_district, key, item, wh_to_part(w_id));
+	assert(idx_rc == RCOK);
+#endif
 	row_t * r_dist = ((row_t *)item->location);
 #if CC_ALG != MICA
 	row_t * r_dist_local = get_row(r_dist, WR);
@@ -388,8 +451,13 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 			WHERE i_id = :ol_i_id;
 		+===========================================*/
 		key = ol_i_id;
+#if INDEX_STRUCT != IDX_MICA
 		item = index_read(_wl->i_item, key, 0);
 		assert(item != NULL);
+#else
+		idx_rc = index_read(_wl->i_item, key, item, 0);
+		assert(idx_rc == RCOK);
+#endif
 		row_t * r_item = ((row_t *)item->location);
 
 #if CC_ALG != MICA
@@ -425,8 +493,15 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
 		INDEX * stock_index = _wl->i_stock;
 		itemid_t * stock_item;
+#if INDEX_STRUCT != IDX_MICA
 		index_read(stock_index, stock_key, wh_to_part(ol_supply_w_id), stock_item);
-		assert(item != NULL);
+		assert(stock_item != NULL);
+#else
+		itemid_t idx_stock_item;
+		stock_item = &idx_stock_item;
+		idx_rc = index_read(stock_index, stock_key, stock_item, wh_to_part(ol_supply_w_id));
+		assert(idx_rc == RCOK);
+#endif
 		row_t * r_stock = ((row_t *)stock_item->location);
 #if CC_ALG != MICA
 		row_t * r_stock_local = get_row(r_stock, WR);

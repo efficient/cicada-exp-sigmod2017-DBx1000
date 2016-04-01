@@ -36,7 +36,10 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
   assert(rv != nullptr);
   data = rv->data;  // XXX: This can become dangling when GC is done.
   auto result = tx.commit();
-  assert(result == MICAResult::kCommitted);
+  if (result != MICAResult::kCommitted) {
+		assert(false);
+		return ERROR;
+	}
 #else
 	Catalog * schema = host_table->get_schema();
 	int tuple_size = schema->get_tuple_size();
@@ -349,25 +352,27 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 
 #if CC_ALG == MICA
 RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, itemid_t* item) {
-	auto table = item->table;
-	auto row_id = item->row_id;
+  auto table = item->table;
+  auto row_id = item->row_id;
 
-	RC rc = RCOK;
-	MICARowVersion* rv;
-	if (type == RD)
-		rv = txn->mica_tx->get_row_for_read(table->mica_tbl, row_id, true);
-	else if (type == WR)
-		rv = txn->mica_tx->get_row_for_write(table->mica_tbl, row_id, false);
-	else {
-		assert(false);
-		rv = nullptr;
-	}
-	if (rv == nullptr)
-		return Abort;
-	row->table = table;
-	row->mica_rv = rv;
-	row->data = rv->data;
-	return rc;
+  // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
+  //        table->mica_tbl->row_count());
+
+  RC rc = RCOK;
+  MICARowVersion* rv;
+  if (type == RD)
+    rv = txn->mica_tx->get_row_for_read(table->mica_tbl, row_id, true);
+  else if (type == WR)
+    rv = txn->mica_tx->get_row_for_write(table->mica_tbl, row_id, false);
+  else {
+    assert(false);
+    rv = nullptr;
+  }
+  if (rv == nullptr) return Abort;
+  row->table = table;
+  row->mica_rv = rv;
+  row->data = rv->data;
+  return rc;
 }
 #endif
 

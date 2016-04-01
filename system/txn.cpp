@@ -9,7 +9,7 @@
 #include "catalog.h"
 #include "index_btree.h"
 #include "index_hash.h"
-#include "index_cuckoo.h"
+#include "index_mica.h"
 
 void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	this->h_thd = h_thd;
@@ -191,7 +191,8 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 row_t *
 txn_man::get_row(itemid_t * item, access_t type)
 {
-	if (row_cnt == 0)
+	// printf("1 row_id=%lu\n", item->row_id);
+	if (row_cnt == 0 && !mica_tx->has_began())
 		mica_tx->begin();
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
@@ -202,13 +203,16 @@ txn_man::get_row(itemid_t * item, access_t type)
 		num_accesses_alloc ++;
 	}
 
+	// printf("2 row_id=%lu\n", item->row_id);
 	rc = row_t::get_row(type, this, accesses[ row_cnt ]->data, item);
+	// assert(rc == RCOK);
 
 	if (rc == Abort) {
 		return NULL;
 	}
 	accesses[row_cnt]->type = type;
-	accesses[row_cnt]->orig_row = (row_t*)item->location;
+	// accesses[row_cnt]->orig_row = (row_t*)item->location;
+	accesses[row_cnt]->orig_row = nullptr;
 
 	row_cnt ++;
 	if (type == WR)
@@ -231,6 +235,7 @@ void txn_man::insert_row(row_t * row, table_t * table) {
 	insert_rows[insert_cnt ++] = row;
 }
 
+#if INDEX_STRUCT != IDX_MICA
 itemid_t *
 txn_man::index_read(INDEX * index, idx_key_t key, int part_id) {
 	uint64_t starttime = get_sys_clock();
@@ -246,6 +251,23 @@ txn_man::index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item)
 	index->index_read(key, item, part_id, get_thd_id());
 	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
 }
+#else
+RC
+txn_man::index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
+{
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin();
+
+	item->mica_tx = mica_tx;
+	item->table = index->table;
+	return index->index_read(key, item, part_id, get_thd_id());
+}
+RC
+txn_man::index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
+{
+	return index->index_read_next(key, item, part_id, get_thd_id());
+}
+#endif
 
 RC txn_man::finish(RC rc) {
 #if CC_ALG == HSTORE

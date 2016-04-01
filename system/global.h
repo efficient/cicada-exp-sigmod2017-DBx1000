@@ -60,6 +60,7 @@ typedef DBConfig::TimestampConst TimestampConst;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
+typedef ::mica::transaction::HashIndex<DBConfig> MICAIndex;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
 typedef ::mica::transaction::Result MICAResult;
@@ -185,8 +186,8 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
 #if (INDEX_STRUCT == IDX_BTREE)
 #define INDEX		index_btree
-#elif (INDEX_STRUCT == IDX_CUCKOO)
-#define INDEX		IndexCuckoo
+#elif (INDEX_STRUCT == IDX_MICA)
+#define INDEX		IndexMICA
 #else  // IDX_HASH
 #define INDEX		IndexHash
 #endif

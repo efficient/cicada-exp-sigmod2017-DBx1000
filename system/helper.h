@@ -156,6 +156,11 @@ public:
 	table_t* table;
 	uint64_t row_id;
 #endif
+#if INDEX_STRUCT == IDX_MICA
+	MICATransaction* mica_tx;
+	::mica::transaction::HashIndexBucket* state1;
+	uint64_t state2;
+#endif
 	itemid_t * next;
 	bool valid;
 	void init();
