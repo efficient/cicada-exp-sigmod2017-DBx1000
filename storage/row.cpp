@@ -43,7 +43,7 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 #else
 	Catalog * schema = host_table->get_schema();
 	int tuple_size = schema->get_tuple_size();
-#if defined(USE_INLINED_DATA) && (CC_ALG == SILO || CC_ALG == TICTOC)
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
 	if (sizeof(inlined_data) < size_t(tuple_size)) {
 		printf("too small row_t::inlined_data for tuple size %d\n", tuple_size);
 		assert(false);
@@ -60,7 +60,7 @@ void
 row_t::init(int size)
 {
 #if CC_ALG != MICA
-#if defined(USE_INLINED_DATA) && (CC_ALG == SILO || CC_ALG == TICTOC)
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
 	if (sizeof(inlined_data) < size_t(size)) {
 		printf("too small row_t::inlined_data for tuple size %d\n", size);
 		assert(false);
@@ -86,7 +86,11 @@ row_t::switch_schema(table_t * host_table) {
 
 void row_t::init_manager(row_t * row) {
 #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
+#ifdef USE_INLINED_DATA
+		manager = &inlined_manager;
+#else
     manager = (Row_lock *) mem_allocator.alloc(sizeof(Row_lock), _part_id);
+#endif
 #elif CC_ALG == TIMESTAMP
     manager = (Row_ts *) mem_allocator.alloc(sizeof(Row_ts), _part_id);
 #elif CC_ALG == MVCC
@@ -193,7 +197,7 @@ void row_t::copy(row_t * src) {
 
 void row_t::free_row() {
 #if CC_ALG != MICA
-#if defined(USE_INLINED_DATA) && (CC_ALG == SILO || CC_ALG == TICTOC)
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
 #else
 	free(data);
 #endif

@@ -7,6 +7,7 @@
 
 #ifdef USE_INLINED_DATA
 class row_t;
+#include "row_lock.h"
 #include "row_tictoc.h"
 #include "row_silo.h"
 #endif
@@ -122,7 +123,10 @@ public:
 	table_t * table;
 
 #ifdef USE_INLINED_DATA
-  #if CC_ALG == TICTOC
+  #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
+    Row_lock inlined_manager;
+		char inlined_data[MAX_TUPLE_SIZE];
+  #elif CC_ALG == TICTOC
   	Row_tictoc inlined_manager;
 		char inlined_data[MAX_TUPLE_SIZE];
   #elif CC_ALG == SILO
