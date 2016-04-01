@@ -21,19 +21,22 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 	_part_id = part_id;
 	this->table = host_table;
 #if CC_ALG == MICA
-	auto db = table->mica_db;
-	auto tbl = table->mica_tbl;
+  // We ignore the given row_id argument to init() because it contains an
+  // uninitialized value and is not used by the workload.
+
+  auto db = table->mica_db;
+  auto tbl = table->mica_tbl;
 
   auto thread_id = ::mica::util::lcore.lcore_id();
-	// printf("thread_id = %lu\n", thread_id);
+  // printf("thread_id = %lu\n", thread_id);
 
-	// We ignore the given row_id argument because it contains an uninitialized
-	// value and is not used by the workload.
-	auto wts = TimestampConst::min;
-  _row_id = tbl->insert_row(db->context(thread_id), wts);
-	auto rv = tbl->head(_row_id)->older_rv;
-  rv->status = ::mica::transaction::RowVersionStatus::kCommitted;
-	data = rv->data;		// XXX: This can become dangling when GC is done.
+  MICATransaction tx(db->context(thread_id));
+	tx.begin();
+  auto rv = tx.insert_row(tbl, &_row_id);
+  assert(rv != nullptr);
+  data = rv->data;  // XXX: This can become dangling when GC is done.
+  auto result = tx.commit();
+  assert(result == MICAResult::kCommitted);
 #else
 	Catalog * schema = host_table->get_schema();
 	int tuple_size = schema->get_tuple_size();
