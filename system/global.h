@@ -45,6 +45,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // static constexpr bool kNarrowValidationRange = false;
   // static constexpr bool kStragglerAvoidance = false;
   // static constexpr bool kSpeculativeDataCopy = false;
+  // static constexpr bool kInlinedRowVersion = false;
 
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
