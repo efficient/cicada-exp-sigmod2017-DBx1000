@@ -56,8 +56,11 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   static constexpr bool kCollectCommitStats = true;
   // static constexpr bool kCollectProcessingStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
+
+  typedef ::mica::transaction::NullLogger<DBConfig> Logger;
 };
 typedef DBConfig::Alloc MICAAlloc;
+typedef DBConfig::Logger MICALogger;
 typedef DBConfig::TimestampConst TimestampConst;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;

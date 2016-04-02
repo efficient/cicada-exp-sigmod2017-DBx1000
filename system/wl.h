@@ -26,6 +26,7 @@ public:
 #if CC_ALG == MICA
 	MICAAlloc* mica_alloc;
 	MICAPagePool* mica_page_pool;
+	MICALogger* mica_logger;
 	::mica::util::Stopwatch mica_sw;
 	MICADB* mica_db;
 #endif
