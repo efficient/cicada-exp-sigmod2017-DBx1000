@@ -36,8 +36,12 @@ def set_alg(conf, alg):
 
 def set_ycsb(conf, total_count, req_per_query, read_ratio, zipf_theta):
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
-  conf = replace_def(conf, 'WARMUP', '100000')
-  conf = replace_def(conf, 'MAX_TXN_PER_PART', '100000')
+  if req_per_query <= 2:
+    conf = replace_def(conf, 'WARMUP', '1000000')
+    conf = replace_def(conf, 'MAX_TXN_PER_PART', '1000000')
+  else:
+    conf = replace_def(conf, 'WARMUP', '100000')
+    conf = replace_def(conf, 'MAX_TXN_PER_PART', '100000')
   conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(100))
 
@@ -107,33 +111,37 @@ def enum_exps():
         req_per_query = 16
         common = [alg, thread_count, 'YCSB', total_count, req_per_query]
         yield common + [0.95, 0.00] + [seq]
-        if alg not in ('HEKATON', 'NO_WAIT'):
-          yield common + [0.95, 0.99] + [seq]
         yield common + [0.50, 0.00] + [seq]
         if alg not in ('HEKATON', 'NO_WAIT'):
+          yield common + [0.95, 0.99] + [seq]
           yield common + [0.50, 0.99] + [seq]
+
         if thread_count in (28, 56):
           yield common + [0.95, 0.40] + [seq]
-          yield common + [0.95, 0.60] + [seq]
-          yield common + [0.95, 0.80] + [seq]
-          yield common + [0.95, 0.90] + [seq]
-          if alg not in ('HEKATON', 'NO_WAIT'):
-            yield common + [0.95, 0.95] + [seq]
           yield common + [0.50, 0.40] + [seq]
+          yield common + [0.95, 0.60] + [seq]
           yield common + [0.50, 0.60] + [seq]
+          yield common + [0.95, 0.80] + [seq]
           yield common + [0.50, 0.80] + [seq]
+          yield common + [0.95, 0.90] + [seq]
           yield common + [0.50, 0.90] + [seq]
           if alg not in ('HEKATON', 'NO_WAIT'):
+            yield common + [0.95, 0.95] + [seq]
             yield common + [0.50, 0.95] + [seq]
+
+        req_per_query = 1
+        common = [alg, thread_count, 'YCSB', total_count, req_per_query]
+        yield common + [0.95, 0.00] + [seq]
+        yield common + [0.50, 0.00] + [seq]
+        yield common + [0.95, 0.99] + [seq]
+        yield common + [0.50, 0.99] + [seq]
 
         # TPCC: warehouse_count
         common = [alg, thread_count, 'TPCC']
         yield common + [thread_count] + [seq]
         if thread_count in (28, 56):
           yield common + [1] + [seq]
-          # yield common + [2] + [seq]
           yield common + [4] + [seq]
-          # yield common + [8] + [seq]
           yield common + [16] + [seq]
 
 
