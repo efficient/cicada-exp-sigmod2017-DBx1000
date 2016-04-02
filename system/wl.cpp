@@ -79,6 +79,7 @@ RC workload::init_schema(string schema_file) {
 		  cur_tab->mica_tbl = mica_db->get_table(tname);
 			assert(cur_tab->mica_tbl);
 #endif
+			assert(schema->get_tuple_size() <= MAX_TUPLE_SIZE);
 			tables[tname] = cur_tab;
         } else if (!line.compare(0, 6, "INDEX=")) {
 			string iname;
