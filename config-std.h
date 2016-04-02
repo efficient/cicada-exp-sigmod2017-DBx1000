@@ -5,13 +5,13 @@
 // Simulation + Hardware
 /***********************************************/
 #define THREAD_CNT					4
-#define PART_CNT					1 
+#define PART_CNT					1
 // each transaction only accesses 1 virtual partition. But the lock/ts manager and index are not aware of such partitioning. VIRTUAL_PART_CNT describes the request distribution and is only used to generate queries. For HSTORE, VIRTUAL_PART_CNT should be the same as PART_CNT.
 #define VIRTUAL_PART_CNT			1
-#define PAGE_SIZE					4096 
+#define PAGE_SIZE					4096
 #define CL_SIZE						64
-// CPU_FREQ is used to get accurate timing info 
-#define CPU_FREQ 					2 	// in GHz/s
+// CPU_FREQ is used to get accurate timing info
+#define CPU_FREQ 					2.60 	// in GHz/s
 
 // # of transactions to run for warmup
 #define WARMUP						0
@@ -20,18 +20,18 @@
 // print the transaction latency distribution
 #define PRT_LAT_DISTR				false
 #define STATS_ENABLE				true
-#define TIME_ENABLE					true 
+#define TIME_ENABLE					false
 
-#define MEM_ALLIGN					8 
+#define MEM_ALLIGN					8
 
 // [THREAD_ALLOC]
 #define THREAD_ALLOC				false
-#define THREAD_ARENA_SIZE			(1UL << 22) 
+#define THREAD_ARENA_SIZE			(1UL << 22)
 #define MEM_PAD 					true
 
-// [PART_ALLOC] 
+// [PART_ALLOC]
 #define PART_ALLOC 					false
-#define MEM_SIZE					(1UL << 30) 
+#define MEM_SIZE					(1UL << 30)
 #define NO_FREE						false
 
 /***********************************************/
@@ -59,7 +59,7 @@
 #define INDEX_STRUCT				IDX_HASH
 #define BTREE_ORDER 				16
 
-// [DL_DETECT] 
+// [DL_DETECT]
 #define DL_LOOP_DETECT				1000 	// 100 us
 #define DL_LOOP_TRIAL				100	// 1 us
 #define NO_DL						KEY_ORDER
@@ -91,9 +91,9 @@
 #define ATOMIC_WORD					true
 // [HSTORE]
 // when set to true, hstore will not access the global timestamp.
-// This is fine for single partition transactions. 
+// This is fine for single partition transactions.
 #define HSTORE_LOCAL_TS				false
-// [VLL] 
+// [VLL]
 #define TXN_QUEUE_SIZE_LIMIT		THREAD_CNT
 
 /***********************************************/
@@ -128,18 +128,18 @@
 // For large warehouse count, the tables do not fit in memory
 // small tpcc schemas shrink the table size.
 #define TPCC_SMALL					false
-// Some of the transactions read the data but never use them. 
+// Some of the transactions read the data but never use them.
 // If TPCC_ACCESS_ALL == fales, then these parts of the transactions
 // are not modeled.
-#define TPCC_ACCESS_ALL 			false 
+#define TPCC_ACCESS_ALL 			false
 #define WH_UPDATE					true
 #define NUM_WH 						1
 //
-enum TPCCTxnType {TPCC_ALL, 
-				TPCC_PAYMENT, 
-				TPCC_NEW_ORDER, 
-				TPCC_ORDER_STATUS, 
-				TPCC_DELIVERY, 
+enum TPCCTxnType {TPCC_ALL,
+				TPCC_PAYMENT,
+				TPCC_NEW_ORDER,
+				TPCC_ORDER_STATUS,
+				TPCC_DELIVERY,
 				TPCC_STOCK_LEVEL};
 extern TPCCTxnType 					g_tpcc_txn_type;
 
@@ -152,11 +152,11 @@ extern TPCCTxnType 					g_tpcc_txn_type;
 #define DIST_PER_WARE				10
 
 /***********************************************/
-// TODO centralized CC management. 
+// TODO centralized CC management.
 /***********************************************/
-#define MAX_LOCK_CNT				(20 * THREAD_CNT) 
+#define MAX_LOCK_CNT				(20 * THREAD_CNT)
 #define TSTAB_SIZE                  50 * THREAD_CNT
-#define TSTAB_FREE                  TSTAB_SIZE 
+#define TSTAB_FREE                  TSTAB_SIZE
 #define TSREQ_FREE                  4 * TSTAB_FREE
 #define MVHIS_FREE                  4 * TSTAB_FREE
 #define SPIN                        false
@@ -189,6 +189,7 @@ extern TestCases					g_test_case;
 // INDEX_STRUCT
 #define IDX_HASH 					1
 #define IDX_BTREE					2
+#define IDX_MICA					3
 // WORKLOAD
 #define YCSB						1
 #define TPCC						2
@@ -205,7 +206,8 @@ extern TestCases					g_test_case;
 #define SILO						9
 #define VLL							10
 #define HEKATON 					11
-//Isolation Levels 
+#define MICA 					12
+//Isolation Levels
 #define SERIALIZABLE				1
 #define SNAPSHOT					2
 #define REPEATABLE_READ				3
