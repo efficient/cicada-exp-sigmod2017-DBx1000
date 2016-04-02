@@ -107,20 +107,24 @@ def enum_exps():
         req_per_query = 16
         common = [alg, thread_count, 'YCSB', total_count, req_per_query]
         yield common + [0.95, 0.00] + [seq]
-        yield common + [0.95, 0.99] + [seq]
+        if alg not in ('HEKATON', 'NO_WAIT'):
+          yield common + [0.95, 0.99] + [seq]
         yield common + [0.50, 0.00] + [seq]
-        yield common + [0.50, 0.99] + [seq]
+        if alg not in ('HEKATON', 'NO_WAIT'):
+          yield common + [0.50, 0.99] + [seq]
         if thread_count in (28, 56):
           yield common + [0.95, 0.40] + [seq]
           yield common + [0.95, 0.60] + [seq]
           yield common + [0.95, 0.80] + [seq]
           yield common + [0.95, 0.90] + [seq]
-          yield common + [0.95, 0.95] + [seq]
+          if alg not in ('HEKATON', 'NO_WAIT'):
+            yield common + [0.95, 0.95] + [seq]
           yield common + [0.50, 0.40] + [seq]
           yield common + [0.50, 0.60] + [seq]
           yield common + [0.50, 0.80] + [seq]
           yield common + [0.50, 0.90] + [seq]
-          yield common + [0.50, 0.95] + [seq]
+          if alg not in ('HEKATON', 'NO_WAIT'):
+            yield common + [0.50, 0.95] + [seq]
 
         # TPCC: warehouse_count
         common = [alg, thread_count, 'TPCC']
