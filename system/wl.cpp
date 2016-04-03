@@ -14,7 +14,7 @@ RC workload::init() {
 #if CC_ALG == MICA
 	auto config = ::mica::util::Config::load_file("test_tx.json");
 	mica_alloc = new MICAAlloc(config.get("alloc"));
-	mica_page_pool = new MICAPagePool(mica_alloc, 20 * uint64_t(1073741824));
+	mica_page_pool = new MICAPagePool(mica_alloc, 56 * uint64_t(1073741824));
 	mica_logger = new MICALogger();
 	mica_sw.init_start();
 	mica_sw.init_end();
