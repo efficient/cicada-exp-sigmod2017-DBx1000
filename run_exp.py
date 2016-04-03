@@ -5,6 +5,7 @@ import sys
 import re
 import time
 import shutil
+import subprocess
 
 
 def replace_def(conf, name, value):
@@ -82,7 +83,7 @@ def gen_filename(exp):
 
 def parse_filename(filename):
   assert filename.startswith(prefix)
-  assert filename.endswith(prefix)
+  assert filename.endswith(suffix)
   return filename[len(prefix):-len(suffix)].split('_')
 
 
@@ -99,7 +100,7 @@ def remove_stale():
 
 
 def enum_exps():
-  thread_counts = [1, 4, 16, 28, 42, 56]
+  thread_counts = [1, 4, 8, 16, 28, 42, 56]
   all_algs = ['MICA', 'MICA-FULL', 'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
   total_seqs = 3
 
@@ -201,8 +202,8 @@ def find_exps_to_run(exps, pat):
     yield exp
 
 
-def validate_result(filename):
-  return open(filename).read().find('[summary] tput=') != -1
+def validate_result(output):
+  return output.find('[summary] tput=') != -1
 
 
 def run(exp):
@@ -225,23 +226,26 @@ def run(exp):
   assert ret == 0, 'failed to compile for %s' % exp
   os.system('sudo sync')
   os.system('sudo sync')
+  time.sleep(10)
 
   # run
   filename = gen_filename(exp)
-  tmp_filename = filename + '.tmp'
 
-  ret = os.system('sudo stdbuf -i0 -oL -e0 ./rundb > %s' % tmp_filename)
-  if ret != 0:
+  # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
+  cmd = 'sudo ./rundb'
+  p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+  stdout = p.communicate()[0].decode('utf-8')
+  if p.returncode != 0:
     print('failed to run exp for %s' % exp)
-    os.rename(tmp_filename, filename + '.failed')
+    open(filename + '.failed', 'w').write(stdout)
     return
-  if not validate_result(tmp_filename):
+  if not validate_result(stdout):
     print('validation failed for %s' % exp)
-    os.rename(tmp_filename, filename + '.failed')
+    open(filename + '.failed', 'w').write(stdout)
     return
 
   # finalize
-  os.rename(tmp_filename, filename)
+  open(filename, 'w').write(stdout)
 
 
 def run_all(pat):
