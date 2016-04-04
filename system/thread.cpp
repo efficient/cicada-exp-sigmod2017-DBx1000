@@ -62,6 +62,7 @@ RC thread_t::run() {
 
 #if CC_ALG == MICA
   ::mica::util::lcore.pin_thread(get_thd_id());
+  MICATiming t(_wl->mica_db->context(get_thd_id())->timing_stack(), &::mica::transaction::Stats::worker);
 #else
 	set_affinity(get_thd_id());
 #endif

@@ -53,6 +53,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // typedef ::mica::transaction::WideTimestampConst TimestampConst;
 
   // static constexpr bool kBackoff = false;
+  // static constexpr bool kPairwiseSleeping = false;
 
   static constexpr bool kCollectCommitStats = true;
   // static constexpr bool kCollectProcessingStats = true;
@@ -63,6 +64,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 typedef DBConfig::Alloc MICAAlloc;
 typedef DBConfig::Logger MICALogger;
 typedef DBConfig::TimestampConst TimestampConst;
+typedef DBConfig::Timing MICATiming;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
