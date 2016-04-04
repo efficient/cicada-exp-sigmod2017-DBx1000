@@ -27,8 +27,18 @@ def set_alg(conf, alg):
     conf = replace_def(conf, 'VALIDATION_LOCK', '"no-wait"')
     conf = replace_def(conf, 'PRE_ABORT', '"true"')
 
-  if alg == 'MICA-FULL':
+  if alg == 'MICA-SIMPLE':
+    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
+    conf = replace_def(conf, 'MICA_NOINLINE', 'true')
+  elif alg == 'MICA-NOINDEX':
+    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
+    conf = replace_def(conf, 'MICA_NOINLINE', 'false')
+  elif alg == 'MICA-NOINLINE':
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
+    conf = replace_def(conf, 'MICA_NOINLINE', 'true')
+  elif alg == 'MICA-FULL' or alg == 'MICA-TEST':
+    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
+    conf = replace_def(conf, 'MICA_NOINLINE', 'false')
   else:
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
 
@@ -101,7 +111,10 @@ def remove_stale():
 
 def enum_exps():
   thread_counts = [1, 4, 8, 16, 28, 42, 56]
-  all_algs = ['MICA', 'MICA-FULL', 'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
+  warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
+  all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX', 'MICA-NOINLINE', 'MICA-FULL',
+              'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
+  # all_algs.append('MICA-TEST')
   total_seqs = 3
 
   for seq in range(total_seqs):
@@ -113,8 +126,9 @@ def enum_exps():
         common = [alg, thread_count, 'YCSB', total_count, req_per_query]
         yield common + [0.95, 0.00] + [seq]
         yield common + [0.50, 0.00] + [seq]
-        if alg not in ('HEKATON', 'NO_WAIT'):
+        if alg not in ('NO_WAIT',):
           yield common + [0.95, 0.99] + [seq]
+        if alg not in ('HEKATON', 'NO_WAIT'):
           yield common + [0.50, 0.99] + [seq]
 
         if thread_count in (28, 56):
@@ -126,8 +140,9 @@ def enum_exps():
           yield common + [0.50, 0.80] + [seq]
           yield common + [0.95, 0.90] + [seq]
           yield common + [0.50, 0.90] + [seq]
-          if alg not in ('HEKATON', 'NO_WAIT'):
+          if alg not in ('NO_WAIT',):
             yield common + [0.95, 0.95] + [seq]
+          if alg not in ('HEKATON', 'NO_WAIT'):
             yield common + [0.50, 0.95] + [seq]
 
         req_per_query = 1
@@ -139,11 +154,11 @@ def enum_exps():
 
         # TPCC: warehouse_count
         common = [alg, thread_count, 'TPCC']
-        yield common + [thread_count] + [seq]
-        if thread_count in (28, 56):
-          yield common + [1] + [seq]
-          yield common + [4] + [seq]
-          yield common + [16] + [seq]
+        # yield common + [thread_count] + [seq]
+
+        for warehouse_count in warehouse_counts:
+          if thread_count >= warehouse_count:
+            yield common + [warehouse_count] + [seq]
 
 
 def update_conf(conf, exp):
@@ -161,7 +176,8 @@ def sort_exps(exps):
   def _exp_pri(exp):
     pri = 0
     # prefer fast schemes
-    if exp[0] == 'MICA' or exp[0] == 'MICA-FULL': pri -= 2
+    if exp[0].startswith('MICA'): pri -= 2
+    if exp[0] == 'MICA-TEST': pri -= 1
     if exp[0] == 'SILO-ORG' or exp[0] == 'TICTOC': pri -= 1
 
     # prefer max cores
@@ -206,7 +222,11 @@ def validate_result(output):
   return output.find('[summary] tput=') != -1
 
 
+hugepage_status = -1
+
 def run(exp):
+  global hugepage_status
+
   # update config
   conf = open('config-std.h').read()
   conf = update_conf(conf, exp)
@@ -217,9 +237,13 @@ def run(exp):
   os.system('rm -f ./rundb')
 
   if exp[0].startswith('MICA'):
-    os.system('../script/setup.sh 16384 16384 > /dev/null')   # 64 GiB
+    if hugepage_status != 16384:
+      os.system('../script/setup.sh 16384 16384 > /dev/null')   # 64 GiB
+      hugepage_status = 16384
   else:
-    os.system('../script/setup.sh 0 0 > /dev/null')
+    if hugepage_status != 0:
+      os.system('../script/setup.sh 0 0 > /dev/null')
+      hugepage_status = 0
 
   # compile
   ret = os.system('make -j > /dev/null')
@@ -277,7 +301,8 @@ def run_all(pat):
 
 
 if __name__ == '__main__':
-  remove_stale()
+  # remove_stale()
+
   if len(sys.argv) != 2:
     run_all('')
   else:
