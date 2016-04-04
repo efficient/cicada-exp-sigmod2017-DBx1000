@@ -47,6 +47,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #if MICA_NOINLINE
   static constexpr bool kInlinedRowVersion = false;
 #endif
+  // static constexpr bool kNoWaitForPending = true;
 
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
