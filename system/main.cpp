@@ -143,9 +143,14 @@ void * f(void * id) {
 	uint64_t tid = (uint64_t)id;
 
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
+  ::mica::util::lcore.pin_thread(tid);
+	m_thds[tid]->_wl->mica_db->activate(tid);
 #endif
 
 	m_thds[tid]->run();
+
+#if CC_ALG == MICA
+	m_thds[tid]->_wl->mica_db->deactivate(tid);
+#endif
 	return NULL;
 }

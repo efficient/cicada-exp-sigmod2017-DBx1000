@@ -115,7 +115,7 @@ void * ycsb_wl::init_table_slice() {
 	UInt32 tid = ATOM_FETCH_ADD(next_tid, 1);
 	// set cpu affinity
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
+  ::mica::util::lcore.pin_thread(tid);
   // printf("tid=%u g_thread_cnt=%u lcore_id=%lu\n", tid, g_thread_cnt,
   //        ::mica::util::lcore.lcore_id());
 #else

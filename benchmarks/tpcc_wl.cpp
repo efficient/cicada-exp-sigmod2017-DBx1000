@@ -390,7 +390,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	tpcc_wl * wl = (tpcc_wl *) This;
 	int tid = ATOM_FETCH_ADD(wl->next_tid, 1);
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
+  ::mica::util::lcore.pin_thread(tid);
 #endif
 	uint32_t wid = tid + 1;
 	tpcc_buffer[tid] = (drand48_data *) _mm_malloc(sizeof(drand48_data), 64);

@@ -19,6 +19,9 @@ RC workload::init() {
 	mica_sw.init_start();
 	mica_sw.init_end();
 	mica_db = new MICADB(mica_page_pool, mica_logger, &mica_sw, THREAD_CNT);
+
+	for (auto i = 0; i < THREAD_CNT; i++)
+		mica_db->activate(static_cast<uint16_t>(i));
 #endif
 	return RCOK;
 }

@@ -189,7 +189,7 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 
 #if CC_ALG == MICA
 row_t *
-txn_man::get_row(itemid_t * item, access_t type)
+txn_man::get_row(INDEX* index, itemid_t * item, access_t type)
 {
 	// printf("1 row_id=%lu\n", item->row_id);
 	if (row_cnt == 0 && !mica_tx->has_began())
@@ -204,7 +204,7 @@ txn_man::get_row(itemid_t * item, access_t type)
 	}
 
 	// printf("2 row_id=%lu\n", item->row_id);
-	rc = row_t::get_row(type, this, accesses[ row_cnt ]->data, item);
+	rc = row_t::get_row(type, this, index->table, accesses[ row_cnt ]->data, item);
 	// assert(rc == RCOK);
 
 	if (rc == Abort) {
@@ -259,7 +259,6 @@ txn_man::index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
 		mica_tx->begin();
 
 	item->mica_tx = mica_tx;
-	item->table = index->table;
 	return index->index_read(key, item, part_id, get_thd_id());
 }
 RC

@@ -61,7 +61,7 @@ RC thread_t::run() {
 	pthread_barrier_wait( &warmup_bar );
 
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(get_thd_id() % g_thread_cnt);
+  ::mica::util::lcore.pin_thread(get_thd_id());
 #else
 	set_affinity(get_thd_id());
 #endif

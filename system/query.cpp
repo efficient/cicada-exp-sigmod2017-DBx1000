@@ -55,7 +55,7 @@ Query_queue::threadInitQuery(void * This) {
 
 	// set cpu affinity
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
+  ::mica::util::lcore.pin_thread(tid);
 #else
 	set_affinity(tid);
 #endif

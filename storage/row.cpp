@@ -355,9 +355,8 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 }
 
 #if CC_ALG == MICA
-RC row_t::get_row(access_t type, txn_man * txn, row_t *& row, itemid_t* item) {
-  auto table = item->table;
-  auto row_id = item->row_id;
+RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item) {
+  auto row_id = reinterpret_cast<uint64_t>(item->location);
 
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl->row_count());

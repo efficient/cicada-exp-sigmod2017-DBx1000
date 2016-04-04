@@ -152,10 +152,6 @@ public:
     };
 	Data_type type;
 	void * location; // points to the table | page | row
-#if CC_ALG == MICA
-	table_t* table;
-	uint64_t row_id;
-#endif
 #if INDEX_STRUCT == IDX_MICA
 	MICATransaction* mica_tx;
 	::mica::transaction::HashIndexBucket* state1;

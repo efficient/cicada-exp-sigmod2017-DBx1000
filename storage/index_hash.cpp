@@ -43,8 +43,7 @@ IndexHash::release_latch(BucketHeader * bucket) {
 
 RC IndexHash::index_insert(idx_key_t key, itemid_t * item, int part_id) {
 #if CC_ALG == MICA
-	item->table = ((row_t*)item->location)->table;
-	item->row_id = ((row_t*)item->location)->get_row_id();
+	item->location = reinterpret_cast<void*>(((row_t*)item->location)->get_row_id());
 #endif
 
 	RC rc = RCOK;

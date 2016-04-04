@@ -78,9 +78,9 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 #else
 	(void)r_wh;
 	if (g_wh_update)
-		r_wh_local = get_row(item, WR);
+		r_wh_local = get_row(index, item, WR);
 	else
-		r_wh_local = get_row(item, RD);
+		r_wh_local = get_row(index, item, RD);
 #endif
 
 	if (r_wh_local == NULL) {
@@ -113,7 +113,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 	row_t * r_dist_local = get_row(r_dist, WR);
 #else
 	(void)r_dist;
-	row_t * r_dist_local = get_row(item, WR);
+	row_t * r_dist_local = get_row(_wl->i_district, item, WR);
 #endif
 	if (r_dist_local == NULL) {
 		return finish(Abort);
@@ -181,19 +181,19 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 		int cnt = 0;
 		while (idx_rc == RCOK) {
 			assert(cnt < max_row_ids_count);
-			row_ids[cnt] = item->row_id;
+			row_ids[cnt] = reinterpret_cast<uint64_t>(item->location);
 			cnt ++;
 			idx_rc = index_read_next(index, key, item, wh_to_part(c_w_id));
 		}
 		// printf("%d\n", cnt);
 		itemid_t* mid = item;
-		mid->row_id = row_ids[cnt / 2];
+		mid->location = reinterpret_cast<void*>(row_ids[cnt / 2]);
 #endif
 		r_cust = ((row_t *)mid->location);
 
 #if CC_ALG == MICA
 		(void)r_cust;
-		r_cust_local = get_row(mid, WR);
+		r_cust_local = get_row(index, mid, WR);
 #endif
 
 		/*============================================================================+
@@ -231,7 +231,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 
 #if CC_ALG == MICA
 		(void)r_cust;
-		r_cust_local = get_row(item, WR);
+		r_cust_local = get_row(index, item, WR);
 #endif
 	}
 
@@ -346,7 +346,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	row_t * r_wh_local = get_row(r_wh, RD);
 #else
 	(void)r_wh;
-	row_t * r_wh_local = get_row(item, RD);
+	row_t * r_wh_local = get_row(index, item, RD);
 #endif
 	if (r_wh_local == NULL) {
 		return finish(Abort);
@@ -369,7 +369,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	row_t * r_cust_local = get_row(r_cust, RD);
 #else
 	(void)r_cust;
-	row_t * r_cust_local = get_row(item, RD);
+	row_t * r_cust_local = get_row(index, item, RD);
 #endif
 	if (r_cust_local == NULL) {
 		return finish(Abort);
@@ -401,7 +401,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 	row_t * r_dist_local = get_row(r_dist, WR);
 #else
 	(void)r_dist;
-	row_t * r_dist_local = get_row(item, WR);
+	row_t * r_dist_local = get_row(_wl->i_district, item, WR);
 #endif
 	if (r_dist_local == NULL) {
 		return finish(Abort);
@@ -464,7 +464,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		row_t * r_item_local = get_row(r_item, RD);
 #else
 		(void)r_item;
-		row_t * r_item_local = get_row(item, RD);
+		row_t * r_item_local = get_row(_wl->i_item, item, RD);
 #endif
 		if (r_item_local == NULL) {
 			return finish(Abort);
@@ -507,7 +507,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query * query) {
 		row_t * r_stock_local = get_row(r_stock, WR);
 #else
 		(void)r_stock;
-		row_t * r_stock_local = get_row(stock_item, WR);
+		row_t * r_stock_local = get_row(stock_index, stock_item, WR);
 #endif
 		if (r_stock_local == NULL) {
 			return finish(Abort);

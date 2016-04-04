@@ -102,7 +102,7 @@ public:
 	row_t * 		get_row(row_t * row, access_t type);
 
 #if CC_ALG == MICA
-	row_t * 		get_row(itemid_t * item, access_t type);
+	row_t * 		get_row(INDEX* index, itemid_t * item, access_t type);
 #endif
 
 protected:

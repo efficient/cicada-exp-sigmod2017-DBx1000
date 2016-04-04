@@ -64,7 +64,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 			row_local = get_row(row, type);
 #else
 			(void)row;
-			row_local = get_row(m_item, type);
+			row_local = get_row(_wl->the_index, m_item, type);
 #endif
 			if (row_local == NULL) {
 				rc = Abort;
