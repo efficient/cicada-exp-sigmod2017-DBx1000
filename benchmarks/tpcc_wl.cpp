@@ -391,6 +391,7 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	int tid = ATOM_FETCH_ADD(wl->next_tid, 1);
 #if CC_ALG == MICA
   ::mica::util::lcore.pin_thread(tid);
+	wl->mica_db->activate(static_cast<uint16_t>(tid));
 #endif
 	uint32_t wid = tid + 1;
 	tpcc_buffer[tid] = (drand48_data *) _mm_malloc(sizeof(drand48_data), 64);
@@ -408,5 +409,9 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 		for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++)
 			wl->init_tab_hist(cid, did, wid);
 	}
+
+#if CC_ALG == MICA
+	wl->mica_db->deactivate(static_cast<uint16_t>(tid));
+#endif
 	return NULL;
 }

@@ -19,14 +19,15 @@ RC workload::init() {
 	mica_sw.init_start();
 	mica_sw.init_end();
 	mica_db = new MICADB(mica_page_pool, mica_logger, &mica_sw, THREAD_CNT);
-
-	for (auto i = 0; i < THREAD_CNT; i++)
-		mica_db->activate(static_cast<uint16_t>(i));
 #endif
 	return RCOK;
 }
 
 RC workload::init_schema(string schema_file) {
+#if CC_ALG == MICA
+	mica_db->activate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+#endif
+
     assert(sizeof(uint64_t) == 8);
     assert(sizeof(double) == 8);
 	string line;
@@ -123,6 +124,10 @@ RC workload::init_schema(string schema_file) {
 		}
     }
 	fin.close();
+
+#if CC_ALG == MICA
+	mica_db->deactivate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+#endif
 	return RCOK;
 }
 

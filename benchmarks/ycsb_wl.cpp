@@ -118,6 +118,7 @@ void * ycsb_wl::init_table_slice() {
   ::mica::util::lcore.pin_thread(tid);
   // printf("tid=%u g_thread_cnt=%u lcore_id=%lu\n", tid, g_thread_cnt,
   //        ::mica::util::lcore.lcore_id());
+	mica_db->activate(static_cast<uint16_t>(tid));
 #else
   set_affinity(tid);
 #endif
@@ -159,6 +160,10 @@ void * ycsb_wl::init_table_slice() {
 		rc = the_index->index_insert(idx_key, m_item, part_id);
 		assert(rc == RCOK);
 	}
+
+#if CC_ALG == MICA
+	mica_db->deactivate(static_cast<uint16_t>(tid));
+#endif
 	return NULL;
 }
 

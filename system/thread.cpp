@@ -62,6 +62,10 @@ RC thread_t::run() {
 
 #if CC_ALG == MICA
   ::mica::util::lcore.pin_thread(get_thd_id());
+
+  // This activation is blocking, so this must be done after warmup_bar above.
+	_wl->mica_db->activate(static_cast<uint16_t>(get_thd_id()));
+
   MICATiming t(_wl->mica_db->context(get_thd_id())->timing_stack(), &::mica::transaction::Stats::worker);
 #else
 	set_affinity(get_thd_id());
@@ -253,12 +257,19 @@ RC thread_t::run() {
 			m_txn->abort_cnt ++;
 		}
 
-		if (rc == FINISH)
+		if (rc == FINISH) {
+#if CC_ALG == MICA
+    	_wl->mica_db->deactivate(static_cast<uint16_t>(get_thd_id()));
+#endif
 			return rc;
+    }
 		// if (!warmup_finish && txn_cnt >= WARMUP / g_thread_cnt)
 		if (!warmup_finish && txn_cnt >= WARMUP)
 		{
 			stats.clear( get_thd_id() );
+#if CC_ALG == MICA
+    	_wl->mica_db->deactivate(static_cast<uint16_t>(get_thd_id()));
+#endif
 			return FINISH;
 		}
 
@@ -268,6 +279,9 @@ RC thread_t::run() {
 				assert( _wl->sim_done);
 	    }
 	    if (_wl->sim_done) {
+#if CC_ALG == MICA
+        	_wl->mica_db->deactivate(static_cast<uint16_t>(get_thd_id()));
+#endif
    		    return FINISH;
    		}
 	}
