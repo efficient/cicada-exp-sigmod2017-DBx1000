@@ -96,6 +96,7 @@ public:
 	void 			index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item);
 #else
 	RC		index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
+	RC		index_read_first(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
 	RC		index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
 #endif
 

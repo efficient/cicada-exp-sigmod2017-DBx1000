@@ -80,8 +80,7 @@ RC IndexMICA::index_insert(idx_key_t key, itemid_t* item, int part_id) {
       tx.abort();
       continue;
     }
-    auto result = tx.commit();
-    if (result == MICAResult::kCommitted) break;
+    if (tx.commit()) break;
   }
   // printf("index updated\n");
 
@@ -104,13 +103,29 @@ RC IndexMICA::index_read(idx_key_t key, itemid_t*& item, int part_id,
   return RCOK;
 }
 
+RC IndexMICA::index_read_first(idx_key_t key, itemid_t*& item, int part_id,
+                               int thd_id) {
+  (void)thd_id;
+
+  auto tx = item->mica_tx;
+  item->state1 = nullptr;
+  item->state2 = 0;
+  auto row_id =
+      mica_idx[part_id]->lookup(tx, key, false, item->state1, item->state2);
+  if (row_id == MICAIndex::kNotFound) return ERROR;
+  if (row_id == MICAIndex::kHaveToAbort) return Abort;
+  // printf("%lu %lu\n", key, row_id);
+  item->location = reinterpret_cast<void*>(row_id);
+  return RCOK;
+}
+
 RC IndexMICA::index_read_next(idx_key_t key, itemid_t*& item, int part_id,
                               int thd_id) {
   (void)thd_id;
 
   auto tx = item->mica_tx;
   auto row_id =
-      mica_idx[part_id]->lookup(tx, key, true, item->state1, item->state2);
+      mica_idx[part_id]->lookup(tx, key, false, item->state1, item->state2);
   if (row_id == MICAIndex::kNotFound) return ERROR;
   if (row_id == MICAIndex::kHaveToAbort) return Abort;
   item->location = reinterpret_cast<void*>(row_id);

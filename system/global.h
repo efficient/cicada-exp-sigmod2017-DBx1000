@@ -42,11 +42,8 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // static constexpr bool kDeferredVersionInsert = false;
   // static constexpr bool kInsertNewestVersionOnly = false;
   // static constexpr bool kSortWriteSetByContention = false;
-  // static constexpr bool kNarrowValidationRange = false;
   // static constexpr bool kStragglerAvoidance = false;
-#if MICA_NOINLINE
-  static constexpr bool kInlinedRowVersion = false;
-#endif
+  // static constexpr bool kInlinedRowVersion = true;
   // static constexpr bool kNoWaitForPending = true;
 
   // static constexpr bool kBackoff = false;
@@ -76,6 +73,7 @@ typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
 typedef ::mica::transaction::HashIndex<DBConfig> MICAIndex;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
+typedef ::mica::transaction::RowAccessHandle<DBConfig> MICARowAccessHandle;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
 typedef ::mica::transaction::Result MICAResult;
 #else

@@ -116,9 +116,6 @@ public:
   #elif CC_ALG == VLL
   	Row_vll * manager;
   #endif
-  #if CC_ALG == MICA
-		MICARowVersion* mica_rv;
-	#endif
 	char * data;
 	table_t * table;
 

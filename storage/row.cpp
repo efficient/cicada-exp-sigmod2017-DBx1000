@@ -32,11 +32,16 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 
   MICATransaction tx(db->context(thread_id));
 	tx.begin();
-  auto rv = tx.insert_row(tbl, &_row_id);
-  assert(rv != nullptr);
-  data = rv->data;  // XXX: This can become dangling when GC is done.
-  auto result = tx.commit();
-  if (result != MICAResult::kCommitted) {
+	MICARowAccessHandle rah(&tx);
+
+	if (!rah.new_row(tbl)) {
+		assert(false);
+		return ERROR;
+	}
+
+	_row_id = rah.row_id();
+  data = rah.data();  // XXX: This can become dangling when GC is done.
+  if (!tx.commit()) {
 		assert(false);
 		return ERROR;
 	}
@@ -334,20 +339,22 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	row = this;
 	return rc;
 #elif CC_ALG == MICA
-	MICARowVersion* rv;
-	if (type == RD)
-		rv = txn->mica_tx->get_row_for_read(table->mica_tbl, _row_id, true);
-	else if (type == WR)
-		rv = txn->mica_tx->get_row_for_write(table->mica_tbl, _row_id, false);
-	else {
+	MICARowAccessHandle rah(txn->mica_tx);
+	if (type == RD) {
+		if (!rah.peek_row(table->mica_tbl, _row_id, false) || !rah.read_row())
+			return Abort;
+	} else if (type == WR) {
+		if (!rah.peek_row(table->mica_tbl, _row_id, true) || !rah.read_row() || !rah.write_row())
+			return Abort;
+	} else {
 		assert(false);
-		rv = nullptr;
-	}
-	if (rv == nullptr)
 		return Abort;
+	}
 	row->table = get_table();
-	row->mica_rv = rv;
-	row->data = rv->data;
+	if (type == RD)
+		row->data = const_cast<char*>(rah.cdata());
+	else
+		row->data = rah.data();
 	return rc;
 #else
 	assert(false);
@@ -361,21 +368,23 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, it
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl->row_count());
 
-  RC rc = RCOK;
-  MICARowVersion* rv;
-  if (type == RD)
-    rv = txn->mica_tx->get_row_for_read(table->mica_tbl, row_id, true);
-  else if (type == WR)
-    rv = txn->mica_tx->get_row_for_write(table->mica_tbl, row_id, false);
-  else {
-    assert(false);
-    rv = nullptr;
-  }
-  if (rv == nullptr) return Abort;
-  row->table = table;
-  row->mica_rv = rv;
-  row->data = rv->data;
-  return rc;
+	MICARowAccessHandle rah(txn->mica_tx);
+	if (type == RD) {
+		if (!rah.peek_row(table->mica_tbl, row_id, false) || !rah.read_row())
+			return Abort;
+	} else if (type == WR) {
+		if (!rah.peek_row(table->mica_tbl, row_id, true) || !rah.read_row() || !rah.write_row())
+			return Abort;
+	} else {
+		assert(false);
+		return Abort;
+	}
+	row->table = table;
+	if (type == RD)
+		row->data = const_cast<char*>(rah.cdata());
+	else
+		row->data = rah.data();
+	return RCOK;
 }
 #endif
 

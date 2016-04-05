@@ -19,6 +19,8 @@ class IndexMICA : public index_base {
   }
   RC index_read(idx_key_t key, itemid_t*& item, int part_id = -1,
                 int thd_id = 0);
+  RC index_read_first(idx_key_t key, itemid_t*& item, int part_id = -1,
+                int thd_id = 0);
   RC index_read_next(idx_key_t key, itemid_t*& item, int part_id = -1,
                      int thd_id = 0);
 

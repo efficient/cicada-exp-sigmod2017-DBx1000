@@ -262,6 +262,11 @@ txn_man::index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
 	return index->index_read(key, item, part_id, get_thd_id());
 }
 RC
+txn_man::index_read_first(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
+{
+	return index->index_read_first(key, item, part_id, get_thd_id());
+}
+RC
 txn_man::index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_id)
 {
 	return index->index_read_next(key, item, part_id, get_thd_id());
@@ -293,7 +298,7 @@ RC txn_man::finish(RC rc) {
 	cleanup(rc);
 #elif CC_ALG == MICA
 	if (rc == RCOK)
-		rc = mica_tx->commit() == MICAResult::kCommitted ? RCOK : Abort;
+		rc = mica_tx->commit() ? RCOK : Abort;
 	else
 		mica_tx->abort();
 	cleanup(rc);

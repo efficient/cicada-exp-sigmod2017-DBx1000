@@ -172,7 +172,7 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 				mid = mid->next;
 		}
 #else
-		idx_rc = index_read(index, key, item, wh_to_part(c_w_id));
+		idx_rc = index_read_first(index, key, item, wh_to_part(c_w_id));
 		assert(idx_rc == RCOK);
 
 		const int max_row_ids_count = 100;
