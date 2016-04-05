@@ -49,12 +49,17 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #endif
   // static constexpr bool kNoWaitForPending = true;
 
+  // static constexpr bool kBackoff = false;
+  // static constexpr bool kPrintBackoff = true;
+  // static constexpr bool kPairwiseSleeping = true;
+
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
   // typedef ::mica::transaction::WideTimestampConst TimestampConst;
-
-  // static constexpr bool kBackoff = false;
-  // static constexpr bool kPairwiseSleeping = false;
+  // typedef ::mica::transaction::CentralizedTimestamp Timestamp;
+  // typedef ::mica::transaction::CentralizedConcurrentTimestamp
+  // ConcurrentTimestamp;
+  // typedef ::mica::transaction::CentralizedTimestampConst TimestampConst;
 
   static constexpr bool kCollectCommitStats = true;
   // static constexpr bool kCollectProcessingStats = true;
