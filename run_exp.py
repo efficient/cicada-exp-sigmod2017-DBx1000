@@ -17,28 +17,20 @@ def replace_def(conf, name, value):
 
 
 def set_alg(conf, alg):
-  conf = replace_def(conf, 'CC_ALG', alg.partition('-')[0])
+  conf = replace_def(conf, 'CC_ALG', alg.partition('-')[0].partition('+')[0])
   conf = replace_def(conf, 'ISOLATION_LEVEL', 'SERIALIZABLE')
 
-  if alg == 'SILO-ORG':
+  if alg == 'SILO':
     conf = replace_def(conf, 'VALIDATION_LOCK', '"waiting"')
     conf = replace_def(conf, 'PRE_ABORT', '"false"')
   else:
     conf = replace_def(conf, 'VALIDATION_LOCK', '"no-wait"')
     conf = replace_def(conf, 'PRE_ABORT', '"true"')
 
-  if alg == 'MICA-SIMPLE':
+  if alg == 'MICA':
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
-    conf = replace_def(conf, 'MICA_NOINLINE', 'true')
-  elif alg == 'MICA-NOINDEX':
-    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
-    conf = replace_def(conf, 'MICA_NOINLINE', 'false')
-  elif alg == 'MICA-NOINLINE':
+  elif alg == 'MICA+INDEX':
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
-    conf = replace_def(conf, 'MICA_NOINLINE', 'true')
-  elif alg == 'MICA-FULL' or alg == 'MICA-TEST':
-    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
-    conf = replace_def(conf, 'MICA_NOINLINE', 'false')
   else:
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
 
@@ -110,14 +102,15 @@ def remove_stale():
 
 
 def enum_exps():
-  thread_counts = [1, 4, 8, 16, 28, 42, 56]
-  warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
-  # all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX', 'MICA-NOINLINE', 'MICA-FULL',
-  #             'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
-  all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX',
-              'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
-  # all_algs.append('MICA-TEST')
-  total_seqs = 3
+  # thread_counts = [1, 4, 8, 16, 28, 42, 56]
+  # warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
+  thread_counts = [1, 4, 8, 16, 28]
+  warehouse_counts = [1, 4, 8, 16, 28]
+  all_algs = ['MICA', 'MICA+INDEX',
+              'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
+  # total_seqs = 1
+  # total_seqs = 3
+  total_seqs = 5
 
   for seq in range(total_seqs):
     for alg in all_algs:
@@ -179,8 +172,7 @@ def sort_exps(exps):
     pri = 0
     # prefer fast schemes
     if exp[0].startswith('MICA'): pri -= 2
-    if exp[0] == 'MICA-TEST': pri -= 1
-    if exp[0] == 'SILO-ORG' or exp[0] == 'TICTOC': pri -= 1
+    if exp[0] == 'SILO' or exp[0] == 'TICTOC': pri -= 1
 
     # prefer max cores
     if exp[1] in (28, 56): pri -= 1
@@ -311,7 +303,7 @@ def run_all(pat, prepare_only):
 if __name__ == '__main__':
   # remove_stale()
 
-  if len(sys.argv) == 2:
+  if len(sys.argv) == 1:
     print('%s [RUN | RUN pattern(s) | PREPARE pattern]' % sys.argv[0])
     sys.exit(1)
 
