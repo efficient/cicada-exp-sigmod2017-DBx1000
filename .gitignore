@@ -1,1 +1,7 @@
 *.o
+*.d
+rundb
+*.txt
+core
+perf.dat*
+*.json
