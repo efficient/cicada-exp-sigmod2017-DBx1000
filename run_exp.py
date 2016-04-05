@@ -112,7 +112,9 @@ def remove_stale():
 def enum_exps():
   thread_counts = [1, 4, 8, 16, 28, 42, 56]
   warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
-  all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX', 'MICA-NOINLINE', 'MICA-FULL',
+  # all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX', 'MICA-NOINLINE', 'MICA-FULL',
+  #             'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
+  all_algs = ['MICA-SIMPLE', 'MICA-NOINDEX',
               'SILO-ORG', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # all_algs.append('MICA-TEST')
   total_seqs = 3
@@ -208,11 +210,14 @@ def unique_exps(exps):
     l.append(exp)
   return l
 
-
-def find_exps_to_run(exps, pat):
+def skip_done(exps):
   for exp in exps:
     if os.path.exists(gen_filename(exp)): continue
     if os.path.exists(gen_filename(exp) + '.failed'): continue
+    yield exp
+
+def find_exps_to_run(exps, pat):
+  for exp in exps:
     filename = gen_filename(exp)
     if filename.find(pat) == -1: continue
     yield exp
@@ -224,7 +229,7 @@ def validate_result(output):
 
 hugepage_status = -1
 
-def run(exp):
+def run(exp, prepare_only):
   global hugepage_status
 
   # update config
@@ -244,6 +249,8 @@ def run(exp):
     if hugepage_status != 0:
       os.system('../script/setup.sh 0 0 > /dev/null')
       hugepage_status = 0
+
+  if prepare_only: return
 
   # compile
   ret = os.system('make -j > /dev/null')
@@ -271,13 +278,14 @@ def run(exp):
   # finalize
   open(filename, 'w').write(stdout)
 
-
-def run_all(pat):
+def run_all(pat, prepare_only):
   exps = list(enum_exps())
   exps = list(unique_exps(exps))
   total_count = len(exps)
   print('total %d exps' % total_count)
 
+  if not prepare_only:
+    exps = list(skip_done(exps))
   exps = list(find_exps_to_run(exps, pat))
   skip_count = total_count - len(exps)
   print('%d exps skipped' % skip_count)
@@ -292,7 +300,7 @@ def run_all(pat):
     start = time.time()
     print('exp %d/%d: %s' % (i + 1, len(exps), exp))
 
-    run(exp)
+    run(exp, prepare_only)
 
     now = time.time()
     print('elapsed = %.2f seconds' % (now - start))
@@ -303,8 +311,18 @@ def run_all(pat):
 if __name__ == '__main__':
   # remove_stale()
 
-  if len(sys.argv) != 2:
-    run_all('')
+  if len(sys.argv) == 2:
+    print('%s [RUN | RUN pattern(s) | PREPARE pattern]' % sys.argv[0])
+    sys.exit(1)
+
+  if sys.argv[1].upper() == 'RUN':
+    if len(sys.argv) == 2:
+      run_all('', False)
+    else:
+      for pat in sys.argv[2:]:
+        run_all(pat, False)
+  elif sys.argv[1].upper() == 'PREPARE':
+    run_all(sys.argv[2], True)
   else:
-    run_all(sys.argv[1])
+    assert False
 
