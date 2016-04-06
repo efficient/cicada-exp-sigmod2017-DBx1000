@@ -341,10 +341,10 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 #elif CC_ALG == MICA
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl, _row_id, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl, _row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl, _row_id, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl, _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);
@@ -370,10 +370,10 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, it
 
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl, row_id, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl, row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl, row_id, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl, row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);
