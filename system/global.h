@@ -58,7 +58,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // ConcurrentTimestamp;
   // typedef ::mica::transaction::CentralizedTimestampConst TimestampConst;
 
-  static constexpr bool kCollectCommitStats = true;
+  // static constexpr bool kCollectCommitStats = false;
   // static constexpr bool kCollectProcessingStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
 
