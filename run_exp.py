@@ -29,10 +29,16 @@ def set_alg(conf, alg):
 
   if alg == 'MICA':
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
+    conf = replace_def(conf, 'MICA_FULLINDEX', 'false')
   elif alg == 'MICA+INDEX':
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
+    conf = replace_def(conf, 'MICA_FULLINDEX', 'false')
+  elif alg == 'MICA+FULLINDEX':
+    conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_MICA')
+    conf = replace_def(conf, 'MICA_FULLINDEX', 'true')
   else:
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
+    conf = replace_def(conf, 'MICA_FULLINDEX', 'false')
 
   return conf
 
@@ -106,7 +112,7 @@ def enum_exps():
   # warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
   thread_counts = [1, 4, 8, 16, 28]
   warehouse_counts = [1, 4, 8, 16, 28]
-  all_algs = ['MICA', 'MICA+INDEX',
+  all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # total_seqs = 1
   # total_seqs = 3

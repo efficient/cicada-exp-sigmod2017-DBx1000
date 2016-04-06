@@ -217,6 +217,6 @@ extern TestCases					g_test_case;
 #define TS_HW						3
 #define TS_CLOCK					4
 
-#define MICA_NOINLINE	false
+#define MICA_FULLINDEX	false
 
 #endif
