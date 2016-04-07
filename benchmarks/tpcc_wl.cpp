@@ -68,8 +68,11 @@ RC tpcc_wl::init_table() {
 /**********************************/
 	tpcc_buffer = new drand48_data * [g_num_wh];
 	pthread_t * p_thds = new pthread_t[g_num_wh - 1];
-	for (uint32_t i = 0; i < g_num_wh - 1; i++)
+	for (uint32_t i = 0; i < g_num_wh; i++)
+		tid_lock[i] = 0;
+	for (uint32_t i = 0; i < g_num_wh - 1; i++) {
 		pthread_create(&p_thds[i], NULL, threadInitWarehouse, this);
+	}
 	threadInitWarehouse(this);
 	for (uint32_t i = 0; i < g_num_wh - 1; i++)
 		pthread_join(p_thds[i], NULL);
@@ -390,8 +393,9 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	tpcc_wl * wl = (tpcc_wl *) This;
 	int tid = ATOM_FETCH_ADD(wl->next_tid, 1);
 #if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(tid);
-	wl->mica_db->activate(static_cast<uint16_t>(tid));
+  ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
+	wl->mica_db->activate(static_cast<uint16_t>(tid % g_thread_cnt));
+	while (__sync_lock_test_and_set(&wl->tid_lock[tid % g_thread_cnt], 1) == 1) usleep(100);
 #endif
 	uint32_t wid = tid + 1;
 	tpcc_buffer[tid] = (drand48_data *) _mm_malloc(sizeof(drand48_data), 64);
@@ -411,7 +415,8 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	}
 
 #if CC_ALG == MICA
-	wl->mica_db->deactivate(static_cast<uint16_t>(tid));
+	wl->mica_db->deactivate(static_cast<uint16_t>(tid % g_thread_cnt));
+	__sync_lock_release(&wl->tid_lock[tid % g_thread_cnt]);
 #endif
 	return NULL;
 }

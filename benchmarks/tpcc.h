@@ -32,10 +32,12 @@ public:
 	INDEX * 	i_stock;
 	INDEX * 	i_order; // key = (w_id, d_id, o_id)
 	INDEX * 	i_orderline; // key = (w_id, d_id, o_id)
-	INDEX * 	i_orderline_wd; // key = (w_id, d_id). 
-	
+	INDEX * 	i_orderline_wd; // key = (w_id, d_id).
+
 	bool ** delivering;
 	uint32_t next_tid;
+
+	uint32_t tid_lock[256];
 private:
 	uint64_t num_wh;
 	void init_tab_item();
@@ -45,7 +47,7 @@ private:
 	void init_tab_cust(uint64_t d_id, uint64_t w_id);
 	void init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id);
 	void init_tab_order(uint64_t d_id, uint64_t w_id);
-	
+
 	void init_permutation(uint64_t * perm_c_id, uint64_t wid);
 
 	static void * threadInitItem(void * This);
@@ -62,7 +64,7 @@ private:
 class tpcc_txn_man : public txn_man
 {
 public:
-	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id); 
+	void init(thread_t * h_thd, workload * h_wl, uint64_t part_id);
 	RC run_txn(base_query * query);
 private:
 	tpcc_wl * _wl;
