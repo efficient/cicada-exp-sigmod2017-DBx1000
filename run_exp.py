@@ -76,26 +76,38 @@ def set_threads(conf, thread_count, **kwargs):
 
 
 dir_name = 'exp_data'
-prefix = 'output_'
-suffix = '.txt'
+prefix = ''
+suffix = ''
 
 def gen_filename(exp):
   s = ''
   for key in sorted(exp.keys()):
     s += key
-    s += '='
+    s += '@'
     s += str(exp[key])
-    s += '^'
-  return prefix + s.rstrip('^') + suffix
+    s += '__'
+  return prefix + s.rstrip('__') + suffix
 
 
 def parse_filename(filename):
   assert filename.startswith(prefix)
   assert filename.endswith(suffix)
   d = {}
-  for entry in filename[len(prefix):-len(suffix)].split('^'):
-    key, value = entry.partition('=')
-    d[key] = value
+  filename = filename[len(prefix):]
+  if len(suffix) != 0:
+    filename = filename[:-len(suffix)]
+  for entry in filename.split('__'):
+    key, _, value = entry.partition('@')
+    if key in ('thread_count', 'total_count', 'req_per_query', 'tx_count',
+      'seq', 'warehouse_count'):
+      p_value = int(value)
+    elif key in ('read_ratio', 'zipf_theta'):
+      p_value = float(value)
+    elif key in ('bench', 'alg'):
+      p_value = value
+    else: assert False, key
+    assert value == str(p_value), key
+    d[key] = p_value
   return d
 
 
@@ -132,10 +144,10 @@ def enum_exps():
   for seq in range(total_seqs):
     for alg in all_algs:
       for thread_count in thread_counts:
-        # YCSB: total_count, req_per_query, read_ratio, zipf_theta
+        # YCSB
         total_count = 10 * 1000 * 1000
         req_per_query = 16
-        tx_count = 100000
+        tx_count = 200000
         common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
           'total_count': total_count, 'req_per_query': req_per_query,
           'tx_count': tx_count, 'seq': seq }
@@ -162,7 +174,7 @@ def enum_exps():
 
         total_count = 10 * 1000 * 1000
         req_per_query = 1
-        tx_count = 1000000
+        tx_count = 2000000
         common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
           'total_count': total_count, 'req_per_query': req_per_query,
           'tx_count': tx_count, 'seq': seq }
@@ -171,8 +183,8 @@ def enum_exps():
         yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
         yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
 
-        # TPCC: warehouse_count
-        tx_count = 100000
+        # TPCC
+        tx_count = 200000
         common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
           'tx_count': tx_count, 'seq': seq }
         for warehouse_count in warehouse_counts:
@@ -281,7 +293,7 @@ def run(exp, prepare_only):
   filename = dir_name + '/' + gen_filename(exp)
 
   # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
-  cmd = 'sudo /usr/bin/time ./rundb'
+  cmd = 'sudo ./rundb'
   p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
   stdout = p.communicate()[0].decode('utf-8')
   if p.returncode != 0:

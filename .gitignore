@@ -1,7 +1,8 @@
 *.o
 *.d
 rundb
-*.txt
+exp_data
+old_exp_data*
 core
 perf.dat*
 *.json
