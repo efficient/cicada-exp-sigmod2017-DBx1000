@@ -16,7 +16,7 @@ def replace_def(conf, name, value):
   return s
 
 
-def set_alg(conf, alg):
+def set_alg(conf, alg, **kwargs):
   conf = replace_def(conf, 'CC_ALG', alg.partition('-')[0].partition('+')[0])
   conf = replace_def(conf, 'ISOLATION_LEVEL', 'SERIALIZABLE')
 
@@ -43,14 +43,10 @@ def set_alg(conf, alg):
   return conf
 
 
-def set_ycsb(conf, total_count, req_per_query, read_ratio, zipf_theta):
+def set_ycsb(conf, total_count, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
-  if req_per_query <= 2:
-    conf = replace_def(conf, 'WARMUP', '1000000')
-    conf = replace_def(conf, 'MAX_TXN_PER_PART', '1000000')
-  else:
-    conf = replace_def(conf, 'WARMUP', '100000')
-    conf = replace_def(conf, 'MAX_TXN_PER_PART', '100000')
+  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(100))
 
@@ -64,10 +60,10 @@ def set_ycsb(conf, total_count, req_per_query, read_ratio, zipf_theta):
   return conf
 
 
-def set_tpcc(conf, warehouse_count):
+def set_tpcc(conf, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
-  conf = replace_def(conf, 'WARMUP', '100000')
-  conf = replace_def(conf, 'MAX_TXN_PER_PART', '100000')
+  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
 
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
@@ -75,36 +71,51 @@ def set_tpcc(conf, warehouse_count):
   return conf
 
 
-def set_threads(conf, thread_count):
+def set_threads(conf, thread_count, **kwargs):
   return replace_def(conf, 'THREAD_CNT', thread_count)
 
 
+dir_name = 'exp_data'
 prefix = 'output_'
 suffix = '.txt'
 
 def gen_filename(exp):
   s = ''
-  for field in exp:
-    s += str(field).replace('_', '-') + '_'
-  return prefix + s.rstrip('_') + suffix
+  for key in sorted(exp.keys()):
+    s += key
+    s += '='
+    s += str(exp[key])
+    s += '^'
+  return prefix + s.rstrip('^') + suffix
 
 
 def parse_filename(filename):
   assert filename.startswith(prefix)
   assert filename.endswith(suffix)
-  return filename[len(prefix):-len(suffix)].split('_')
+  d = {}
+  for entry in filename[len(prefix):-len(suffix)].split('^'):
+    key, value = entry.partition('=')
+    d[key] = value
+  return d
 
 
 def remove_stale():
   valid_filenames = set([gen_filename(exp) for exp in enum_exps()])
 
-  for filename in os.listdir('.'):
+  for filename in os.listdir(dir_name):
     if not (filename.startswith(prefix) and filename.endswith(suffix)):
       continue
     if filename in valid_filenames:
       continue
     print('stale file: %s' % filename)
-    os.rename(filename, filename + '.old')
+    os.rename(dir_name + '/' + filename, dir_name + '/' + filename + '.old')
+
+
+def comb_dict(*dicts):
+  d = {}
+  for dict in dicts:
+    d.update(dict)
+  return d
 
 
 def enum_exps():
@@ -124,51 +135,57 @@ def enum_exps():
         # YCSB: total_count, req_per_query, read_ratio, zipf_theta
         total_count = 10 * 1000 * 1000
         req_per_query = 16
-        common = [alg, thread_count, 'YCSB', total_count, req_per_query]
-        yield common + [0.95, 0.00] + [seq]
-        yield common + [0.50, 0.00] + [seq]
+        tx_count = 100000
+        common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
+          'total_count': total_count, 'req_per_query': req_per_query,
+          'tx_count': tx_count, 'seq': seq }
+        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
+        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
         if alg not in ('NO_WAIT',):
-          yield common + [0.95, 0.99] + [seq]
-        if alg not in ('HEKATON', 'NO_WAIT'):
-          yield common + [0.50, 0.99] + [seq]
+          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
+        if alg not in ('NO_WAIT', 'HEKATON'):
+          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
 
         if thread_count in (28, 56):
-          yield common + [0.95, 0.40] + [seq]
-          yield common + [0.50, 0.40] + [seq]
-          yield common + [0.95, 0.60] + [seq]
-          yield common + [0.50, 0.60] + [seq]
-          yield common + [0.95, 0.80] + [seq]
-          yield common + [0.50, 0.80] + [seq]
-          yield common + [0.95, 0.90] + [seq]
-          yield common + [0.50, 0.90] + [seq]
+          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.40 })
+          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.40 })
+          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.60 })
+          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.60 })
+          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.80 })
+          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.80 })
+          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.90 })
+          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.90 })
           if alg not in ('NO_WAIT',):
-            yield common + [0.95, 0.95] + [seq]
-          if alg not in ('HEKATON', 'NO_WAIT'):
-            yield common + [0.50, 0.95] + [seq]
+            yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.95 })
+          if alg not in ('NO_WAIT', 'HEKATON'):
+            yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.95 })
 
+        total_count = 10 * 1000 * 1000
         req_per_query = 1
-        common = [alg, thread_count, 'YCSB', total_count, req_per_query]
-        yield common + [0.95, 0.00] + [seq]
-        yield common + [0.50, 0.00] + [seq]
-        yield common + [0.95, 0.99] + [seq]
-        yield common + [0.50, 0.99] + [seq]
+        tx_count = 1000000
+        common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
+          'total_count': total_count, 'req_per_query': req_per_query,
+          'tx_count': tx_count, 'seq': seq }
+        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
+        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
+        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
+        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
 
         # TPCC: warehouse_count
-        common = [alg, thread_count, 'TPCC']
-        # yield common + [thread_count] + [seq]
-
+        tx_count = 100000
+        common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
+          'tx_count': tx_count, 'seq': seq }
         for warehouse_count in warehouse_counts:
-          if thread_count >= warehouse_count:
-            yield common + [warehouse_count] + [seq]
+          yield comb_dict(common, { 'warehouse_count': warehouse_count })
 
 
 def update_conf(conf, exp):
-  conf = set_alg(conf, exp[0])
-  conf = set_threads(conf, exp[1])
-  if exp[2] == 'YCSB':
-    conf = set_ycsb(conf, *exp[3:-1])
-  elif exp[2] == 'TPCC':
-    conf = set_tpcc(conf, *exp[3:-1])
+  conf = set_alg(conf, **exp)
+  conf = set_threads(conf, **exp)
+  if exp['bench'] == 'YCSB':
+    conf = set_ycsb(conf, **exp)
+  elif exp['bench'] == 'TPCC':
+    conf = set_tpcc(conf, **exp)
   else: assert False
   return conf
 
@@ -177,24 +194,24 @@ def sort_exps(exps):
   def _exp_pri(exp):
     pri = 0
     # prefer fast schemes
-    if exp[0].startswith('MICA'): pri -= 2
-    if exp[0] == 'SILO' or exp[0] == 'TICTOC': pri -= 1
+    if exp['alg'].startswith('MICA'): pri -= 2
+    if exp['alg'] == 'SILO' or exp['alg'] == 'TICTOC': pri -= 1
 
     # prefer max cores
-    if exp[1] in (28, 56): pri -= 1
+    if exp['thread_count'] in (28, 56): pri -= 1
 
     # prefer write-intensive workloads
-    if exp[2] == 'YCSB' and exp[3] == 0.50: pri -= 1
+    if exp['bench'] == 'YCSB' and exp['read_ratio'] == 0.50: pri -= 1
     # prefer standard skew
-    if exp[2] == 'YCSB' and exp[4] in (0.00, 0.99): pri -= 1
+    if exp['bench'] == 'YCSB' and exp['zipf_theta'] in (0.00, 0.99): pri -= 1
 
     # prefer (warehouse count) = (thread count)
-    if exp[2] == 'TPCC' and exp[1] == exp[3]: pri -= 1
+    if exp['bench'] == 'TPCC' and exp['thread_count'] == exp['warehouse_count']: pri -= 1
     # prefer standard warehouse counts
-    if exp[2] == 'TPCC' and exp[3] in (1, 4, 16, 28, 56): pri -= 1
+    if exp['bench'] == 'TPCC' and exp['warehouse_count'] in (1, 4, 16, 28, 56): pri -= 1
 
     # run exps in their sequence number
-    return (exp[-1], pri)
+    return (exp['seq'], pri)
 
   exps = list(exps)
   exps.sort(key=_exp_pri)
@@ -210,13 +227,13 @@ def unique_exps(exps):
 
 def skip_done(exps):
   for exp in exps:
-    if os.path.exists(gen_filename(exp)): continue
-    if os.path.exists(gen_filename(exp) + '.failed'): continue
+    if os.path.exists(dir_name + '/' + gen_filename(exp)): continue
+    if os.path.exists(dir_name + '/' + gen_filename(exp) + '.failed'): continue
     yield exp
 
 def find_exps_to_run(exps, pat):
   for exp in exps:
-    filename = gen_filename(exp)
+    filename = dir_name + '/' + gen_filename(exp)
     if filename.find(pat) == -1: continue
     yield exp
 
@@ -239,7 +256,7 @@ def run(exp, prepare_only):
   os.system('make clean > /dev/null')
   os.system('rm -f ./rundb')
 
-  if exp[0].startswith('MICA'):
+  if exp['alg'].startswith('MICA'):
     if hugepage_status != 16384:
       os.system('../script/setup.sh 16384 16384 > /dev/null')   # 64 GiB
       hugepage_status = 16384
@@ -255,13 +272,16 @@ def run(exp, prepare_only):
   assert ret == 0, 'failed to compile for %s' % exp
   os.system('sudo sync')
   os.system('sudo sync')
-  time.sleep(10)
+  time.sleep(5)
+
+  if not os.path.exists(dir_name):
+    os.mkdir(dir_name)
 
   # run
-  filename = gen_filename(exp)
+  filename = dir_name + '/' + gen_filename(exp)
 
   # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
-  cmd = 'sudo ./rundb'
+  cmd = 'sudo /usr/bin/time ./rundb'
   p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
   stdout = p.communicate()[0].decode('utf-8')
   if p.returncode != 0:
