@@ -219,4 +219,17 @@ extern TestCases					g_test_case;
 
 #define MICA_FULLINDEX	false
 
+#define MICA_NO_PRE_VALIDATION false
+#define MICA_NO_INSERT_NEWEST_VERSION_ONLY false
+#define MICA_NO_SORT_WRITE_SET_BY_CONTENTION false
+#define MICA_NO_STRAGGLER_AVOIDANCE false
+#define MICA_NO_WAIT_FOR_PENDING false
+#define MICA_NO_BACKOFF false
+
+#define MICA_USE_FIXED_BACKOFF false
+#define MICA_FIXED_BACKOFF 0.
+
+#define MICA_USE_SLOW_GC false
+#define MICA_SLOW_GC 10
+
 #endif

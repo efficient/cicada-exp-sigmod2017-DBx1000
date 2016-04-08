@@ -36,17 +36,35 @@
 struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // static constexpr bool kVerbose = true;
 
-  // static constexpr bool kPreValidation = false;
-  // static constexpr bool kAbortByGetRow = false;
-  // static constexpr bool kAbortByDeferredVersionInsert = false;
-  // static constexpr bool kDeferredVersionInsert = false;
-  // static constexpr bool kInsertNewestVersionOnly = false;
-  // static constexpr bool kSortWriteSetByContention = false;
-  // static constexpr bool kStragglerAvoidance = false;
-  // static constexpr bool kInlinedRowVersion = true;
-  // static constexpr bool kNoWaitForPending = true;
+#if MICA_NO_PRE_VALIDATION
+  static constexpr bool kPreValidation = false;
+#endif
+#if MICA_NO_INSERT_NEWEST_VERSION_ONLY
+  static constexpr bool kInsertNewestVersionOnly = false;
+#endif
+#if MICA_NO_SORT_WRITE_SET_BY_CONTENTION
+  static constexpr bool kSortWriteSetByContention = false;
+#endif
+#if MICA_NO_STRAGGLER_AVOIDANCE
+  static constexpr bool kStragglerAvoidance = false;
+#endif
+#if MICA_NO_WAIT_FOR_PENDING
+  static constexpr bool kNoWaitForPending = true;
+#endif
+#if MICA_NO_BACKOFF
+    static constexpr bool kBackoff = false;
+#endif
 
-  // static constexpr bool kBackoff = false;
+#ifdef MICA_USE_FIXED_BACKOFF
+  static constexpr double kBackoffMin = MICA_FIXED_BACKOFF;
+  static constexpr double kBackoffMax = MICA_FIXED_BACKOFF;
+#endif
+
+#if MICA_USE_SLOW_GC
+  static constexpr int64_t kUnstableTSUpdateInterval = MICA_SLOW_GC;
+  static constexpr uint64_t kPendingGCCount = static_cast<uint64_t>(-1);
+#endif
+
   // static constexpr bool kPrintBackoff = true;
   // static constexpr bool kPairwiseSleeping = true;
 

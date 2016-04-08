@@ -75,6 +75,28 @@ def set_threads(conf, thread_count, **kwargs):
   return replace_def(conf, 'THREAD_CNT', thread_count)
 
 
+def set_mica_confs(conf, **kwargs):
+  if 'no_preval' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_PRE_VALIDATION', 'true')
+  if 'no_newest' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_INSERT_NEWEST_VERSION_ONLY', 'true')
+  if 'no_wsort' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_SORT_WRITE_SET_BY_CONTENTION', 'true')
+  if 'no_tscboost' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_STRAGGLER_AVOIDANCE', 'true')
+  if 'no_wait' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_WAIT_FOR_PENDING', 'true')
+  if 'no_backoff' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_BACKOFF', 'true')
+  if 'fixed_backoff' in kwargs:
+    conf = replace_def(conf, 'MICA_USE_FIXED_BACKOFF', 'true')
+    conf = replace_def(conf, 'MICA_FIXED_BACKOFF', str(kwargs['fixed_backoff']))
+  if 'slow_gc' in kwargs:
+    conf = replace_def(conf, 'MICA_USE_SLOW_GC', 'true')
+    conf = replace_def(conf, 'MICA_SLOW_GC', str(kwargs['slow_gc']))
+  return conf
+
+
 dir_name = 'exp_data'
 prefix = ''
 suffix = ''
@@ -101,9 +123,11 @@ def parse_filename(filename):
     if key in ('thread_count', 'total_count', 'req_per_query', 'tx_count',
       'seq', 'warehouse_count'):
       p_value = int(value)
-    elif key in ('read_ratio', 'zipf_theta'):
+    elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('bench', 'alg'):
+    elif key in ('no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_backoff'):
+      p_value = 1
+    elif key in ('bench', 'alg', 'tag'):
       p_value = value
     else: assert False, key
     assert value == str(p_value), key
@@ -141,6 +165,7 @@ def enum_exps():
   # total_seqs = 3
   total_seqs = 5
 
+  tag = 'macrobench'
   for seq in range(total_seqs):
     for alg in all_algs:
       for thread_count in thread_counts:
@@ -150,7 +175,7 @@ def enum_exps():
         tx_count = 200000
         common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
           'total_count': total_count, 'req_per_query': req_per_query,
-          'tx_count': tx_count, 'seq': seq }
+          'tx_count': tx_count, 'seq': seq, 'tag': tag }
         yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
         yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
         if alg not in ('NO_WAIT',):
@@ -177,7 +202,7 @@ def enum_exps():
         tx_count = 2000000
         common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
           'total_count': total_count, 'req_per_query': req_per_query,
-          'tx_count': tx_count, 'seq': seq }
+          'tx_count': tx_count, 'seq': seq, 'tag': tag }
         yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
         yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
         yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
@@ -186,9 +211,90 @@ def enum_exps():
         # TPCC
         tx_count = 200000
         common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
-          'tx_count': tx_count, 'seq': seq }
+          'tx_count': tx_count, 'seq': seq, 'tag': tag }
         for warehouse_count in warehouse_counts:
           yield comb_dict(common, { 'warehouse_count': warehouse_count })
+
+
+  tag = 'backoff'
+  for seq in range(total_seqs):
+    alg = 'MICA'
+    thread_count = 28
+
+    for backoff in [float(v) for v in range(31)]:
+      # YCSB
+      total_count = 10 * 1000 * 1000
+      req_per_query = 1
+      tx_count = 2000000
+      common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
+        'total_count': total_count, 'req_per_query': req_per_query,
+        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'fixed_backoff': backoff }
+      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+
+      # TPCC
+      tx_count = 200000
+      common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
+        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'fixed_backoff': backoff }
+      warehouse_count = 4
+      yield comb_dict(common, { 'warehouse_count': warehouse_count })
+
+
+  tag = 'factor'
+  for seq in range(total_seqs):
+    alg = 'MICA'
+    thread_count = 28
+
+    # YCSB
+    total_count = 10 * 1000 * 1000
+    req_per_query = 16
+    tx_count = 200000
+    common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
+      'total_count': total_count, 'req_per_query': req_per_query,
+      'tx_count': tx_count, 'seq': seq, 'tag': tag }
+    for i in range(7):
+      if i == 1: common['no_wait'] = 1
+      if i == 2: common['no_newest'] = 1
+      if i == 3: common['no_wsort'] = 1
+      if i == 4: common['no_preval'] = 1
+      if i == 5: common['no_backoff'] = 1
+      if i == 6: common['no_tscboost'] = 1
+      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+
+    # TPCC
+    tx_count = 200000
+    common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
+      'tx_count': tx_count, 'seq': seq, 'tag': tag }
+    warehouse_count = 4
+    for i in range(7):
+      if i == 1: common['no_wait'] = 1
+      if i == 2: common['no_newest'] = 1
+      if i == 3: common['no_wsort'] = 1
+      if i == 4: common['no_preval'] = 1
+      if i == 5: common['no_backoff'] = 1
+      if i == 6: common['no_tscboost'] = 1
+      yield comb_dict(common, { 'warehouse_count': warehouse_count })
+
+  tag = 'gc'
+  for seq in range(total_seqs):
+    alg = 'MICA'
+    thread_count = 28
+
+    for slow_gc in [10, 20, 40, 100, 200, 400, 1000, 2000, 4000, 10000, 20000]:
+      # YCSB
+      total_count = 10 * 1000 * 1000
+      req_per_query = 16
+      tx_count = 200000
+      common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
+        'total_count': total_count, 'req_per_query': req_per_query,
+        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'slow_gc': slow_gc }
+      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+
+      # TPCC
+      tx_count = 200000
+      common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
+        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'slow_gc': slow_gc }
+      warehouse_count = 4
+      yield comb_dict(common, { 'warehouse_count': warehouse_count })
 
 
 def update_conf(conf, exp):
@@ -199,6 +305,8 @@ def update_conf(conf, exp):
   elif exp['bench'] == 'TPCC':
     conf = set_tpcc(conf, **exp)
   else: assert False
+  if exp['alg'].startswith('MICA'):
+    conf = set_mica_confs(conf, **exp)
   return conf
 
 
@@ -338,8 +446,21 @@ def run_all(pat, prepare_only):
     print('')
 
 
+def update_filenames():
+  for filename in os.listdir(dir_name):
+    if not filename.startswith(prefix): continue
+    if not filename.endswith(suffix): continue
+    exp = parse_filename(filename)
+    exp['tag'] = 'macrobench'
+    new_filename = gen_filename(exp)
+    print(filename, ' => ', new_filename)
+    os.rename(dir_name + '/' + filename, dir_name + '/' + new_filename)
+  sys.exit(0)
+
+
 if __name__ == '__main__':
-  # remove_stale()
+  remove_stale()
+  # update_filenames()
 
   if len(sys.argv) == 1:
     print('%s [RUN | RUN pattern(s) | PREPARE pattern]' % sys.argv[0])
