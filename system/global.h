@@ -62,7 +62,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 
 #if MICA_USE_SLOW_GC
   static constexpr int64_t kUnstableTSUpdateInterval = MICA_SLOW_GC;
-  static constexpr uint64_t kPendingGCCount = static_cast<uint64_t>(-1);
+  // static constexpr uint64_t kPendingGCCount = static_cast<uint64_t>(-1);
 #endif
 
   // static constexpr bool kPrintBackoff = true;
