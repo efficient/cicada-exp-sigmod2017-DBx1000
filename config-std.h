@@ -219,6 +219,7 @@ extern TestCases					g_test_case;
 
 #define MICA_FULLINDEX	false
 
+#define MICA_NO_TSC false
 #define MICA_NO_PRE_VALIDATION false
 #define MICA_NO_INSERT_NEWEST_VERSION_ONLY false
 #define MICA_NO_SORT_WRITE_SET_BY_CONTENTION false

@@ -76,6 +76,8 @@ def set_threads(conf, thread_count, **kwargs):
 
 
 def set_mica_confs(conf, **kwargs):
+  if 'no_tsc' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_TSC', 'true')
   if 'no_preval' in kwargs:
     conf = replace_def(conf, 'MICA_NO_PRE_VALIDATION', 'true')
   if 'no_newest' in kwargs:
@@ -124,7 +126,7 @@ def parse_filename(filename):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_backoff'):
+    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_backoff'):
       p_value = 1
     elif key in ('bench', 'alg', 'tag'):
       p_value = value
@@ -208,40 +210,45 @@ def enum_exps():
 
 
   def _common_exps(common):
-    # YCSB
-    ycsb = dict(common)
-    total_count = 10 * 1000 * 1000
-    ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+    if common['tag'] != 'gc':
+      # YCSB
+      ycsb = dict(common)
+      total_count = 10 * 1000 * 1000
+      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-    req_per_query = 16
-    tx_count = 200000
-    ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      req_per_query = 16
+      tx_count = 200000
+      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-    # for read_ratio in [0.50, 0.95]:
-    # for zipf_theta in [0.00, 0.99]:
-    read_ratio = 0.50
-    zipf_theta = 0.99
-    ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-    yield dict(ycsb)
+      # for read_ratio in [0.50, 0.95]:
+      # for zipf_theta in [0.00, 0.99]:
+      read_ratio = 0.50
+      zipf_theta = 0.99
+      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      yield dict(ycsb)
 
-    req_per_query = 1
-    tx_count = 2000000
-    ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      req_per_query = 1
+      tx_count = 2000000
+      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-    # for read_ratio in [0.50, 0.95]:
-    # for zipf_theta in [0.00, 0.99]:
-    read_ratio = 0.50
-    zipf_theta = 0.99
-    ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-    yield dict(ycsb)
+      # for read_ratio in [0.50, 0.95]:
+      # for zipf_theta in [0.00, 0.99]:
+      read_ratio = 0.50
+      zipf_theta = 0.99
+      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      yield dict(ycsb)
 
     # TPCC
     tpcc = dict(common)
     tx_count = 200000
     tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
-    # warehouse_count = 4
-    for warehouse_count in [4, 28]:
+    warehouse_count = 4
+    tpcc.update({ 'warehouse_count': warehouse_count })
+    yield dict(tpcc)
+
+    if common['tag'] != 'backoff':
+      warehouse_count = 28
       tpcc.update({ 'warehouse_count': warehouse_count })
       yield dict(tpcc)
 
@@ -263,12 +270,13 @@ def enum_exps():
     for i in range(7):
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      if i >= 1: common['no_wait'] = 1
-      if i >= 2: common['no_newest'] = 1
-      if i >= 3: common['no_wsort'] = 1
-      if i >= 4: common['no_preval'] = 1
-      if i >= 5: common['no_backoff'] = 1
-      if i >= 6: common['no_tscboost'] = 1
+      # if i >= 1: common['no_backoff'] = 1
+      if i >= 1: common['no_wsort'] = 1
+      if i >= 2: common['no_preval'] = 1
+      if i >= 3: common['no_newest'] = 1
+      if i >= 4: common['no_wait'] = 1
+      if i >= 5: common['no_tscboost'] = 1
+      if i >= 6: common['no_tsc'] = 1
 
       for exp in _common_exps(common): yield exp
 
@@ -305,6 +313,14 @@ def update_conf(conf, exp):
 def sort_exps(exps):
   def _exp_pri(exp):
     pri = 0
+
+    # prefer microbench
+    if exp['tag'] == 'gc': pri -= 2
+    if exp['tag'] == 'backoff': pri -= 2
+    # then macrobench
+    if exp['tag'] == 'macrobench': pri -= 1
+    # factor analysis is not prioritized
+
     # prefer fast schemes
     if exp['alg'].startswith('MICA'): pri -= 2
     if exp['alg'] == 'SILO' or exp['alg'] == 'TICTOC': pri -= 1
