@@ -140,6 +140,8 @@ def remove_stale():
   for filename in os.listdir(dir_name):
     if filename.endswith('.old'):
       continue
+    if filename.endswith('.failed'):
+      continue
     if not (filename.startswith(prefix) and filename.endswith(suffix)):
       continue
     if filename in valid_filenames:
@@ -183,7 +185,6 @@ def enum_exps():
             if zipf_theta >= 0.95:
               if alg == 'NO_WAIT': continue
               if read_ratio == 0.50 and alg == 'hekaton': continue
-            if zipf_theta >= 0.99 and alg == 'HEKATON': continue
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
             yield dict(ycsb)
 
