@@ -233,4 +233,6 @@ extern TestCases					g_test_case;
 #define MICA_USE_SLOW_GC false
 #define MICA_SLOW_GC 10
 
+#define PRINT_LAT_DIST true
+
 #endif

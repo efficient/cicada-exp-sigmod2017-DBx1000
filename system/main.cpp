@@ -122,6 +122,10 @@ int main(int argc, char* argv[])
 #if CC_ALG == MICA
 	double t = (double)(endtime - starttime) / 1000000000.;
 	m_wl->mica_db->print_stats(t, t * thd_cnt);
+
+	::mica::util::Latency inter_commit_latency;
+	for (uint32_t i = 0; i < thd_cnt; i++)
+		inter_commit_latency += m_wl->mica_db->context(static_cast<uint16_t>(i))->inter_commit_latency();
 #else
 	::mica::util::Latency inter_commit_latency;
 	for (uint32_t i = 0; i < thd_cnt; i++)
@@ -135,6 +139,12 @@ int main(int argc, char* argv[])
          inter_commit_latency.avg(), inter_commit_latency.perc(0.50),
          inter_commit_latency.perc(0.95), inter_commit_latency.perc(0.99),
          inter_commit_latency.perc(0.999));
+#endif
+
+#if PRINT_LAT_DIST
+	printf("LatencyStart\n");
+	inter_commit_latency.print(stdout);
+	printf("LatencyEnd\n");
 #endif
 	return 0;
 }
