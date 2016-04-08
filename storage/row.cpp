@@ -32,11 +32,13 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 
   MICATransaction tx(db->context(thread_id));
 	while (true) {
-		tx.begin();
+		if (!tx.begin())
+			assert(false);
 		MICARowAccessHandle rah(&tx);
 
 		if (!rah.new_row(tbl)) {
-			tx.abort();
+			if (!tx.abort())
+				assert(false);
 			continue;
 		}
 

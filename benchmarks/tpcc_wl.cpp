@@ -394,8 +394,8 @@ void * tpcc_wl::threadInitWarehouse(void * This) {
 	int tid = ATOM_FETCH_ADD(wl->next_tid, 1);
 #if CC_ALG == MICA
   ::mica::util::lcore.pin_thread(tid % g_thread_cnt);
-	wl->mica_db->activate(static_cast<uint16_t>(tid % g_thread_cnt));
 	while (__sync_lock_test_and_set(&wl->tid_lock[tid % g_thread_cnt], 1) == 1) usleep(100);
+	wl->mica_db->activate(static_cast<uint16_t>(tid % g_thread_cnt));
 #endif
 	uint32_t wid = tid + 1;
 	tpcc_buffer[tid] = (drand48_data *) _mm_malloc(sizeof(drand48_data), 64);
