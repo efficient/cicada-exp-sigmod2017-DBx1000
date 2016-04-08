@@ -120,8 +120,7 @@ def parse_filename(filename):
     filename = filename[:-len(suffix)]
   for entry in filename.split('__'):
     key, _, value = entry.partition('@')
-    if key in ('thread_count', 'total_count', 'req_per_query', 'tx_count',
-      'seq', 'warehouse_count'):
+    if key in ('thread_count', 'total_count', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc'):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
@@ -139,6 +138,8 @@ def remove_stale():
   valid_filenames = set([gen_filename(exp) for exp in enum_exps()])
 
   for filename in os.listdir(dir_name):
+    if filename.endswith('.old'):
+      continue
     if not (filename.startswith(prefix) and filename.endswith(suffix)):
       continue
     if filename in valid_filenames:
@@ -155,10 +156,6 @@ def comb_dict(*dicts):
 
 
 def enum_exps():
-  # thread_counts = [1, 4, 8, 16, 28, 42, 56]
-  # warehouse_counts = [1, 4, 8, 16, 28, 42, 56]
-  thread_counts = [1, 4, 8, 16, 28]
-  warehouse_counts = [1, 4, 8, 16, 28]
   all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # total_seqs = 1
@@ -168,133 +165,127 @@ def enum_exps():
   tag = 'macrobench'
   for seq in range(total_seqs):
     for alg in all_algs:
-      for thread_count in thread_counts:
+      for thread_count in [1, 4, 8, 16, 28]:
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
         # YCSB
+        ycsb = dict(common)
         total_count = 10 * 1000 * 1000
+        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
         req_per_query = 16
         tx_count = 200000
-        common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
-          'total_count': total_count, 'req_per_query': req_per_query,
-          'tx_count': tx_count, 'seq': seq, 'tag': tag }
-        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
-        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
-        if alg not in ('NO_WAIT',):
-          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
-        if alg not in ('NO_WAIT', 'HEKATON'):
-          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        if thread_count in (28, 56):
-          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.40 })
-          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.40 })
-          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.60 })
-          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.60 })
-          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.80 })
-          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.80 })
-          yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.90 })
-          yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.90 })
-          if alg not in ('NO_WAIT',):
-            yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.95 })
-          if alg not in ('NO_WAIT', 'HEKATON'):
-            yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.95 })
+        for read_ratio in [0.50, 0.95]:
+          for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
+            if zipf_theta != 0. and zipf_theta != 0.99 and thread_count not in (28, 56): continue
+            if zipf_theta >= 0.95:
+              if alg == 'NO_WAIT': continue
+              if read_ratio == 0.50 and alg == 'hekaton': continue
+            if zipf_theta >= 0.99 and alg == 'HEKATON': continue
+            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+            yield dict(ycsb)
 
-        total_count = 10 * 1000 * 1000
         req_per_query = 1
         tx_count = 2000000
-        common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
-          'total_count': total_count, 'req_per_query': req_per_query,
-          'tx_count': tx_count, 'seq': seq, 'tag': tag }
-        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.00 })
-        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.00 })
-        yield comb_dict(common, { 'read_ratio': 0.95, 'zipf_theta': 0.99 })
-        yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+        for read_ratio in [0.50, 0.95]:
+          for zipf_theta in [0.00, 0.99]:
+            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+            yield dict(ycsb)
 
         # TPCC
+        tpcc = dict(common)
         tx_count = 200000
-        common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
-          'tx_count': tx_count, 'seq': seq, 'tag': tag }
-        for warehouse_count in warehouse_counts:
-          yield comb_dict(common, { 'warehouse_count': warehouse_count })
+        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+        for warehouse_count in [1, 4, 8, 16, 28]:
+          tpcc.update({ 'warehouse_count': warehouse_count })
+          yield dict(tpcc)
+
+
+  def _common_exps(common):
+    # YCSB
+    ycsb = dict(common)
+    total_count = 10 * 1000 * 1000
+    ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
+    req_per_query = 16
+    tx_count = 200000
+    ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+    # for read_ratio in [0.50, 0.95]:
+    # for zipf_theta in [0.00, 0.99]:
+    read_ratio = 0.50
+    zipf_theta = 0.99
+    ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+    yield dict(ycsb)
+
+    req_per_query = 1
+    tx_count = 2000000
+    ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+    # for read_ratio in [0.50, 0.95]:
+    # for zipf_theta in [0.00, 0.99]:
+    read_ratio = 0.50
+    zipf_theta = 0.99
+    ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+    yield dict(ycsb)
+
+    # TPCC
+    tpcc = dict(common)
+    tx_count = 200000
+    tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+    # warehouse_count = 4
+    for warehouse_count in [4, 28]:
+      tpcc.update({ 'warehouse_count': warehouse_count })
+      yield dict(tpcc)
 
 
   tag = 'backoff'
+  alg = 'MICA'
+  thread_count = 28
   for seq in range(total_seqs):
-    alg = 'MICA'
-    thread_count = 28
-
     for backoff in [float(v) for v in range(31)]:
-      # YCSB
-      total_count = 10 * 1000 * 1000
-      req_per_query = 1
-      tx_count = 2000000
-      common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
-        'total_count': total_count, 'req_per_query': req_per_query,
-        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'fixed_backoff': backoff }
-      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
-      # TPCC
-      tx_count = 200000
-      common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
-        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'fixed_backoff': backoff }
-      warehouse_count = 4
-      yield comb_dict(common, { 'warehouse_count': warehouse_count })
+      for exp in _common_exps(common): yield exp
 
 
   tag = 'factor'
+  alg = 'MICA'
+  thread_count = 28
   for seq in range(total_seqs):
-    alg = 'MICA'
-    thread_count = 28
-
-    # YCSB
-    total_count = 10 * 1000 * 1000
-    req_per_query = 16
-    tx_count = 200000
-    common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
-      'total_count': total_count, 'req_per_query': req_per_query,
-      'tx_count': tx_count, 'seq': seq, 'tag': tag }
     for i in range(7):
-      if i == 1: common['no_wait'] = 1
-      if i == 2: common['no_newest'] = 1
-      if i == 3: common['no_wsort'] = 1
-      if i == 4: common['no_preval'] = 1
-      if i == 5: common['no_backoff'] = 1
-      if i == 6: common['no_tscboost'] = 1
-      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-    # TPCC
-    tx_count = 200000
-    common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
-      'tx_count': tx_count, 'seq': seq, 'tag': tag }
-    warehouse_count = 4
-    for i in range(7):
-      if i == 1: common['no_wait'] = 1
-      if i == 2: common['no_newest'] = 1
-      if i == 3: common['no_wsort'] = 1
-      if i == 4: common['no_preval'] = 1
-      if i == 5: common['no_backoff'] = 1
-      if i == 6: common['no_tscboost'] = 1
-      yield comb_dict(common, { 'warehouse_count': warehouse_count })
+      if i >= 1: common['no_wait'] = 1
+      if i >= 2: common['no_newest'] = 1
+      if i >= 3: common['no_wsort'] = 1
+      if i >= 4: common['no_preval'] = 1
+      if i >= 5: common['no_backoff'] = 1
+      if i >= 6: common['no_tscboost'] = 1
+
+      for exp in _common_exps(common): yield exp
+
 
   tag = 'gc'
+  alg = 'MICA'
+  thread_count = 28
   for seq in range(total_seqs):
-    alg = 'MICA'
-    thread_count = 28
+    for slow_gc in [1, 2, 4,
+                    10, 20, 40,
+                    100, 200, 400,
+                    1000, 2000, 4000,
+                    10000, 20000, 40000,
+                    100000]:
 
-    for slow_gc in [10, 20, 40, 100, 200, 400, 1000, 2000, 4000, 10000, 20000]:
-      # YCSB
-      total_count = 10 * 1000 * 1000
-      req_per_query = 16
-      tx_count = 200000
-      common = { 'bench': 'YCSB', 'alg': alg, 'thread_count': thread_count,
-        'total_count': total_count, 'req_per_query': req_per_query,
-        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'slow_gc': slow_gc }
-      yield comb_dict(common, { 'read_ratio': 0.50, 'zipf_theta': 0.99 })
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
 
-      # TPCC
-      tx_count = 200000
-      common = { 'bench': 'TPCC', 'alg': alg, 'thread_count': thread_count,
-        'tx_count': tx_count, 'seq': seq, 'tag': tag, 'slow_gc': slow_gc }
-      warehouse_count = 4
-      yield comb_dict(common, { 'warehouse_count': warehouse_count })
+      for exp in _common_exps(common): yield exp
 
 
 def update_conf(conf, exp):
