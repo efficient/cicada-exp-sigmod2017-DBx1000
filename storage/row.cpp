@@ -31,19 +31,21 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
   // printf("thread_id = %lu\n", thread_id);
 
   MICATransaction tx(db->context(thread_id));
-	tx.begin();
-	MICARowAccessHandle rah(&tx);
+	while (true) {
+		tx.begin();
+		MICARowAccessHandle rah(&tx);
 
-	if (!rah.new_row(tbl)) {
-		assert(false);
-		return ERROR;
-	}
+		if (!rah.new_row(tbl)) {
+			tx.abort();
+			continue;
+		}
 
-	_row_id = rah.row_id();
-  data = rah.data();  // XXX: This can become dangling when GC is done.
-  if (!tx.commit()) {
-		assert(false);
-		return ERROR;
+		_row_id = rah.row_id();
+	  data = rah.data();  // XXX: This can become dangling when GC is done.
+	  if (!tx.commit())
+			continue;
+
+		break;
 	}
 #else
 	Catalog * schema = host_table->get_schema();
