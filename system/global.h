@@ -55,7 +55,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
     static constexpr bool kBackoff = false;
 #endif
 
-#ifdef MICA_USE_FIXED_BACKOFF
+#if MICA_USE_FIXED_BACKOFF
   static constexpr double kBackoffMin = MICA_FIXED_BACKOFF;
   static constexpr double kBackoffMax = MICA_FIXED_BACKOFF;
 #endif
