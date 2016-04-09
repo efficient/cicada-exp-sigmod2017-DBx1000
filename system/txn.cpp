@@ -128,7 +128,8 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 		return row;
 #if CC_ALG == MICA
 	if (row_cnt == 0)
-		mica_tx->begin();
+		if (!mica_tx->begin())
+			assert(false);
 #endif
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
@@ -300,7 +301,8 @@ RC txn_man::finish(RC rc) {
 	if (rc == RCOK)
 		rc = mica_tx->commit() ? RCOK : Abort;
 	else
-		mica_tx->abort();
+		if (!mica_tx->abort())
+			assert(false);
 	cleanup(rc);
 #else
 	cleanup(rc);

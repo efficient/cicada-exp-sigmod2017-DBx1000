@@ -16,9 +16,6 @@
 // The default backoff scheme is very slow.
 #define DISABLE_BUILTIN_BACKOFF
 
-// Apply MICA's AIMD backoff if enabled, but this also makes things slower than without any backoff.
-// #define USE_AIMD_BACKOFF
-
 static uint64_t rdtsc() {
   union {
     uint64_t u64;
@@ -69,11 +66,6 @@ RC thread_t::run() {
   MICATiming t(_wl->mica_db->context(get_thd_id())->timing_stack(), &::mica::transaction::Stats::worker);
 #else
 	set_affinity(get_thd_id());
-#endif
-
-#ifdef USE_AIMD_BACKOFF
-  constexpr int64_t kBaseBackoffTime = 260;
-	double backoff_factor = 1.;
 #endif
 
 	myrand rdm;
@@ -203,10 +195,8 @@ RC thread_t::run() {
 			}
 #endif
 
-#if CC_ALG != MICA && defined(USE_AIMD_BACKOFF)
-			backoff_factor++;
-			const double max_backoff_time = static_cast<double>(
-					kBaseBackoffTime * backoff_factor);
+#if CC_ALG != MICA && MICA_USE_FIXED_BACKOFF
+			const double max_backoff_time = MICA_FIXED_BACKOFF;
 
 			double r;
 			drand48_r(&buffer, &r);
@@ -224,12 +214,6 @@ RC thread_t::run() {
 #ifdef DISABLE_BUILTIN_BACKOFF
 	if (rc == RCOK) {
 		m_query = nullptr;
-#if CC_ALG != MICA
-#ifdef USE_AIMD_BACKOFF
-		backoff_factor /= 2;
-		if (backoff_factor < 1) backoff_factor = 1;
-#endif
-#endif
 	}
 #endif
 
