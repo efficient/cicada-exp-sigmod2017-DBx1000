@@ -294,6 +294,17 @@ def enum_exps():
 
       for exp in _common_exps(common): yield exp
 
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
+      if i == 1: common['no_wsort'] = 1
+      if i == 2: common['no_preval'] = 1
+      if i == 3: common['no_newest'] = 1
+      if i == 4: common['no_wait'] = 1
+      if i == 5: common['no_tscboost'] = 1
+      if i == 6: common['no_tsc'] = 1
+
+      for exp in _common_exps(common): yield exp
+
 
   tag = 'gc'
   alg = 'MICA'
