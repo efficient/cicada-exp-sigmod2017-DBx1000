@@ -160,7 +160,7 @@ def comb_dict(*dicts):
 
 
 def enum_exps():
-  all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
+  all_algs = ['MICA', #'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # total_seqs = 1
   # total_seqs = 3
@@ -169,7 +169,8 @@ def enum_exps():
   tag = 'macrobench'
   for seq in range(total_seqs):
     for alg in all_algs:
-      for thread_count in [1, 4, 8, 16, 28]:
+      # for thread_count in [1, 4, 8, 16, 28]:
+      for thread_count in [1, 4, 8, 12, 16, 20, 24, 28]:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -186,7 +187,7 @@ def enum_exps():
             if zipf_theta != 0. and zipf_theta != 0.99 and thread_count not in (28, 56): continue
             if zipf_theta >= 0.95:
               if alg == 'NO_WAIT': continue
-              if read_ratio == 0.50 and alg == 'hekaton': continue
+              if read_ratio == 0.50 and alg == 'HEKATON': continue
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
             yield dict(ycsb)
 
@@ -204,7 +205,8 @@ def enum_exps():
         tx_count = 200000
         tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
-        for warehouse_count in [1, 4, 8, 16, 28]:
+        # for warehouse_count in [1, 4, 8, 16, 28]:
+        for warehouse_count in [1, 4, 8, 12, 16, 20, 24, 28]:
           tpcc.update({ 'warehouse_count': warehouse_count })
           yield dict(tpcc)
 
@@ -238,19 +240,32 @@ def enum_exps():
       ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
       yield dict(ycsb)
 
-    # TPCC
-    tpcc = dict(common)
-    tx_count = 200000
-    tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+    if common['tag'] == 'factor':
+      req_per_query = 1
+      tx_count = 2000000
+      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-    warehouse_count = 4
-    tpcc.update({ 'warehouse_count': warehouse_count })
-    yield dict(tpcc)
+      # for read_ratio in [0.50, 0.95]:
+      # for zipf_theta in [0.00, 0.99]:
+      read_ratio = 0.50
+      zipf_theta = 0.00
+      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      yield dict(ycsb)
 
-    if common['tag'] != 'backoff':
-      warehouse_count = 28
+    if common['tag'] != 'factor':
+      # TPCC
+      tpcc = dict(common)
+      tx_count = 200000
+      tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+      warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
       yield dict(tpcc)
+
+      if common['tag'] != 'backoff':
+        warehouse_count = 28
+        tpcc.update({ 'warehouse_count': warehouse_count })
+        yield dict(tpcc)
 
 
   tag = 'backoff'
@@ -270,7 +285,6 @@ def enum_exps():
     for i in range(7):
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      # if i >= 1: common['no_backoff'] = 1
       if i >= 1: common['no_wsort'] = 1
       if i >= 2: common['no_preval'] = 1
       if i >= 3: common['no_newest'] = 1
@@ -322,7 +336,8 @@ def sort_exps(exps):
     # factor analysis is not prioritized
 
     # prefer fast schemes
-    if exp['alg'].startswith('MICA'): pri -= 2
+    if exp['alg'] == 'MICA': pri -= 2
+    # if exp['alg'].startswith('MICA'): pri -= 2
     if exp['alg'] == 'SILO' or exp['alg'] == 'TICTOC': pri -= 1
 
     # prefer max cores
@@ -359,11 +374,17 @@ def skip_done(exps):
     if os.path.exists(dir_name + '/' + gen_filename(exp) + '.failed'): continue
     yield exp
 
-def find_exps_to_run(exps, pat):
+def find_exps_to_run(exps, pats):
   for exp in exps:
-    filename = dir_name + '/' + gen_filename(exp)
-    if filename.find(pat) == -1: continue
-    yield exp
+    if pats:
+      for pat in pats:
+        key, _, value = pat.partition('@')
+        if key not in exp or str(exp[key]) != value:
+          break
+      else:
+        yield exp
+    else:
+      yield exp
 
 
 def validate_result(output):
@@ -400,10 +421,7 @@ def run(exp, prepare_only):
   assert ret == 0, 'failed to compile for %s' % exp
   os.system('sudo sync')
   os.system('sudo sync')
-  time.sleep(5)
-
-  if not os.path.exists(dir_name):
-    os.mkdir(dir_name)
+  time.sleep(1)
 
   # run
   filename = dir_name + '/' + gen_filename(exp)
@@ -426,7 +444,7 @@ def run(exp, prepare_only):
   # finalize
   open(filename, 'w').write(stdout)
 
-def run_all(pat, prepare_only):
+def run_all(pats, prepare_only):
   exps = list(enum_exps())
   exps = list(unique_exps(exps))
   total_count = len(exps)
@@ -434,7 +452,7 @@ def run_all(pat, prepare_only):
 
   if not prepare_only:
     exps = list(skip_done(exps))
-  exps = list(find_exps_to_run(exps, pat))
+  exps = list(find_exps_to_run(exps, pats))
   skip_count = total_count - len(exps)
   print('%d exps skipped' % skip_count)
 
@@ -464,26 +482,28 @@ def update_filenames():
     exp['tag'] = 'macrobench'
     new_filename = gen_filename(exp)
     print(filename, ' => ', new_filename)
-    os.rename(dir_name + '/' + filename, dir_name + '/' + new_filename)
+    # os.rename(dir_name + '/' + filename, dir_name + '/' + new_filename)
   sys.exit(0)
 
 
 if __name__ == '__main__':
+  if not os.path.exists(dir_name):
+    os.mkdir(dir_name)
+
   remove_stale()
   # update_filenames()
 
   if len(sys.argv) == 1:
-    print('%s [RUN | RUN pattern(s) | PREPARE pattern]' % sys.argv[0])
+    print('%s [RUN | RUN patterns | PREPARE patterns]' % sys.argv[0])
     sys.exit(1)
 
   if sys.argv[1].upper() == 'RUN':
     if len(sys.argv) == 2:
-      run_all('', False)
+      run_all(None, False)
     else:
-      for pat in sys.argv[2:]:
-        run_all(pat, False)
+      run_all(sys.argv[2].split('__'), False)
   elif sys.argv[1].upper() == 'PREPARE':
-    run_all(sys.argv[2], True)
+    run_all(sys.argv[2].split('__'), True)
   else:
     assert False
 
