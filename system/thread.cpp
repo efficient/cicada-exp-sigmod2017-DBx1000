@@ -16,18 +16,6 @@
 // The default backoff scheme is very slow.
 #define DISABLE_BUILTIN_BACKOFF
 
-static uint64_t rdtsc() {
-  union {
-    uint64_t u64;
-    struct {
-      uint32_t a;
-      uint32_t d;
-    };
-  } u;
-  asm volatile("rdtsc" : "=a"(u.a), "=d"(u.d));
-  return u.u64;
-}
-
 void thread_t::init(uint64_t thd_id, workload * workload) {
 	_thd_id = thd_id;
 	_wl = workload;
@@ -196,17 +184,18 @@ RC thread_t::run() {
 #endif
 
 #if CC_ALG != MICA && MICA_USE_FIXED_BACKOFF
-			const double max_backoff_time = MICA_FIXED_BACKOFF;
+      uint64_t us = _wl->mica_sw.c_1_usec();
+			double max_backoff_time = MICA_FIXED_BACKOFF * static_cast<double>(us);
 
 			double r;
 			drand48_r(&buffer, &r);
 
-			uint64_t now = rdtsc();
+			uint64_t now = _wl->mica_sw.now();
 			uint64_t ready = now + static_cast<uint64_t>(max_backoff_time * r);
 
 			while (ready > now) {
 				PAUSE;
-				now = rdtsc();
+				now = _wl->mica_sw.now();
 			}
 #endif
 		}

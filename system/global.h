@@ -97,6 +97,7 @@ typedef ::mica::transaction::RowAccessHandle<DBConfig> MICARowAccessHandle;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
 typedef ::mica::transaction::Result MICAResult;
 #else
+#include "mica/util/stopwatch.h"
 #include "mica/util/latency.h"
 #endif
 
