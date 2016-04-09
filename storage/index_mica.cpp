@@ -75,12 +75,14 @@ RC IndexMICA::index_insert(idx_key_t key, itemid_t* item, int part_id) {
   while (true) {
     // printf("idx=%p part_id=%d key=%lu row_id=%lu\n", this, part_id, key,
     // row_id);
-    tx.begin();
+    if (!tx.begin()) assert(false);
     if (!mica_idx[part_id]->insert(&tx, key, row_id)) {
-      tx.abort();
+      if (!tx.abort()) assert(false);
       continue;
     }
-    if (tx.commit()) break;
+    if (!tx.commit()) continue;
+
+    break;
   }
   // printf("index updated\n");
 
