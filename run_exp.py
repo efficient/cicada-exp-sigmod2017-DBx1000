@@ -254,13 +254,13 @@ def enum_exps():
 
 
   tag = 'backoff'
-  alg = 'MICA'
-  thread_count = 28
   for seq in range(total_seqs):
-    for backoff in [float(v) for v in range(31)]:
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
+    for alg in ['MICA', 'SILO', 'TICTOC']:
+      thread_count = 28
+      for backoff in [round(1.2 ** v - 1.0, 2) for v in range(20)]:
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
-      for exp in _common_exps(common): yield exp
+        for exp in _common_exps(common): yield exp
 
 
   tag = 'factor'
@@ -305,7 +305,7 @@ def update_conf(conf, exp):
   elif exp['bench'] == 'TPCC':
     conf = set_tpcc(conf, **exp)
   else: assert False
-  if exp['alg'].startswith('MICA'):
+  if exp['alg'].startswith('MICA') or exp['tag'] == 'backoff':
     conf = set_mica_confs(conf, **exp)
   return conf
 
@@ -410,15 +410,17 @@ def run(exp, prepare_only):
 
   # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
   cmd = 'sudo ./rundb'
-  p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-  stdout = p.communicate()[0].decode('utf-8')
+  p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  stdout, stderr = p.communicate()
+  stdout = stdout.decode('utf-8')
+  stderr = stderr.decode('utf-8')
   if p.returncode != 0:
     print('failed to run exp for %s' % exp)
-    open(filename + '.failed', 'w').write(stdout)
+    open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
   if not validate_result(stdout):
     print('validation failed for %s' % exp)
-    open(filename + '.failed', 'w').write(stdout)
+    open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
 
   # finalize
