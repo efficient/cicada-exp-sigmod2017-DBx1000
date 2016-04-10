@@ -71,7 +71,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
   // typedef ::mica::transaction::WideTimestampConst TimestampConst;
-#if NO_TSC
+#if MICA_NO_TSC
   typedef ::mica::transaction::CentralizedTimestamp Timestamp;
   typedef ::mica::transaction::CentralizedConcurrentTimestamp
   ConcurrentTimestamp;
