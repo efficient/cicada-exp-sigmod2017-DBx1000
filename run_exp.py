@@ -520,7 +520,7 @@ def update_filenames():
     exp['tag'] = 'macrobench'
     new_filename = gen_filename(exp)
     print(filename, ' => ', new_filename)
-    # os.rename(dir_name + '/' + filename, dir_name + '/' + new_filename)
+    os.rename(dir_name + '/' + filename, dir_name + '/' + new_filename)
   sys.exit(0)
 
 
