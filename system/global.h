@@ -51,9 +51,13 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #if MICA_NO_WAIT_FOR_PENDING
   static constexpr bool kNoWaitForPending = true;
 #endif
+
 #if MICA_NO_BACKOFF
     static constexpr bool kBackoff = false;
 #endif
+
+  // static constexpr bool kPrintBackoff = true;
+  // static constexpr bool kPairwiseSleeping = true;
 
 #if MICA_USE_FIXED_BACKOFF
   static constexpr double kBackoffMin = MICA_FIXED_BACKOFF;
@@ -62,11 +66,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 
 #if MICA_USE_SLOW_GC
   static constexpr int64_t kUnstableTSUpdateInterval = MICA_SLOW_GC;
-  // static constexpr uint64_t kPendingGCCount = static_cast<uint64_t>(-1);
 #endif
-
-  // static constexpr bool kPrintBackoff = true;
-  // static constexpr bool kPairwiseSleeping = true;
 
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
