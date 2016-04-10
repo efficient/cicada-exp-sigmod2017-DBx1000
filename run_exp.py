@@ -160,7 +160,7 @@ def comb_dict(*dicts):
 
 
 def enum_exps():
-  all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
+  all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # total_seqs = 1
   # total_seqs = 3
@@ -169,9 +169,9 @@ def enum_exps():
   for tag in ['macrobench', 'native-macrobench']:
     for seq in range(total_seqs):
       for alg in all_algs:
-        if tag == 'macrobench' and alg in ('MICA-INDEX', 'MICA-FULLINDEX'):
+        if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
           continue
-        if tag == 'native-macrobench' and alg != 'MICA':
+        if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
           continue
 
         for thread_count in [1, 4, 8, 12, 16, 20, 24, 28]:
@@ -289,9 +289,9 @@ def enum_exps():
 
 
   for tag in ['factor', 'native-factor']:
-    alg = 'MICA'
-    thread_count = 28
     for seq in range(total_seqs):
+      alg = 'MICA'
+      thread_count = 28
       for i in range(7):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -426,7 +426,7 @@ def run(exp, prepare_only):
     conf = update_conf(conf, exp)
     open('config.h', 'w').write(conf)
   else:
-    conf = open('../src/mica/test/test_tx_conf.h').read()
+    conf = open('../src/mica/test/test_tx_conf_org.h').read()
     conf = update_conf(conf, exp)
     open('../src/mica/test/test_tx_conf.h', 'w').write(conf)
 
