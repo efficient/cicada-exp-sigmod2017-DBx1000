@@ -160,59 +160,64 @@ def comb_dict(*dicts):
 
 
 def enum_exps():
-  all_algs = ['MICA', #'MICA+INDEX', 'MICA+FULLINDEX',
+  all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
   # total_seqs = 1
   # total_seqs = 3
   total_seqs = 5
 
-  tag = 'macrobench'
-  for seq in range(total_seqs):
-    for alg in all_algs:
-      # for thread_count in [1, 4, 8, 16, 28]:
-      for thread_count in [1, 4, 8, 12, 16, 20, 24, 28]:
-        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+  for tag in ['macrobench', 'native-macrobench']:
+    for seq in range(total_seqs):
+      for alg in all_algs:
+        if tag == 'macrobench' and alg in ('MICA-INDEX', 'MICA-FULLINDEX'):
+          continue
+        if tag == 'native-macrobench' and alg != 'MICA':
+          continue
 
-        # YCSB
-        ycsb = dict(common)
-        total_count = 10 * 1000 * 1000
-        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+        for thread_count in [1, 4, 8, 12, 16, 20, 24, 28]:
+          common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-        req_per_query = 16
-        tx_count = 200000
-        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+          # YCSB
+          ycsb = dict(common)
+          total_count = 10 * 1000 * 1000
+          ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-        for read_ratio in [0.50, 0.95]:
-          for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
-            if zipf_theta != 0. and zipf_theta != 0.99 and thread_count not in (28, 56): continue
-            if zipf_theta >= 0.95:
-              if alg == 'NO_WAIT': continue
-              if read_ratio == 0.50 and alg == 'HEKATON': continue
-            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-            yield dict(ycsb)
+          req_per_query = 16
+          tx_count = 200000
+          ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        req_per_query = 1
-        tx_count = 2000000
-        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
+              if zipf_theta != 0. and zipf_theta != 0.99 and thread_count not in (28, 56): continue
+              if zipf_theta >= 0.95:
+                if alg == 'NO_WAIT': continue
+                if read_ratio == 0.50 and alg == 'HEKATON': continue
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
 
-        for read_ratio in [0.50, 0.95]:
-          for zipf_theta in [0.00, 0.99]:
-            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-            yield dict(ycsb)
+          req_per_query = 1
+          tx_count = 2000000
+          ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        # TPCC
-        tpcc = dict(common)
-        tx_count = 200000
-        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.99]:
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
 
-        # for warehouse_count in [1, 4, 8, 16, 28]:
-        for warehouse_count in [1, 4, 8, 12, 16, 20, 24, 28]:
-          tpcc.update({ 'warehouse_count': warehouse_count })
-          yield dict(tpcc)
+          if tag == 'macrobench':
+            # TPCC
+            tpcc = dict(common)
+            tx_count = 200000
+            tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+            # for warehouse_count in [1, 4, 8, 16, 28]:
+            for warehouse_count in [1, 4, 8, 12, 16, 20, 24, 28]:
+              tpcc.update({ 'warehouse_count': warehouse_count })
+              yield dict(tpcc)
 
 
   def _common_exps(common):
-    if common['tag'] != 'gc':
+    if common['tag'] in ('backoff', 'factor', 'native-factor'):
       # YCSB
       ycsb = dict(common)
       total_count = 10 * 1000 * 1000
@@ -229,30 +234,31 @@ def enum_exps():
       ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
       yield dict(ycsb)
 
-      req_per_query = 1
-      tx_count = 2000000
-      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      # if common['tag'] == 'backoff':
+      #   req_per_query = 1
+      #   tx_count = 2000000
+      #   ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      #
+      #   # for read_ratio in [0.50, 0.95]:
+      #   # for zipf_theta in [0.00, 0.99]:
+      #   read_ratio = 0.50
+      #   zipf_theta = 0.99
+      #   ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      #   yield dict(ycsb)
 
-      # for read_ratio in [0.50, 0.95]:
-      # for zipf_theta in [0.00, 0.99]:
-      read_ratio = 0.50
-      zipf_theta = 0.99
-      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-      yield dict(ycsb)
+      if common['tag'] in ('factor', 'native-factor'):
+        req_per_query = 1
+        tx_count = 2000000
+        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-    if common['tag'] == 'factor':
-      req_per_query = 1
-      tx_count = 2000000
-      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+        # for read_ratio in [0.50, 0.95]:
+        # for zipf_theta in [0.00, 0.99]:
+        read_ratio = 0.95
+        zipf_theta = 0.00
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
 
-      # for read_ratio in [0.50, 0.95]:
-      # for zipf_theta in [0.00, 0.99]:
-      read_ratio = 0.50
-      zipf_theta = 0.00
-      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-      yield dict(ycsb)
-
-    if common['tag'] != 'factor':
+    if common['tag'] in ('gc', 'backoff', 'factor'):
       # TPCC
       tpcc = dict(common)
       tx_count = 200000
@@ -262,7 +268,11 @@ def enum_exps():
       tpcc.update({ 'warehouse_count': warehouse_count })
       yield dict(tpcc)
 
-      if common['tag'] != 'backoff':
+      if common['tag'] == 'gc':
+        warehouse_count = 1
+        tpcc.update({ 'warehouse_count': warehouse_count })
+        yield dict(tpcc)
+
         warehouse_count = 28
         tpcc.update({ 'warehouse_count': warehouse_count })
         yield dict(tpcc)
@@ -272,38 +282,38 @@ def enum_exps():
   for seq in range(total_seqs):
     for alg in ['MICA', 'SILO', 'TICTOC']:
       thread_count = 28
-      for backoff in [round(1.2 ** v - 1.0, 2) for v in range(20)]:
+      for backoff in [round(1.2 ** v - 1.0, 2) for v in range(24)]:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
         for exp in _common_exps(common): yield exp
 
 
-  tag = 'factor'
-  alg = 'MICA'
-  thread_count = 28
-  for seq in range(total_seqs):
-    for i in range(7):
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+  for tag in ['factor', 'native-factor']:
+    alg = 'MICA'
+    thread_count = 28
+    for seq in range(total_seqs):
+      for i in range(7):
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      if i >= 1: common['no_wsort'] = 1
-      if i >= 2: common['no_preval'] = 1
-      if i >= 3: common['no_newest'] = 1
-      if i >= 4: common['no_wait'] = 1
-      if i >= 5: common['no_tscboost'] = 1
-      if i >= 6: common['no_tsc'] = 1
+        if i >= 1: common['no_wsort'] = 1
+        if i >= 2: common['no_preval'] = 1
+        if i >= 3: common['no_newest'] = 1
+        if i >= 4: common['no_wait'] = 1
+        if i >= 5: common['no_tscboost'] = 1
+        if i >= 6: common['no_tsc'] = 1
 
-      for exp in _common_exps(common): yield exp
+        for exp in _common_exps(common): yield exp
 
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      if i == 1: common['no_wsort'] = 1
-      if i == 2: common['no_preval'] = 1
-      if i == 3: common['no_newest'] = 1
-      if i == 4: common['no_wait'] = 1
-      if i == 5: common['no_tscboost'] = 1
-      if i == 6: common['no_tsc'] = 1
+        if i == 1: common['no_wsort'] = 1
+        if i == 2: common['no_preval'] = 1
+        if i == 3: common['no_newest'] = 1
+        if i == 4: common['no_wait'] = 1
+        if i == 5: common['no_tscboost'] = 1
+        if i == 6: common['no_tsc'] = 1
 
-      for exp in _common_exps(common): yield exp
+        for exp in _common_exps(common): yield exp
 
 
   tag = 'gc'
@@ -398,8 +408,11 @@ def find_exps_to_run(exps, pats):
       yield exp
 
 
-def validate_result(output):
-  return output.find('[summary] tput=') != -1
+def validate_result(exp, output):
+  if not exp['tag'].startswith('native-'):
+    return output.find('[summary] tput=') != -1
+  else:
+    return output.find('cleaning up') != -1
 
 
 hugepage_status = -1
@@ -408,9 +421,14 @@ def run(exp, prepare_only):
   global hugepage_status
 
   # update config
-  conf = open('config-std.h').read()
-  conf = update_conf(conf, exp)
-  open('config.h', 'w').write(conf)
+  if not exp['tag'].startswith('native-'):
+    conf = open('config-std.h').read()
+    conf = update_conf(conf, exp)
+    open('config.h', 'w').write(conf)
+  else:
+    conf = open('../src/mica/test/test_tx_conf.h').read()
+    conf = update_conf(conf, exp)
+    open('../src/mica/test/test_tx_conf.h', 'w').write(conf)
 
   # clean up
   os.system('make clean > /dev/null')
@@ -428,7 +446,13 @@ def run(exp, prepare_only):
   if prepare_only: return
 
   # compile
-  ret = os.system('make -j > /dev/null')
+  if not exp['tag'].startswith('native-'):
+    ret = os.system('make -j > /dev/null')
+  else:
+    pdir = os.getcwd()
+    os.chdir('../build')
+    ret = os.system('make -j > /dev/null')
+    os.chdir(pdir)
   assert ret == 0, 'failed to compile for %s' % exp
   os.system('sudo sync')
   os.system('sudo sync')
@@ -437,8 +461,11 @@ def run(exp, prepare_only):
   # run
   filename = dir_name + '/' + gen_filename(exp)
 
-  # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
-  cmd = 'sudo ./rundb'
+  if not exp['tag'].startswith('native-'):
+    # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
+    cmd = 'sudo ./rundb'
+  else:
+    cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
   p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   stdout, stderr = p.communicate()
   stdout = stdout.decode('utf-8')
@@ -447,7 +474,7 @@ def run(exp, prepare_only):
     print('failed to run exp for %s' % exp)
     open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
-  if not validate_result(stdout):
+  if not validate_result(exp, stdout):
     print('validation failed for %s' % exp)
     open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
