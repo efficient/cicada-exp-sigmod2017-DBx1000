@@ -188,7 +188,7 @@ def enum_exps():
 
           for read_ratio in [0.50, 0.95]:
             for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
-              if zipf_theta != 0. and zipf_theta != 0.99 and thread_count not in (28, 56): continue
+              if zipf_theta not in (0.00, 0.90, 0.99) and thread_count not in (28, 56): continue
               if zipf_theta >= 0.95:
                 if alg == 'NO_WAIT': continue
                 if read_ratio == 0.50 and alg == 'HEKATON': continue
@@ -200,7 +200,7 @@ def enum_exps():
           ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           for read_ratio in [0.50, 0.95]:
-            for zipf_theta in [0.00, 0.99]:
+            for zipf_theta in [0.00, 0.90, 0.99]:
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
@@ -229,6 +229,11 @@ def enum_exps():
 
       # for read_ratio in [0.50, 0.95]:
       # for zipf_theta in [0.00, 0.99]:
+      read_ratio = 0.50
+      zipf_theta = 0.90
+      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      yield dict(ycsb)
+
       read_ratio = 0.50
       zipf_theta = 0.99
       ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
@@ -367,7 +372,7 @@ def sort_exps(exps):
     # prefer write-intensive workloads
     if exp['bench'] == 'YCSB' and exp['read_ratio'] == 0.50: pri -= 1
     # prefer standard skew
-    if exp['bench'] == 'YCSB' and exp['zipf_theta'] in (0.00, 0.99): pri -= 1
+    if exp['bench'] == 'YCSB' and exp['zipf_theta'] in (0.00, 0.90, 0.99): pri -= 1
 
     # prefer (warehouse count) = (thread count)
     if exp['bench'] == 'TPCC' and exp['thread_count'] == exp['warehouse_count']: pri -= 1
