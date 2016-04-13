@@ -52,6 +52,8 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   static constexpr bool kNoWaitForPending = true;
 #endif
 
+  // static constexpr bool kUsePlainQSBR = true;
+
 #if MICA_NO_BACKOFF
     static constexpr bool kBackoff = false;
 #endif
