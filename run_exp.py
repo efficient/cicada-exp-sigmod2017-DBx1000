@@ -43,12 +43,12 @@ def set_alg(conf, alg, **kwargs):
   return conf
 
 
-def set_ycsb(conf, total_count, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
+def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'INIT_PARALLELISM', '2')
-  conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(100))
+  conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
   conf = replace_def(conf, 'REQ_PER_QUERY', str(req_per_query))
@@ -100,6 +100,7 @@ def set_mica_confs(conf, **kwargs):
 
 
 dir_name = 'exp_data'
+old_dir_name = 'old_exp_data'
 prefix = ''
 suffix = ''
 
@@ -149,7 +150,7 @@ def remove_stale():
     if filename in valid_filenames:
       continue
     print('stale file: %s' % filename)
-    os.rename(dir_name + '/' + filename, dir_name + '/' + filename + '.old')
+    os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
 
 
 def comb_dict(*dicts):
@@ -182,9 +183,10 @@ def enum_exps():
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
+          record_size = 1000
           req_per_query = 16
           tx_count = 200000
-          ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           for read_ratio in [0.50, 0.95]:
             for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
@@ -195,6 +197,18 @@ def enum_exps():
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
+          if thread_count in [28] and alg in ['MICA', 'SILO', 'TICTOC']:
+            for record_size in [8, 32, 100, 330, 1000]:
+              req_per_query = 16
+              tx_count = 200000
+              ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+              read_ratio = 0.95
+              zipf_theta = 0.99
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
+
+          record_size = 1000
           req_per_query = 1
           tx_count = 2000000
           ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -223,9 +237,10 @@ def enum_exps():
       total_count = 10 * 1000 * 1000
       ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
+      record_size = 1000
       req_per_query = 16
       tx_count = 200000
-      ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
       # for read_ratio in [0.50, 0.95]:
       # for zipf_theta in [0.00, 0.99]:
@@ -240,9 +255,10 @@ def enum_exps():
       yield dict(ycsb)
 
       # if common['tag'] == 'backoff':
+      #   record_size = 1000
       #   req_per_query = 1
       #   tx_count = 2000000
-      #   ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+      #   ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
       #
       #   # for read_ratio in [0.50, 0.95]:
       #   # for zipf_theta in [0.00, 0.99]:
@@ -252,9 +268,10 @@ def enum_exps():
       #   yield dict(ycsb)
 
       if common['tag'] in ('factor', 'native-factor'):
+        record_size = 1000
         req_per_query = 1
         tx_count = 2000000
-        ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
         # for read_ratio in [0.50, 0.95]:
         # for zipf_theta in [0.00, 0.99]:
@@ -532,6 +549,8 @@ def update_filenames():
 if __name__ == '__main__':
   if not os.path.exists(dir_name):
     os.mkdir(dir_name)
+  if not os.path.exists(old_dir_name):
+    os.mkdir(old_dir_name)
 
   remove_stale()
   # update_filenames()
