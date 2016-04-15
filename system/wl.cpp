@@ -78,6 +78,9 @@ RC workload::init_schema(string schema_file) {
 			cur_tab->init(schema);
 #if CC_ALG == MICA
 			uint64_t data_size = schema->get_tuple_size();
+#if WORKLOAD == YCSB
+			data_size = MAX_TUPLE_SIZE;
+#endif
 		  bool ret = mica_db->create_table(tname, data_size);
 		  assert(ret);
 		  (void)ret;
