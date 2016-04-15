@@ -103,6 +103,7 @@ dir_name = 'exp_data'
 old_dir_name = 'old_exp_data'
 prefix = ''
 suffix = ''
+total_seqs = 5
 
 def gen_filename(exp):
   s = ''
@@ -138,7 +139,11 @@ def parse_filename(filename):
 
 
 def remove_stale():
-  valid_filenames = set([gen_filename(exp) for exp in enum_exps()])
+  exps = []
+  for seq in range(total_seqs):
+    exps += list(enum_exps(seq))
+
+  valid_filenames = set([gen_filename(exp) for exp in exps])
 
   for filename in os.listdir(dir_name):
     if filename.endswith('.old'):
@@ -150,7 +155,7 @@ def remove_stale():
     if filename in valid_filenames:
       continue
     print('stale file: %s' % filename)
-    os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
+    # os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
 
 
 def comb_dict(*dicts):
@@ -160,22 +165,60 @@ def comb_dict(*dicts):
   return d
 
 
-def enum_exps():
+def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
-  # total_seqs = 1
-  # total_seqs = 3
-  total_seqs = 5
 
-  for tag in ['macrobench', 'native-macrobench']:
-    for seq in range(total_seqs):
+  # for tag in ['macrobench', 'native-macrobench']:
+  for tag in ['macrobench']:
       for alg in all_algs:
         if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
           continue
         if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
           continue
 
-        for thread_count in [1, 4, 8, 12, 16, 20, 24, 28]:
+        for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+          common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
+          # YCSB
+          ycsb = dict(common)
+          total_count = 10 * 1000 * 1000
+          ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
+          record_size = 1000
+          req_per_query = 16
+          tx_count = 200000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.90, 0.99]:
+              if zipf_theta >= 0.95:
+                if alg == 'NO_WAIT': continue
+                if read_ratio == 0.50 and alg == 'HEKATON': continue
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
+
+          record_size = 1000
+          req_per_query = 1
+          tx_count = 2000000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.90, 0.99]:
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
+
+          # TPCC
+          tpcc = dict(common)
+          tx_count = 200000
+          tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+          for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+            if tag != 'macrobench': continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+        for thread_count in [28]:
           common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
           # YCSB
@@ -190,45 +233,22 @@ def enum_exps():
 
           for read_ratio in [0.50, 0.95]:
             for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
-              if zipf_theta not in (0.00, 0.90, 0.99) and thread_count not in (28, 56): continue
               if zipf_theta >= 0.95:
                 if alg == 'NO_WAIT': continue
                 if read_ratio == 0.50 and alg == 'HEKATON': continue
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
-          if thread_count in [28] and alg in ['MICA', 'SILO', 'TICTOC']:
-            for record_size in [10, 20, 40, 100, 200, 400, 1000]:
-              req_per_query = 16
-              tx_count = 200000
-              ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
-
-              read_ratio = 0.95
-              zipf_theta = 0.00
-              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-              yield dict(ycsb)
-
-          record_size = 1000
-          req_per_query = 1
-          tx_count = 2000000
-          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
-
-          for read_ratio in [0.50, 0.95]:
-            for zipf_theta in [0.00, 0.90, 0.99]:
-              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-              yield dict(ycsb)
-
-          if tag == 'macrobench':
-            # TPCC
-            tpcc = dict(common)
+          for record_size in [10, 20, 40, 100, 200, 400, 1000]:
+            if alg not in ['MICA', 'SILO', 'TICTOC']: continue
+            req_per_query = 16
             tx_count = 200000
-            tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+            ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-            # for warehouse_count in [1, 4, 8, 16, 28]:
-            for warehouse_count in [1, 4, 8, 12, 16, 20, 24, 28]:
-              tpcc.update({ 'warehouse_count': warehouse_count })
-              yield dict(tpcc)
-
+            read_ratio = 0.95
+            zipf_theta = 0.00
+            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+            yield dict(ycsb)
 
   def _common_exps(common):
     if common['tag'] in ('backoff', 'factor', 'native-factor'):
@@ -301,57 +321,55 @@ def enum_exps():
 
 
   tag = 'backoff'
-  for seq in range(total_seqs):
-    for alg in ['MICA', 'SILO', 'TICTOC']:
-      thread_count = 28
-      for backoff in [round(1.2 ** v - 1.0, 2) for v in range(24)]:
-        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
+  for alg in ['MICA', 'SILO', 'TICTOC']:
+    thread_count = 28
+    for backoff in [round(1.25 ** v - 1.0, 2) for v in range(20)]:
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
-        for exp in _common_exps(common): yield exp
+      for exp in _common_exps(common): yield exp
 
 
-  for tag in ['factor', 'native-factor']:
-    for seq in range(total_seqs):
-      alg = 'MICA'
-      thread_count = 28
-      for i in range(7):
-        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+  # for tag in ['factor', 'native-factor']:
+  for tag in ['factor']:
+    alg = 'MICA'
+    thread_count = 28
+    for i in range(7):
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-        if i >= 1: common['no_wsort'] = 1
-        if i >= 2: common['no_preval'] = 1
-        if i >= 3: common['no_newest'] = 1
-        if i >= 4: common['no_wait'] = 1
-        if i >= 5: common['no_tscboost'] = 1
-        if i >= 6: common['no_tsc'] = 1
+      if i >= 1: common['no_wsort'] = 1
+      if i >= 2: common['no_preval'] = 1
+      if i >= 3: common['no_newest'] = 1
+      if i >= 4: common['no_wait'] = 1
+      if i >= 5: common['no_tscboost'] = 1
+      if i >= 6: common['no_tsc'] = 1
 
-        for exp in _common_exps(common): yield exp
+      for exp in _common_exps(common): yield exp
 
-        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-        if i == 1: common['no_wsort'] = 1
-        if i == 2: common['no_preval'] = 1
-        if i == 3: common['no_newest'] = 1
-        if i == 4: common['no_wait'] = 1
-        if i == 5: common['no_tscboost'] = 1
-        if i == 6: common['no_tsc'] = 1
+      if i == 1: common['no_wsort'] = 1
+      if i == 2: common['no_preval'] = 1
+      if i == 3: common['no_newest'] = 1
+      if i == 4: common['no_wait'] = 1
+      if i == 5: common['no_tscboost'] = 1
+      if i == 6: common['no_tsc'] = 1
 
-        for exp in _common_exps(common): yield exp
+      for exp in _common_exps(common): yield exp
 
 
   tag = 'gc'
   alg = 'MICA'
   thread_count = 28
-  for seq in range(total_seqs):
-    for slow_gc in [1, 2, 4,
-                    10, 20, 40,
-                    100, 200, 400,
-                    1000, 2000, 4000,
-                    10000, 20000, 40000,
-                    100000]:
+  for slow_gc in [1, 2, 4,
+                  10, 20, 40,
+                  100, 200, 400,
+                  1000, 2000, 4000,
+                  10000, 20000, 40000,
+                  100000]:
 
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
+    common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
 
-      for exp in _common_exps(common): yield exp
+    for exp in _common_exps(common): yield exp
 
 
 def update_conf(conf, exp):
@@ -505,19 +523,36 @@ def run(exp, prepare_only):
   open(filename, 'w').write(stdout)
 
 def run_all(pats, prepare_only):
-  exps = list(enum_exps())
+  exps = []
+  for seq in range(total_seqs):
+    exps += list(enum_exps(seq))
   exps = list(unique_exps(exps))
+
   total_count = len(exps)
   print('total %d exps' % total_count)
+
+  count_per_tag = {}
+  for exp in exps:
+    count_per_tag[exp['tag']] = count_per_tag.get(exp['tag'], 0) + 1
+  for tag in sorted(count_per_tag.keys()):
+    print('  %s: %d' % (tag, count_per_tag[tag]))
+  print('')
 
   if not prepare_only:
     exps = list(skip_done(exps))
   exps = list(find_exps_to_run(exps, pats))
   skip_count = total_count - len(exps)
   print('%d exps skipped' % skip_count)
+  print('')
 
   exps = list(sort_exps(exps))
   print('total %d exps to run' % len(exps))
+
+  count_per_tag = {}
+  for exp in exps:
+    count_per_tag[exp['tag']] = count_per_tag.get(exp['tag'], 0) + 1
+  for tag in sorted(count_per_tag.keys()):
+    print('  %s: %d' % (tag, count_per_tag[tag]))
   print('')
 
   first = time.time()
