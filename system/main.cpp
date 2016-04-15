@@ -9,6 +9,7 @@
 #include "plock.h"
 #include "occ.h"
 #include "vll.h"
+#include "table.h"
 
 void * f(void *);
 
@@ -122,6 +123,13 @@ int main(int argc, char* argv[])
 #if CC_ALG == MICA
 	double t = (double)(endtime - starttime) / 1000000000.;
 	m_wl->mica_db->print_stats(t, t * thd_cnt);
+
+	for (auto it : m_wl->tables) {
+		auto table = it.second;
+		printf("table %s:\n", it.first.c_str());
+		table->mica_tbl->print_table_status();
+		printf("\n");
+	}
 
 	::mica::util::Latency inter_commit_latency;
 	for (uint32_t i = 0; i < thd_cnt; i++)
