@@ -70,17 +70,22 @@ RC workload::init_schema(string schema_file) {
 					}
 					elem_num ++;
 				}
+#if WORKLOAD == YCSB
+				size = MAX_TUPLE_SIZE;
+#endif
 				assert(elem_num == 3);
                 schema->add_col((char *)name.c_str(), size, (char *)type.c_str());
 				col_count ++;
 			}
+
+#if WORKLOAD == YCSB
+			assert(schema->get_tuple_size() == MAX_TUPLE_SIZE);
+#endif
+
 			table_t * cur_tab = (table_t *) _mm_malloc(sizeof(table_t), CL_SIZE);
 			cur_tab->init(schema);
 #if CC_ALG == MICA
 			uint64_t data_size = schema->get_tuple_size();
-#if WORKLOAD == YCSB
-			data_size = MAX_TUPLE_SIZE;
-#endif
 		  bool ret = mica_db->create_table(tname, data_size);
 		  assert(ret);
 		  (void)ret;
