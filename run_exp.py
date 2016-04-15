@@ -198,13 +198,13 @@ def enum_exps():
               yield dict(ycsb)
 
           if thread_count in [28] and alg in ['MICA', 'SILO', 'TICTOC']:
-            for record_size in [8, 32, 100, 330, 1000]:
+            for record_size in [10, 20, 40, 100, 200, 400, 1000]:
               req_per_query = 16
               tx_count = 200000
               ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
               read_ratio = 0.95
-              zipf_theta = 0.99
+              zipf_theta = 0.00
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
