@@ -155,7 +155,7 @@ def remove_stale():
     if filename in valid_filenames:
       continue
     print('stale file: %s' % filename)
-    # os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
+    os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
 
 
 def comb_dict(*dicts):
@@ -239,7 +239,7 @@ def enum_exps(seq):
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
-          for record_size in [10, 20, 40, 100, 200, 400, 1000]:
+          for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
             if alg not in ['MICA', 'SILO', 'TICTOC']: continue
             req_per_query = 16
             tx_count = 200000
@@ -274,18 +274,18 @@ def enum_exps(seq):
       ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
       yield dict(ycsb)
 
-      # if common['tag'] == 'backoff':
-      #   record_size = 1000
-      #   req_per_query = 1
-      #   tx_count = 2000000
-      #   ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
-      #
-      #   # for read_ratio in [0.50, 0.95]:
-      #   # for zipf_theta in [0.00, 0.99]:
-      #   read_ratio = 0.50
-      #   zipf_theta = 0.99
-      #   ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-      #   yield dict(ycsb)
+      if common['tag'] == 'backoff':
+        record_size = 1000
+        req_per_query = 1
+        tx_count = 2000000
+        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+        # for read_ratio in [0.50, 0.95]:
+        # for zipf_theta in [0.00, 0.99]:
+        read_ratio = 0.50
+        zipf_theta = 0.99
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
 
       if common['tag'] in ('factor', 'native-factor'):
         record_size = 1000
