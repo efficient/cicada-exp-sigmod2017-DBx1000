@@ -68,7 +68,13 @@ RC ycsb_wl::init_table() {
             new_row->set_value(0, &primary_key);
 			Catalog * schema = the_table->get_schema();
 			for (UInt32 fid = 0; fid < schema->get_field_cnt(); fid ++) {
-				int field_size = schema->get_field_size(fid);
+				//int field_size = schema->get_field_size(fid);
+				int field_size;
+				if (fid < schema->get_field_cnt() - 1)
+					field_size = MAX_TUPLE_SIZE / schema->get_field_cnt();
+				else
+					field_size = MAX_TUPLE_SIZE - (MAX_TUPLE_SIZE / schema->get_field_cnt()) * schema->get_field_cnt();
+		    printf("[YCSB] fid=%u field_size=%d\n", fid, field_size);
 				char value[field_size];
 				for (int i = 0; i < field_size; i++)
 					value[i] = (char)rand() % (1<<8) ;
