@@ -33,7 +33,8 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 	m_item = &idx_item;
 #endif
 
-	char v[100] = {0,};
+	const size_t column_size = MAX_TUPLE_SIZE;
+	char v[column_size] = {0,};
 
 	for (uint32_t rid = 0; rid < m_query->request_cnt; rid ++) {
 		ycsb_request * req = &m_query->requests[rid];
@@ -77,13 +78,14 @@ RC ycsb_txn_man::run_txn(base_query * query) {
                 if (req->rtype == RD || req->rtype == SCAN) {
 //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 						char * data = row_local->get_data();
-#if CC_ALG != MICA
+#if 0 && CC_ALG != MICA
 						// We give an advantage of not copying data here because Silo and TicToc always copy the entire row even for reads, which could be avoided.
 						// int fid = 0;
 						// __attribute__((unused)) uint64_t fval = *(uint64_t *)(&data[fid * 10]);
 						v[0] = data[0];
 #else
-						memcpy(v, data, 100);
+						// It seems that calling memcpy() is typically faster even for Silo and TicToc.
+						memcpy(v, data, column_size);
 #endif
 //                  }
                 } else {
@@ -93,7 +95,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 						// char * data = row->get_data();
 						char * data = row_local->get_data();
 						//*(uint64_t *)(&data[fid * 10]) = 0;
-						memset(data, v[0], 100);
+						memset(data, v[0], column_size);
 //					}
                 }
             }
