@@ -211,7 +211,7 @@ def enum_exps():
           record_size = 1000
           req_per_query = 1
           tx_count = 2000000
-          ycsb.update({ 'req_per_query': req_per_query, 'tx_count': tx_count })
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           for read_ratio in [0.50, 0.95]:
             for zipf_theta in [0.00, 0.90, 0.99]:
