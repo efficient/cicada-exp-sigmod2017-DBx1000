@@ -494,6 +494,7 @@ def run(exp, prepare_only):
     ret = os.system('make -j > /dev/null')
     os.chdir(pdir)
   assert ret == 0, 'failed to compile for %s' % exp
+  os.system('date')
   os.system('sudo sync')
   os.system('sudo sync')
   time.sleep(1)
