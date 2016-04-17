@@ -72,12 +72,10 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 
   // typedef ::mica::transaction::WideTimestamp Timestamp;
   // typedef ::mica::transaction::WideConcurrentTimestamp ConcurrentTimestamp;
-  // typedef ::mica::transaction::WideTimestampConst TimestampConst;
 #if MICA_NO_TSC
   typedef ::mica::transaction::CentralizedTimestamp Timestamp;
   typedef ::mica::transaction::CentralizedConcurrentTimestamp
   ConcurrentTimestamp;
-  typedef ::mica::transaction::CentralizedTimestampConst TimestampConst;
 #endif
 
   // static constexpr bool kCollectCommitStats = false;
@@ -88,7 +86,6 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 };
 typedef DBConfig::Alloc MICAAlloc;
 typedef DBConfig::Logger MICALogger;
-typedef DBConfig::TimestampConst TimestampConst;
 typedef DBConfig::Timing MICATiming;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;

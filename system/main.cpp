@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 		auto table = it.second;
 		printf("table %s:\n", it.first.c_str());
 		table->mica_tbl->print_table_status();
-		printf("\n");
+		// printf("\n");
 	}
 
 	::mica::util::Latency inter_commit_latency;
