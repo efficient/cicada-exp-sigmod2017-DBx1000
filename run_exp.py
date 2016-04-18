@@ -88,6 +88,8 @@ def set_mica_confs(conf, **kwargs):
     conf = replace_def(conf, 'MICA_NO_STRAGGLER_AVOIDANCE', 'true')
   if 'no_wait' in kwargs:
     conf = replace_def(conf, 'MICA_NO_WAIT_FOR_PENDING', 'true')
+  if 'no_inlining' in kwargs:
+    conf = replace_def(conf, 'MICA_NO_INLINING', 'true')
   if 'no_backoff' in kwargs:
     conf = replace_def(conf, 'MICA_NO_BACKOFF', 'true')
   if 'fixed_backoff' in kwargs:
@@ -128,7 +130,7 @@ def parse_filename(filename):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_backoff'):
+    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff'):
       p_value = 1
     elif key in ('bench', 'alg', 'tag'):
       p_value = value
@@ -249,6 +251,10 @@ def enum_exps(seq):
             zipf_theta = 0.00
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
             yield dict(ycsb)
+
+            ycsb.update({ 'no_inlining': 1 })
+            yield dict(ycsb)
+            del ycsb['no_inlining']
 
   def _common_exps(common):
     if common['tag'] in ('backoff', 'factor', 'native-factor'):

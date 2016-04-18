@@ -225,6 +225,7 @@ extern TestCases					g_test_case;
 #define MICA_NO_SORT_WRITE_SET_BY_CONTENTION false
 #define MICA_NO_STRAGGLER_AVOIDANCE false
 #define MICA_NO_WAIT_FOR_PENDING false
+#define MICA_NO_INLINING false
 #define MICA_NO_BACKOFF false
 
 #define MICA_USE_FIXED_BACKOFF false

@@ -51,6 +51,9 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #if MICA_NO_WAIT_FOR_PENDING
   static constexpr bool kNoWaitForPending = true;
 #endif
+#if MICA_NO_INLINING
+  static constexpr bool kInlinedRowVersion = false;
+#endif
 
   // static constexpr bool kUsePlainQSBR = true;
 
