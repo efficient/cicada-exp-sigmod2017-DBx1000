@@ -168,7 +168,7 @@ def comb_dict(*dicts):
 
 
 def enum_exps(seq):
-  all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
+  all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
 
   # macrobenchs = ['macrobench']
