@@ -178,7 +178,8 @@ def enum_exps(seq):
 
   for tag in macrobenchs:
     for alg in all_algs:
-      if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
+      # if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
+      if tag == 'macrobench' and alg in ('MICA+FULLINDEX',):
         continue
       if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
         continue
