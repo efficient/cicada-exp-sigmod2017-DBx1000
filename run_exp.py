@@ -171,8 +171,12 @@ def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', 'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
 
-  # for tag in ['macrobench', 'native-macrobench']:
-  for tag in ['macrobench']:
+  # macrobenchs = ['macrobench']
+  # factors = ['factor']
+  macrobenchs = ['macrobench', 'native-macrobench']
+  factors = ['factor', 'native-factor']
+
+  for tag in macrobenchs:
     for alg in all_algs:
       if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
         continue
@@ -241,31 +245,30 @@ def enum_exps(seq):
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
             yield dict(ycsb)
 
-  for tag in ['inlining']:
-    for alg in all_algs:
-      if alg not in ['MICA', 'SILO', 'TICTOC']: continue
+  tag = 'inlining'
+  # for alg in all_algs:
+  for alg in ['MICA', 'SILO', 'TICTOC']:
+    for thread_count in [28]:
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      for thread_count in [28]:
-        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+      # YCSB
+      ycsb = dict(common)
+      total_count = 10 * 1000 * 1000
+      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-        # YCSB
-        ycsb = dict(common)
-        total_count = 10 * 1000 * 1000
-        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+      for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
+        req_per_query = 16
+        tx_count = 200000
+        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
-          req_per_query = 16
-          tx_count = 200000
-          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+        read_ratio = 0.95
+        zipf_theta = 0.00
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
 
-          read_ratio = 0.95
-          zipf_theta = 0.00
-          ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-          yield dict(ycsb)
-
-          ycsb.update({ 'no_inlining': 1 })
-          yield dict(ycsb)
-          del ycsb['no_inlining']
+        ycsb.update({ 'no_inlining': 1 })
+        yield dict(ycsb)
+        del ycsb['no_inlining']
 
   def _common_exps(common):
     if common['tag'] in ('backoff', 'factor', 'native-factor'):
@@ -346,8 +349,7 @@ def enum_exps(seq):
       for exp in _common_exps(common): yield exp
 
 
-  # for tag in ['factor', 'native-factor']:
-  for tag in ['factor']:
+  for tag in factors:
     alg = 'MICA'
     thread_count = 28
     for i in range(7):
