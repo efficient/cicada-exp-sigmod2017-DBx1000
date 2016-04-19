@@ -70,7 +70,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #endif
 
 #if MICA_USE_SLOW_GC
-  static constexpr int64_t kUnstableTSUpdateInterval = MICA_SLOW_GC;
+  static constexpr int64_t kMinQuiescenceInterval = MICA_SLOW_GC;
 #endif
 
   // typedef ::mica::transaction::WideTimestamp Timestamp;
