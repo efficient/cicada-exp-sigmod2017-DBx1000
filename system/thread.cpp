@@ -50,6 +50,10 @@ RC thread_t::run() {
 
   // This activation is blocking, so this must be done after warmup_bar above.
 	_wl->mica_db->activate(static_cast<uint16_t>(get_thd_id()));
+	while (_wl->mica_db->active_thread_count() < g_thread_cnt) {
+		PAUSE;
+		_wl->mica_db->idle(static_cast<uint16_t>(get_thd_id()));
+	}
 
   MICATiming t(_wl->mica_db->context(get_thd_id())->timing_stack(), &::mica::transaction::Stats::worker);
 #else
