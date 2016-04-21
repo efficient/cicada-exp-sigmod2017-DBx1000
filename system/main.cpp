@@ -70,17 +70,26 @@ int main(int argc, char* argv[])
 	vll_man.init();
 #endif
 
+	pthread_barrier_init( &start_bar, NULL, g_thread_cnt + 1 );
+
 	for (uint32_t i = 0; i < thd_cnt; i++)
 		m_thds[i]->init(i, m_wl);
 
 	if (WARMUP > 0){
 		printf("WARMUP start!\n");
-		for (uint32_t i = 0; i < thd_cnt - 1; i++) {
+		// for (uint32_t i = 0; i < thd_cnt - 1; i++) {
+		// 	uint64_t vid = i;
+		// 	pthread_create(&p_thds[i], NULL, f, (void *)vid);
+		// }
+		// f((void *)(thd_cnt - 1));
+		// for (uint32_t i = 0; i < thd_cnt - 1; i++)
+		// 	pthread_join(p_thds[i], NULL);
+		for (uint32_t i = 0; i < thd_cnt; i++) {
 			uint64_t vid = i;
 			pthread_create(&p_thds[i], NULL, f, (void *)vid);
 		}
-		f((void *)(thd_cnt - 1));
-		for (uint32_t i = 0; i < thd_cnt - 1; i++)
+		pthread_barrier_wait( &start_bar );
+		for (uint32_t i = 0; i < thd_cnt; i++)
 			pthread_join(p_thds[i], NULL);
 		printf("WARMUP finished!\n");
 	}
@@ -90,6 +99,8 @@ int main(int argc, char* argv[])
 	CarbonBarrierInit(&enable_barrier, g_thread_cnt);
 #endif
 	pthread_barrier_init( &warmup_bar, NULL, g_thread_cnt );
+
+	pthread_barrier_init( &start_bar, NULL, g_thread_cnt + 1 );
 
 #if CC_ALG == MICA
 	m_wl->mica_db->reset_stats();
@@ -102,13 +113,23 @@ int main(int argc, char* argv[])
 	// int ret = system("perf record -a sleep 1 &");
 	// (void)ret;
 
-	int64_t starttime = get_server_clock();
-	for (uint32_t i = 0; i < thd_cnt - 1; i++) {
+	// int64_t starttime = get_server_clock();
+	// for (uint32_t i = 0; i < thd_cnt - 1; i++) {
+	// 	uint64_t vid = i;
+	// 	pthread_create(&p_thds[i], NULL, f, (void *)vid);
+	// }
+	// f((void *)(thd_cnt - 1));
+	// for (uint32_t i = 0; i < thd_cnt - 1; i++)
+	// 	pthread_join(p_thds[i], NULL);
+	// int64_t endtime = get_server_clock();
+
+	for (uint32_t i = 0; i < thd_cnt; i++) {
 		uint64_t vid = i;
 		pthread_create(&p_thds[i], NULL, f, (void *)vid);
 	}
-	f((void *)(thd_cnt - 1));
-	for (uint32_t i = 0; i < thd_cnt - 1; i++)
+	pthread_barrier_wait( &start_bar );
+	int64_t starttime = get_server_clock();
+	for (uint32_t i = 0; i < thd_cnt; i++)
 		pthread_join(p_thds[i], NULL);
 	int64_t endtime = get_server_clock();
 

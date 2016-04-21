@@ -60,6 +60,8 @@ RC thread_t::run() {
 	set_affinity(get_thd_id());
 #endif
 
+	pthread_barrier_wait( &start_bar );
+
 	myrand rdm;
 	rdm.init(get_thd_id());
 	RC rc = RCOK;

@@ -218,6 +218,11 @@ private:
 };
 
 inline void set_affinity(uint64_t thd_id) {
+	cpu_set_t  mask;
+	CPU_ZERO(&mask);
+	CPU_SET(thd_id, &mask);
+	sched_setaffinity(0, sizeof(cpu_set_t), &mask);
+
 	return;
 	/*
 	// TOOD. the following mapping only works for swarm
