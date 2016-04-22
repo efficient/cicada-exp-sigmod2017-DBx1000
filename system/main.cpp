@@ -50,6 +50,15 @@ int main(int argc, char* argv[])
 	m_wl->init();
 	printf("workload initialized!\n");
 
+#if CC_ALG == MICA
+	for (auto it : m_wl->tables) {
+		auto table = it.second;
+		printf("table %s:\n", it.first.c_str());
+		table->mica_tbl->print_table_status();
+		// printf("\n");
+	}
+#endif
+
 	uint64_t thd_cnt = g_thread_cnt;
 	pthread_t p_thds[thd_cnt - 1];
 	m_thds = new thread_t * [thd_cnt];
