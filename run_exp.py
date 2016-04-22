@@ -344,7 +344,7 @@ def enum_exps(seq):
   tag = 'backoff'
   for alg in ['MICA', 'SILO', 'TICTOC']:
     thread_count = 28
-    for backoff in [round(1.25 ** v - 1.0, 2) for v in range(20)]:
+    for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
       for exp in _common_exps(common): yield exp
