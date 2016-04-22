@@ -171,10 +171,10 @@ def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
 
-  # macrobenchs = ['macrobench']
-  # factors = ['factor']
-  macrobenchs = ['macrobench', 'native-macrobench']
-  factors = ['factor', 'native-factor']
+  macrobenchs = ['macrobench']
+  factors = ['factor']
+  # macrobenchs = ['macrobench', 'native-macrobench']
+  # factors = ['factor', 'native-factor']
 
   for tag in macrobenchs:
     for alg in all_algs:
@@ -220,8 +220,14 @@ def enum_exps(seq):
         tx_count = 200000
         tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
+        for warehouse_count in [1, 4, 16, 28]:
+          if tag != 'macrobench': continue
+          tpcc.update({ 'warehouse_count': warehouse_count })
+          yield dict(tpcc)
+
         for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
           if tag != 'macrobench': continue
+          if thread_count not in [28, warehouse_count]: continue
           tpcc.update({ 'warehouse_count': warehouse_count })
           yield dict(tpcc)
 
@@ -583,6 +589,7 @@ def run_all(pats, prepare_only):
     print('exp %d/%d: %s' % (i + 1, len(exps), exp))
 
     run(exp, prepare_only)
+    if prepare_only: break
 
     now = time.time()
     print('elapsed = %.2f seconds' % (now - start))
