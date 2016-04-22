@@ -13,8 +13,13 @@
 #include "mem_alloc.h"
 #include "test.h"
 
+#if CC_ALG == MICA || MICA_USE_FIXED_BACKOFF
+
 // The default backoff scheme is very slow.
 #define DISABLE_BUILTIN_BACKOFF
+
+#endif
+
 
 void thread_t::init(uint64_t thd_id, workload * workload) {
 	_thd_id = thd_id;
@@ -86,7 +91,8 @@ RC thread_t::run() {
 			if (_abort_buffer_enable) {
 				m_query = NULL;
 				while (trial < 2) {
-					ts_t curr_time = get_sys_clock();
+					//ts_t curr_time = get_sys_clock();
+					ts_t curr_time = get_server_clock();
 					ts_t min_ready_time = UINT64_MAX;
 					if (_abort_buffer_empty_slots < _abort_buffer_size) {
 						for (int i = 0; i < _abort_buffer_size; i++) {
@@ -181,7 +187,8 @@ RC thread_t::run() {
 				for (int i = 0; i < _abort_buffer_size; i ++) {
 					if (_abort_buffer[i].query == NULL) {
 						_abort_buffer[i].query = m_query;
-						_abort_buffer[i].ready_time = get_sys_clock() + penalty;
+						//_abort_buffer[i].ready_time = get_sys_clock() + penalty;
+						_abort_buffer[i].ready_time = get_server_clock() + penalty;
 						_abort_buffer_empty_slots --;
 						break;
 					}
