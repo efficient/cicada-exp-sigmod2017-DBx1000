@@ -255,7 +255,8 @@ def enum_exps(seq):
 
   tag = 'inlining'
   # for alg in all_algs:
-  for alg in ['MICA', 'SILO', 'TICTOC']:
+  # for alg in ['MICA', 'SILO', 'TICTOC']:
+  for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
