@@ -172,20 +172,30 @@ RC tpcc_txn_man::run_payment(tpcc_query * query) {
 				mid = mid->next;
 		}
 #else
-		idx_rc = index_read_first(index, key, item, wh_to_part(c_w_id));
+		// idx_rc = index_read_first(index, key, item, wh_to_part(c_w_id));
+		// assert(idx_rc == RCOK);
+		//
+		// const int max_row_ids_count = 100;
+		// uint64_t row_ids[max_row_ids_count];
+		//
+		// int cnt = 0;
+		// while (idx_rc == RCOK) {
+		// 	assert(cnt < max_row_ids_count);
+		// 	row_ids[cnt] = reinterpret_cast<uint64_t>(item->location);
+		// 	cnt ++;
+		// 	idx_rc = index_read_next(index, key, item, wh_to_part(c_w_id));
+		// }
+		// // printf("%d\n", cnt);
+		// itemid_t* mid = item;
+		// mid->location = reinterpret_cast<void*>(row_ids[cnt / 2]);
+
+		uint64_t cnt = 100;
+		uint64_t row_ids[100];
+
+		idx_rc = index_read_multiple(index, key, row_ids, cnt, wh_to_part(c_w_id));
 		assert(idx_rc == RCOK);
+		assert(cnt != 0);
 
-		const int max_row_ids_count = 100;
-		uint64_t row_ids[max_row_ids_count];
-
-		int cnt = 0;
-		while (idx_rc == RCOK) {
-			assert(cnt < max_row_ids_count);
-			row_ids[cnt] = reinterpret_cast<uint64_t>(item->location);
-			cnt ++;
-			idx_rc = index_read_next(index, key, item, wh_to_part(c_w_id));
-		}
-		// printf("%d\n", cnt);
 		itemid_t* mid = item;
 		mid->location = reinterpret_cast<void*>(row_ids[cnt / 2]);
 #endif

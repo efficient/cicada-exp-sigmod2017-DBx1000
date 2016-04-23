@@ -20,9 +20,11 @@ class IndexMICA : public index_base {
   RC index_read(idx_key_t key, itemid_t*& item, int part_id = -1,
                 int thd_id = 0);
   RC index_read_first(idx_key_t key, itemid_t*& item, int part_id = -1,
-                int thd_id = 0);
+                      int thd_id = 0);
   RC index_read_next(idx_key_t key, itemid_t*& item, int part_id = -1,
                      int thd_id = 0);
+  RC index_read_multiple(MICATransaction* tx, idx_key_t key, uint64_t* row_ids,
+                         size_t& count, int part_id = -1, int thd_id = 0);
 
   table_t* table;
   std::vector<MICAIndex*> mica_idx;

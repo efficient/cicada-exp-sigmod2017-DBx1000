@@ -98,6 +98,7 @@ public:
 	RC		index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
 	RC		index_read_first(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
 	RC		index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
+	RC		index_read_multiple(INDEX * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
 	row_t * 		get_row(row_t * row, access_t type);

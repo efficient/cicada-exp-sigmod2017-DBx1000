@@ -140,4 +140,21 @@ RC IndexMICA::index_read_next(idx_key_t key, itemid_t*& item, int part_id,
   return RCOK;
 }
 
+RC IndexMICA::index_read_multiple(MICATransaction* tx, idx_key_t key,
+                                  uint64_t* row_ids, uint64_t& count,
+                                  int part_id, int thd_id) {
+  (void)thd_id;
+
+  bool skip_validation = !(MICA_FULLINDEX);
+
+  const ::mica::transaction::HashIndexBucket* state1 = nullptr;
+  uint64_t state2 = 0;
+  uint64_t found = mica_idx[part_id]->lookup_multiple(
+      tx, key, skip_validation, state1, state2, row_ids, count);
+  if (found == MICAIndex::kHaveToAbort) return Abort;
+  count = found;
+  // printf("%lu %lu\n", key, row_id);
+  return RCOK;
+}
+
 #endif

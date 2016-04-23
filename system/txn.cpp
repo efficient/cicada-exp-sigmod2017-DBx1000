@@ -272,6 +272,11 @@ txn_man::index_read_next(INDEX * index, idx_key_t key, itemid_t* item, int part_
 {
 	return index->index_read_next(key, item, part_id, get_thd_id());
 }
+
+RC
+txn_man::index_read_multiple(INDEX * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	return index->index_read_multiple(mica_tx, key, row_ids, count, part_id, get_thd_id());
+}
 #endif
 
 RC txn_man::finish(RC rc) {
