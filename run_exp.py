@@ -64,6 +64,7 @@ def set_tpcc(conf, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
+  conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
 
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
