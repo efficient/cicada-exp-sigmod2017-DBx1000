@@ -86,6 +86,7 @@ RC workload::init_schema(string schema_file) {
 			table_t * cur_tab = (table_t *) _mm_malloc(sizeof(table_t), CL_SIZE);
 			cur_tab->init(schema);
 #if CC_ALG == MICA
+			printf("creating table %s\n", tname.c_str());
 			uint64_t data_size = schema->get_tuple_size();
 		  bool ret = mica_db->create_table(tname, data_size);
 		  assert(ret);
