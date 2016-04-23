@@ -17,9 +17,10 @@ RC workload::init() {
 #if CC_ALG == MICA
 	auto config = ::mica::util::Config::load_file("test_tx.json");
 	mica_alloc = new MICAAlloc(config.get("alloc"));
-	mica_page_pool = new MICAPagePool(mica_alloc, 24 * uint64_t(1073741824));
+	mica_page_pools[0] = new MICAPagePool(mica_alloc, 24 * uint64_t(1073741824) / 2, 0);
+	mica_page_pools[1] = new MICAPagePool(mica_alloc, 24 * uint64_t(1073741824) / 2, 1);
 	mica_logger = new MICALogger();
-	mica_db = new MICADB(mica_page_pool, mica_logger, &mica_sw, THREAD_CNT);
+	mica_db = new MICADB(mica_page_pools, mica_logger, &mica_sw, THREAD_CNT);
 #endif
 	return RCOK;
 }
