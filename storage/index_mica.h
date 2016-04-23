@@ -25,9 +25,9 @@ class IndexMICA : public index_base {
                      int thd_id = 0);
 
   table_t* table;
+  std::vector<MICAIndex*> mica_idx;
 
  private:
-  std::vector<MICAIndex*> mica_idx;
   uint64_t bucket_cnt;
   volatile uint64_t item_cnt;
   bool overload_warning;

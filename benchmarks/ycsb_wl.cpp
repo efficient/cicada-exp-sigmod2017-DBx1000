@@ -159,6 +159,19 @@ void * ycsb_wl::init_table_slice() {
 
 		rc = the_index->index_insert(idx_key, m_item, part_id);
 		assert(rc == RCOK);
+
+// 		if (key % 1000000 == 0) {
+// 			printf("key=%" PRIu64 "\n", key);
+// #if INDEX_STRUCT == IDX_MICA
+// 			uint64_t k = 0;
+// 			the_table->mica_tbl->renew_rows(mica_db->context(static_cast<uint16_t>(tid)), k, static_cast<uint64_t>(-1), false);
+// 			for (auto idx : the_index->mica_idx) {
+// 				auto mica_tbl = idx->index_table();
+// 				k = 0;
+// 				mica_tbl->renew_rows(mica_db->context(static_cast<uint16_t>(tid)), k, static_cast<uint64_t>(-1), false);
+// 			}
+// #endif
+//		}
 	}
 
 #if CC_ALG == MICA

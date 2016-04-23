@@ -17,10 +17,16 @@ RC workload::init() {
 #if CC_ALG == MICA
 	auto config = ::mica::util::Config::load_file("test_tx.json");
 	mica_alloc = new MICAAlloc(config.get("alloc"));
-	mica_page_pools[0] = new MICAPagePool(mica_alloc, 24 * uint64_t(1073741824) / 2, 0);
-	mica_page_pools[1] = new MICAPagePool(mica_alloc, 24 * uint64_t(1073741824) / 2, 1);
+	auto page_pool_size = 24 * uint64_t(1073741824);
+	if (g_thread_cnt == 1) {
+		mica_page_pools[0] = new MICAPagePool(mica_alloc, page_pool_size, 0);
+		mica_page_pools[1] = nullptr;
+	} else {
+		mica_page_pools[0] = new MICAPagePool(mica_alloc, page_pool_size / 2, 0);
+		mica_page_pools[1] = new MICAPagePool(mica_alloc, page_pool_size / 2, 1);
+	}
 	mica_logger = new MICALogger();
-	mica_db = new MICADB(mica_page_pools, mica_logger, &mica_sw, THREAD_CNT);
+	mica_db = new MICADB(mica_page_pools, mica_logger, &mica_sw, g_thread_cnt);
 #endif
 	return RCOK;
 }
@@ -123,6 +129,7 @@ RC workload::init_schema(string schema_file) {
 #if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
 	#if WORKLOAD == YCSB
 			index->init(part_cnt, tables[tname], g_synth_table_size * 2);
+			// index->init(part_cnt, tables[tname], g_synth_table_size);
 	#elif WORKLOAD == TPCC
 			assert(tables[tname] != NULL);
 			// index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt);

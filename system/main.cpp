@@ -10,6 +10,9 @@
 #include "occ.h"
 #include "vll.h"
 #include "table.h"
+#if INDEX_STRUCT == IDX_MICA
+#include "index_mica.h"
+#endif
 
 void * f(void *);
 
@@ -51,12 +54,35 @@ int main(int argc, char* argv[])
 	printf("workload initialized!\n");
 
 #if CC_ALG == MICA
+	m_wl->mica_db->activate(0);
+
 	for (auto it : m_wl->tables) {
 		auto table = it.second;
+
+		uint64_t i = 0;
+		table->mica_tbl->renew_rows(m_wl->mica_db->context(0), i, static_cast<uint64_t>(-1), false);
+
 		printf("table %s:\n", it.first.c_str());
 		table->mica_tbl->print_table_status();
 		// printf("\n");
 	}
+
+#if INDEX_STRUCT == IDX_MICA
+	for (auto it : m_wl->indexes) {
+		auto index = it.second;
+		for (auto idx : index->mica_idx) {
+			auto mica_tbl = idx->index_table();
+
+			uint64_t i = 0;
+			mica_tbl->renew_rows(m_wl->mica_db->context(0), i, static_cast<uint64_t>(-1), false);
+
+			printf("index %s:\n", it.first.c_str());
+			mica_tbl->print_table_status();
+		}
+	}
+#endif
+
+	m_wl->mica_db->deactivate(0);
 #endif
 
 	uint64_t thd_cnt = g_thread_cnt;
