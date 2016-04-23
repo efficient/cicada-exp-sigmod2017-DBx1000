@@ -179,8 +179,8 @@ def enum_exps(seq):
 
   for tag in macrobenchs:
     for alg in all_algs:
-      # if tag == 'macrobench' and alg in ('MICA+FULLINDEX',):
-      if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
+      if tag == 'macrobench' and alg in ('MICA+FULLINDEX',):
+      # if tag == 'macrobench' and alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
         continue
       if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
         continue
@@ -344,7 +344,8 @@ def enum_exps(seq):
         tpcc.update({ 'warehouse_count': warehouse_count })
         yield dict(tpcc)
 
-      if common['tag'] in ('gc', 'factor'):
+      # if common['tag'] in ('gc', 'factor'):
+      if common['tag'] in ('gc',):
         warehouse_count = 28
         tpcc.update({ 'warehouse_count': warehouse_count })
         yield dict(tpcc)
