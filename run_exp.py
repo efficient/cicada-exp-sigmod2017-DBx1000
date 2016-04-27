@@ -47,7 +47,10 @@ def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_the
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
-  conf = replace_def(conf, 'INIT_PARALLELISM', '2')
+  if total_count == 1:
+    conf = replace_def(conf, 'INIT_PARALLELISM', '1')
+  else:
+    conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
@@ -278,6 +281,27 @@ def enum_exps(seq):
         ycsb.update({ 'no_inlining': 1 })
         yield dict(ycsb)
         del ycsb['no_inlining']
+
+  tag = 'singlekey'
+  for alg in all_algs:
+  # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
+    for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
+      # YCSB
+      ycsb = dict(common)
+      total_count = 1
+      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
+      record_size = 1000
+      req_per_query = 1
+      tx_count = 200000
+      ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+      read_ratio = 0.00
+      zipf_theta = 0.00
+      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      yield dict(ycsb)
 
   def _common_exps(common):
     if common['tag'] in ('backoff', 'factor', 'native-factor'):
