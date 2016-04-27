@@ -278,15 +278,16 @@ def enum_exps(seq):
         ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
         yield dict(ycsb)
 
-        ycsb.update({ 'no_inlining': 1 })
-        yield dict(ycsb)
-        del ycsb['no_inlining']
+        if alg in ['MICA', 'MICA+INDEX']:
+          ycsb.update({ 'no_inlining': 1 })
+          yield dict(ycsb)
+          del ycsb['no_inlining']
 
   tag = 'singlekey'
   # for alg in all_algs:
   # others disabled because Silo/TicToc makes too much skewed throughput across threads
-  # for alg in ['MICA+INDEX', 'SILO', 'TICTOC']:
-  for alg in ['MICA+INDEX']:
+  # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
+  for alg in ['MICA', 'MICA+INDEX']:
     for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -381,7 +382,8 @@ def enum_exps(seq):
 
   tag = 'backoff'
   # for alg in ['MICA', 'SILO', 'TICTOC']:
-  for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
+  # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
+  for alg in ['MICA', 'MICA+INDEX']:
     thread_count = 28
     for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
@@ -395,14 +397,14 @@ def enum_exps(seq):
       for i in range(7):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-        if i >= 1: common['no_wsort'] = 1
-        if i >= 2: common['no_preval'] = 1
-        if i >= 3: common['no_newest'] = 1
-        if i >= 4: common['no_wait'] = 1
-        if i >= 5: common['no_tscboost'] = 1
-        if i >= 6: common['no_tsc'] = 1
-
-        for exp in _common_exps(common): yield exp
+        # if i >= 1: common['no_wsort'] = 1
+        # if i >= 2: common['no_preval'] = 1
+        # if i >= 3: common['no_newest'] = 1
+        # if i >= 4: common['no_wait'] = 1
+        # if i >= 5: common['no_tscboost'] = 1
+        # if i >= 6: common['no_tsc'] = 1
+        #
+        # for exp in _common_exps(common): yield exp
 
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
