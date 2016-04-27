@@ -325,13 +325,13 @@ def enum_exps(seq):
       tx_count = 200000
       ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-      if common['tag'] == 'backoff':
-        # for read_ratio in [0.50, 0.95]:
-        # for zipf_theta in [0.00, 0.99]:
-        read_ratio = 0.50
-        zipf_theta = 0.90
-        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-        yield dict(ycsb)
+      # if common['tag'] == 'backoff':
+      #   # for read_ratio in [0.50, 0.95]:
+      #   # for zipf_theta in [0.00, 0.99]:
+      #   read_ratio = 0.50
+      #   zipf_theta = 0.90
+      #   ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+      #   yield dict(ycsb)
 
       read_ratio = 0.50
       zipf_theta = 0.99
