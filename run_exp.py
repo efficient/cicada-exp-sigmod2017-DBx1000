@@ -254,9 +254,9 @@ def enum_exps(seq):
             yield dict(ycsb)
 
   tag = 'inlining'
-  # for alg in all_algs:
+  for alg in all_algs:
   # for alg in ['MICA', 'SILO', 'TICTOC']:
-  for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
+  # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -353,7 +353,8 @@ def enum_exps(seq):
 
 
   tag = 'backoff'
-  for alg in ['MICA', 'SILO', 'TICTOC']:
+  # for alg in ['MICA', 'SILO', 'TICTOC']:
+  for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     thread_count = 28
     for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
@@ -362,45 +363,47 @@ def enum_exps(seq):
 
 
   for tag in factors:
-    alg = 'MICA'
-    thread_count = 28
-    for i in range(7):
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+    for alg in ['MICA', 'MICA+INDEX']:
+      thread_count = 28
+      for i in range(7):
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      if i >= 1: common['no_wsort'] = 1
-      if i >= 2: common['no_preval'] = 1
-      if i >= 3: common['no_newest'] = 1
-      if i >= 4: common['no_wait'] = 1
-      if i >= 5: common['no_tscboost'] = 1
-      if i >= 6: common['no_tsc'] = 1
+        if i >= 1: common['no_wsort'] = 1
+        if i >= 2: common['no_preval'] = 1
+        if i >= 3: common['no_newest'] = 1
+        if i >= 4: common['no_wait'] = 1
+        if i >= 5: common['no_tscboost'] = 1
+        if i >= 6: common['no_tsc'] = 1
 
-      for exp in _common_exps(common): yield exp
+        for exp in _common_exps(common): yield exp
 
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      if i == 1: common['no_wsort'] = 1
-      if i == 2: common['no_preval'] = 1
-      if i == 3: common['no_newest'] = 1
-      if i == 4: common['no_wait'] = 1
-      if i == 5: common['no_tscboost'] = 1
-      if i == 6: common['no_tsc'] = 1
+        if i == 1: common['no_wsort'] = 1
+        if i == 2: common['no_preval'] = 1
+        if i == 3: common['no_newest'] = 1
+        if i == 4: common['no_wait'] = 1
+        if i == 5: common['no_tscboost'] = 1
+        if i == 6: common['no_tsc'] = 1
 
-      for exp in _common_exps(common): yield exp
+        for exp in _common_exps(common): yield exp
 
 
   tag = 'gc'
-  alg = 'MICA'
-  thread_count = 28
-  for slow_gc in [1, 2, 4,
-                  10, 20, 40,
-                  100, 200, 400,
-                  1000, 2000, 4000,
-                  10000, 20000, 40000,
-                  100000]:
+  for alg in ['MICA', 'MICA+INDEX']:
+    thread_count = 28
+    for slow_gc in [1, 2, 4,
+                    10, 20, 40,
+                    100, 200, 400,
+                    1000, 2000, 4000,
+                    10000, 20000, 40000,
+                    100000]:
 
-    common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
+      if alg == 'MICA+INDEX' and slow_gc > 10000: continue
 
-    for exp in _common_exps(common): yield exp
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
+
+      for exp in _common_exps(common): yield exp
 
 
 def update_conf(conf, exp):
@@ -429,6 +432,7 @@ def sort_exps(exps):
 
     # prefer fast schemes
     if exp['alg'] == 'MICA': pri -= 2
+    if exp['alg'] == 'MICA+INDEX': pri -= 2
     # if exp['alg'].startswith('MICA'): pri -= 2
     if exp['alg'] == 'SILO' or exp['alg'] == 'TICTOC': pri -= 1
 
