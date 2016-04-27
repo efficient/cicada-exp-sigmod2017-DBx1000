@@ -282,26 +282,36 @@ def enum_exps(seq):
         yield dict(ycsb)
         del ycsb['no_inlining']
 
-  tag = 'singlekey'
-  for alg in all_algs:
-  # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-    for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+  # disabled because Silo/TicToc makes too much skewed throughput across threads
+  if 0:
+    tag = 'singlekey'
+    # for alg in all_algs:
+    for alg in ['MICA+INDEX', 'SILO', 'TICTOC']:
+      for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      # YCSB
-      ycsb = dict(common)
-      total_count = 1
-      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+        # YCSB
+        ycsb = dict(common)
+        total_count = 1
+        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-      record_size = 1000
-      req_per_query = 1
-      tx_count = 200000
-      ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+        record_size = 16
+        req_per_query = 1
+        if thread_count == 1:
+          tx_count = 20000000
+        elif thread_count == 2:
+          tx_count = 10000000
+        elif thread_count == 4:
+          tx_count = 5000000
+        else:
+          tx_count = 200000
 
-      read_ratio = 0.00
-      zipf_theta = 0.00
-      ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-      yield dict(ycsb)
+        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+        read_ratio = 0.00
+        zipf_theta = 0.00
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
 
   def _common_exps(common):
     if common['tag'] in ('backoff', 'factor', 'native-factor'):
