@@ -57,7 +57,10 @@ uint64_t ycsb_query::zipf(uint64_t n, double theta) {
 	// return 1 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
 	if (uz < 1) return 0;
 	if (uz < 1 + pow(0.5, theta)) return 1;
-	return 0 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
+	uint64_t v = 0 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
+	if (v >= n)
+		v = n - 1;
+	return v;
 }
 
 void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
