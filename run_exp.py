@@ -6,6 +6,7 @@ import re
 import time
 import shutil
 import subprocess
+import pprint
 
 
 def replace_def(conf, name, value):
@@ -169,6 +170,10 @@ def comb_dict(*dicts):
   for dict in dicts:
     d.update(dict)
   return d
+
+
+def format_exp(exp):
+  return pprint.pformat(exp).replace('\n', '')
 
 
 def enum_exps(seq):
@@ -574,11 +579,11 @@ def run(exp, prepare_only):
   stdout = stdout.decode('utf-8')
   stderr = stderr.decode('utf-8')
   if p.returncode != 0:
-    print('failed to run exp for %s' % exp)
+    print('failed to run exp for %s' % format_exp(exp))
     open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
   if not validate_result(exp, stdout):
-    print('validation failed for %s' % exp)
+    print('validation failed for %s' % format_exp(exp))
     open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
     return
 
@@ -622,7 +627,7 @@ def run_all(pats, prepare_only):
 
   for i, exp in enumerate(exps):
     start = time.time()
-    print('exp %d/%d: %s' % (i + 1, len(exps), exp))
+    print('exp %d/%d: %s' % (i + 1, len(exps), format_exp(exp)))
 
     run(exp, prepare_only)
     if prepare_only: break
