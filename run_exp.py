@@ -399,8 +399,6 @@ def enum_exps(seq):
                     10000, 20000, 40000,
                     100000]:
 
-      if alg == 'MICA+INDEX' and slow_gc > 10000: continue
-
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
 
       for exp in _common_exps(common): yield exp
