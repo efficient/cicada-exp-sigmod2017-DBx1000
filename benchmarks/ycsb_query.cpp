@@ -25,7 +25,8 @@ ycsb_query::calculateDenom()
 {
 	assert(the_n == 0);
 	uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
-	the_n = table_size - 1;
+	// the_n = table_size - 1;
+	the_n = table_size;
 	denom = zeta(the_n, g_zipf_theta);
 }
 
@@ -51,9 +52,12 @@ uint64_t ycsb_query::zipf(uint64_t n, double theta) {
 	double u;
 	drand48_r(&_query_thd->buffer, &u);
 	double uz = u * zetan;
-	if (uz < 1) return 1;
-	if (uz < 1 + pow(0.5, theta)) return 2;
-	return 1 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
+	// if (uz < 1) return 1;
+	// if (uz < 1 + pow(0.5, theta)) return 2;
+	// return 1 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
+	if (uz < 1) return 0;
+	if (uz < 1 + pow(0.5, theta)) return 1;
+	return 0 + (uint64_t)(n * pow(eta*u -eta + 1, alpha));
 }
 
 void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
@@ -108,7 +112,8 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
 		uint64_t part_id =
 			part_to_access[ ith ];
 		uint64_t table_size = g_synth_table_size / g_virtual_part_cnt;
-		uint64_t row_id = zipf(table_size - 1, g_zipf_theta) - 1;
+		// uint64_t row_id = zipf(table_size - 1, g_zipf_theta);
+		uint64_t row_id = zipf(table_size, g_zipf_theta);
 		assert(row_id < table_size);
 		uint64_t primary_key = row_id * g_virtual_part_cnt + part_id;
 		req->key = primary_key;
