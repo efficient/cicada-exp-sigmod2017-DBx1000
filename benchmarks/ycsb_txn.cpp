@@ -94,8 +94,10 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 						//int fid = 0;
 						// char * data = row->get_data();
 						char * data = row_local->get_data();
+						for (size_t k = 0; k < column_size; k += 64)
+							data[k] = static_cast<char>(data[k] + v[k] + 1);
 						//*(uint64_t *)(&data[fid * 10]) = 0;
-						memset(data, v[0], column_size);
+						// memcpy(data, v, column_size);
 //					}
                 }
             }
