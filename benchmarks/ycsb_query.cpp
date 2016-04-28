@@ -110,6 +110,8 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
 			req->scan_len = SCAN_LEN;
 		}
 
+		const uint64_t column_count = 10;
+
 		// the request will access part_id.
 		uint64_t ith = tmp * part_num / g_req_per_query;
 		uint64_t part_id =
@@ -123,6 +125,8 @@ void ycsb_query::gen_requests(uint64_t thd_id, workload * h_wl) {
 		int64_t rint64;
 		lrand48_r(&_query_thd->buffer, &rint64);
 		req->value = rint64 % (1<<8);
+		lrand48_r(&_query_thd->buffer, &rint64);
+		req->column = rint64 % column_count;
 		// Make sure a single row is not accessed twice
 		if (req->rtype == RD || req->rtype == WR) {
 			if (all_keys.find(req->key) == all_keys.end()) {
