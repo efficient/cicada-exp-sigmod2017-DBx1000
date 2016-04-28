@@ -292,7 +292,8 @@ def enum_exps(seq):
   # for alg in all_algs:
   # others disabled because Silo/TicToc makes too much skewed throughput across threads
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-  for alg in ['MICA', 'MICA+INDEX']:
+  # for alg in ['MICA', 'MICA+INDEX']:
+  for alg in []:
     for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -500,6 +501,7 @@ def skip_done(exps):
   for exp in exps:
     if os.path.exists(dir_name + '/' + gen_filename(exp)): continue
     if os.path.exists(dir_name + '/' + gen_filename(exp) + '.failed'): continue
+    # if exp['alg'] == 'MICA': continue
     yield exp
 
 def find_exps_to_run(exps, pats):
