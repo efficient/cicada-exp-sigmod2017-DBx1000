@@ -33,13 +33,13 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 	m_item = &idx_item;
 #endif
 
-	const size_t column_size = MAX_TUPLE_SIZE;
+	const uint64_t kColumnSize = MAX_TUPLE_SIZE / 10;
 
 	// Random initial value to ensure writes almost always change the record.
 	uint64_t v = ::mica::util::rdtsc();
 
 	// The offset to read/write in this transaction.
-	uint64_t k = v % (column_size / sizeof(uint64_t));
+	uint64_t k = v % 10;
 
 	for (uint32_t rid = 0; rid < m_query->request_cnt; rid ++) {
 		ycsb_request * req = &m_query->requests[rid];
@@ -82,17 +82,20 @@ RC ycsb_txn_man::run_txn(base_query * query) {
             if (m_query->request_cnt > 1) {
                 if (req->rtype == RD || req->rtype == SCAN) {
 //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
-						char * data = row_local->get_data();
-							v += *(reinterpret_cast<uint64_t*>(data) + k);
+					          const char* data = row_local->get_data() + k * kColumnSize;
+					          for (uint64_t j = 0; j < kColumnSize; j++)
+					            v += static_cast<uint64_t>(data[j]);
 //                  }
                 } else {
                     assert(req->rtype == WR);
 //					for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 						//int fid = 0;
 						// char * data = row->get_data();
-						char * data = row_local->get_data();
-						v += *(reinterpret_cast<uint64_t*>(data) + k) + 1;
-						*(reinterpret_cast<uint64_t*>(data) + k) = v;
+	          char* data = row_local->get_data() + k * kColumnSize;
+	          for (uint64_t j = 0; j < kColumnSize; j++) {
+	            v += static_cast<uint64_t>(data[j]);
+	            data[j] = static_cast<char>(v);
+	          }
 						//*(uint64_t *)(&data[fid * 10]) = 0;
 						// memcpy(data, v, column_size);
 //					}
