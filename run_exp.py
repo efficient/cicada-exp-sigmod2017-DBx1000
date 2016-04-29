@@ -364,6 +364,11 @@ def enum_exps(seq):
         ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
         yield dict(ycsb)
 
+        read_ratio = 0.95
+        zipf_theta = 0.99
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
+
     if common['tag'] in ('gc', 'backoff', 'factor'):
       # TPCC
       tpcc = dict(common)
