@@ -76,7 +76,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 
 			// Computation //
 			// Only do computation when there are more than 1 requests.
-            if (m_query->request_cnt > 1) {
+            /*if (m_query->request_cnt > 1)*/ {
                 if (req->rtype == RD || req->rtype == SCAN) {
 //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 					          const char* data = row_local->get_data() + column * kColumnSize;
