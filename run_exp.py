@@ -292,8 +292,8 @@ def enum_exps(seq):
   # for alg in all_algs:
   # others disabled because Silo/TicToc makes too much skewed throughput across threads
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-  # for alg in ['MICA', 'MICA+INDEX']:
-  for alg in []:
+  for alg in ['MICA', 'MICA+INDEX']:
+  # for alg in []:
     for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
