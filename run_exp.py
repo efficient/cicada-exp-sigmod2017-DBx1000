@@ -292,8 +292,8 @@ def enum_exps(seq):
   # for alg in all_algs:
   # others disabled because Silo/TicToc makes too much skewed throughput across threads
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-  for alg in ['MICA', 'MICA+INDEX']:
-  # for alg in []:
+  # for alg in ['MICA', 'MICA+INDEX']:
+  for alg in []:
     for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -304,7 +304,12 @@ def enum_exps(seq):
 
       record_size = 16
       req_per_query = 1
-      tx_count = 2000000
+      if thread_count <= 1:
+        tx_count = 8000000
+      elif thread_count <= 4:
+        tx_count = 4000000
+      else:
+        tx_count = 2000000
 
       ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
