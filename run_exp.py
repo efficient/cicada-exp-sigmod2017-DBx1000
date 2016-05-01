@@ -207,7 +207,8 @@ def enum_exps(seq):
         ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
         for read_ratio in [0.50, 0.95]:
-          for zipf_theta in [0.00, 0.90, 0.99]:
+          # for zipf_theta in [0.00, 0.90, 0.99]:
+          for zipf_theta in [0.00, 0.99]:
             if zipf_theta >= 0.95:
               if alg == 'NO_WAIT': continue
               if read_ratio == 0.50 and alg == 'HEKATON': continue
@@ -220,7 +221,8 @@ def enum_exps(seq):
         ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
         for read_ratio in [0.50, 0.95]:
-          for zipf_theta in [0.00, 0.90, 0.99]:
+          # for zipf_theta in [0.00, 0.90, 0.99]:
+          for zipf_theta in [0.00, 0.99]:
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
             yield dict(ycsb)
 
@@ -229,7 +231,8 @@ def enum_exps(seq):
         tx_count = 200000
         tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
-        for warehouse_count in [1, 4, 16, 28]:
+        # for warehouse_count in [1, 4, 16, 28]:
+        for warehouse_count in [1, 4, 28]:
           if tag != 'macrobench': continue
           tpcc.update({ 'warehouse_count': warehouse_count })
           yield dict(tpcc)
@@ -369,10 +372,10 @@ def enum_exps(seq):
         ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
         yield dict(ycsb)
 
-        read_ratio = 0.95
-        zipf_theta = 0.99
-        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-        yield dict(ycsb)
+        # read_ratio = 0.95
+        # zipf_theta = 0.99
+        # ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        # yield dict(ycsb)
 
     if common['tag'] in ('gc', 'backoff', 'factor'):
       # TPCC
@@ -384,10 +387,10 @@ def enum_exps(seq):
       tpcc.update({ 'warehouse_count': warehouse_count })
       yield dict(tpcc)
 
-      if common['tag'] == 'gc':
-        warehouse_count = 1
-        tpcc.update({ 'warehouse_count': warehouse_count })
-        yield dict(tpcc)
+      # if common['tag'] == 'gc':
+      #   warehouse_count = 1
+      #   tpcc.update({ 'warehouse_count': warehouse_count })
+      #   yield dict(tpcc)
 
       # if common['tag'] in ('gc', 'factor'):
       if common['tag'] in ('gc',):
