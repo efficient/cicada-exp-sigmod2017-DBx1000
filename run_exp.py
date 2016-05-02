@@ -402,7 +402,8 @@ def enum_exps(seq):
   tag = 'backoff'
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-  for alg in ['MICA', 'MICA+INDEX']:
+  # for alg in ['MICA', 'MICA+INDEX']:
+  for alg in ['MICA+INDEX']:
     thread_count = 28
     for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
@@ -411,7 +412,8 @@ def enum_exps(seq):
 
 
   for tag in factors:
-    for alg in ['MICA', 'MICA+INDEX']:
+    # for alg in ['MICA', 'MICA+INDEX']:
+    for alg in ['MICA+INDEX']:
       thread_count = 28
       for i in range(7):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
@@ -438,7 +440,8 @@ def enum_exps(seq):
 
 
   tag = 'gc'
-  for alg in ['MICA', 'MICA+INDEX']:
+  # for alg in ['MICA', 'MICA+INDEX']:
+  for alg in ['MICA+INDEX']:
     thread_count = 28
     for slow_gc in [1, 2, 4,
                     10, 20, 40,
