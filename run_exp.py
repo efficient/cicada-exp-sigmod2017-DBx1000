@@ -262,6 +262,9 @@ def enum_exps(seq):
         for read_ratio in [0.50, 0.95]:
           for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
             if zipf_theta >= 0.95:
+              if read_ratio == 0.50 and alg == 'NO_WAIT': continue
+              if read_ratio == 0.50 and alg == 'HEKATON': continue
+            if zipf_theta >= 0.99:
               if alg == 'NO_WAIT': continue
               if read_ratio == 0.50 and alg == 'HEKATON': continue
             ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
