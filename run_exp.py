@@ -136,11 +136,11 @@ def parse_filename(filename):
     filename = filename[:-len(suffix)]
   for entry in filename.split('__'):
     key, _, value = entry.partition('@')
-    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc'):
+    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len'):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff'):
+    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff', 'use_scan'):
       p_value = 1
     elif key in ('bench', 'alg', 'tag'):
       p_value = value
