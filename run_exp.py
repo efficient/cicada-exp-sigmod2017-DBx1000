@@ -103,6 +103,11 @@ def set_mica_confs(conf, **kwargs):
   if 'slow_gc' in kwargs:
     conf = replace_def(conf, 'MICA_USE_SLOW_GC', 'true')
     conf = replace_def(conf, 'MICA_SLOW_GC', str(kwargs['slow_gc']))
+  if 'column_count' in kwargs:
+    conf = replace_def(conf, 'MICA_COLUMN_COUNT', str(kwargs['column_count']))
+  if 'max_scan_len' in kwargs:
+    conf = replace_def(conf, 'MICA_USE_SCAN', 'true')
+    conf = replace_def(conf, 'MICA_MAX_SCAN_LEN', str(kwargs['max_scan_len']))
   return conf
 
 
@@ -453,6 +458,39 @@ def enum_exps(seq):
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'slow_gc': slow_gc }
 
       for exp in _common_exps(common): yield exp
+
+
+  tag = 'native-scan'
+  for alg in ['MICA+INDEX']:
+    for thread_count in [28]:
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
+      # YCSB
+      ycsb = dict(common)
+      total_count = 10 * 1000 * 1000
+      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
+      for max_scan_len in [1000]:
+        for record_size in [100, 1000]:
+          req_per_query = 1
+          tx_count = 20000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+          if record_size in [100]:
+            ycsb.update({ 'column_count': 1 })
+
+          read_ratio = 0.95
+          zipf_theta = 0.99
+
+          ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+          yield dict(ycsb)
+
+          ycsb.update({ 'no_inlining': 1 })
+          yield dict(ycsb)
+          del ycsb['no_inlining']
+
+          if record_size in [100]:
+            del ycsb['column_count']
 
 
 def update_conf(conf, exp):
