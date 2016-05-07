@@ -476,6 +476,7 @@ def enum_exps(seq):
           tx_count = 20000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
+          ycsb.update({ 'max_scan_len': max_scan_len })
           if record_size in [100]:
             ycsb.update({ 'column_count': 1 })
 
