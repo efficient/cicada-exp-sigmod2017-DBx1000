@@ -80,8 +80,9 @@ RC ycsb_txn_man::run_txn(base_query * query) {
                 if (req->rtype == RD || req->rtype == SCAN) {
 //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 					          const char* data = row_local->get_data() + column * kColumnSize;
-					          for (uint64_t j = 0; j < kColumnSize; j++)
+					          for (uint64_t j = 0; j < kColumnSize; j += 64)
 					            v += static_cast<uint64_t>(data[j]);
+				            v += static_cast<uint64_t>(data[kColumnSize - 1]);
 //                  }
                 } else {
                     assert(req->rtype == WR);
@@ -89,10 +90,12 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 						//int fid = 0;
 						// char * data = row->get_data();
 	          char* data = row_local->get_data() + column * kColumnSize;
-	          for (uint64_t j = 0; j < kColumnSize; j++) {
+	          for (uint64_t j = 0; j < kColumnSize; j += 64) {
 	            v += static_cast<uint64_t>(data[j]);
 	            data[j] = static_cast<char>(v);
 	          }
+            v += static_cast<uint64_t>(data[kColumnSize - 1]);
+            data[kColumnSize - 1] = static_cast<char>(v);
 						//*(uint64_t *)(&data[fid * 10]) = 0;
 						// memcpy(data, v, column_size);
 //					}
