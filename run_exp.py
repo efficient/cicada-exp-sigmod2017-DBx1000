@@ -470,7 +470,7 @@ def enum_exps(seq):
       total_count = 10 * 1000 * 1000
       ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-      for max_scan_len in [1000]:
+      for max_scan_len in [100]:
         for record_size in [100, 1000]:
           req_per_query = 1
           tx_count = 20000
