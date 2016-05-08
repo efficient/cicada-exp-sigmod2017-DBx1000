@@ -473,7 +473,7 @@ def enum_exps(seq):
       for max_scan_len in [100]:
         for record_size in [100, 1000]:
           req_per_query = 1
-          tx_count = 20000
+          tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           ycsb.update({ 'max_scan_len': max_scan_len })
