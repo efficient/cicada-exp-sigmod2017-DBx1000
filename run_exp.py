@@ -108,6 +108,9 @@ def set_mica_confs(conf, **kwargs):
   if 'max_scan_len' in kwargs:
     conf = replace_def(conf, 'MICA_USE_SCAN', 'true')
     conf = replace_def(conf, 'MICA_MAX_SCAN_LEN', str(kwargs['max_scan_len']))
+  if 'full_table_scan' in kwargs:
+    conf = replace_def(conf, 'MICA_USE_SCAN', 'true')
+    conf = replace_def(conf, 'MICA_USE_FULL_TABLE_SCAN', 'true')
   return conf
 
 
@@ -140,7 +143,7 @@ def parse_filename(filename):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff', 'use_scan'):
+    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff', 'full_table_scan'):
       p_value = 1
     elif key in ('bench', 'alg', 'tag'):
       p_value = value
@@ -471,13 +474,13 @@ def enum_exps(seq):
       ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
       for max_scan_len in [100]:
-        for record_size in [100, 1000]:
+        for record_size in [10, 100, 1000]:
           req_per_query = 1
           tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           ycsb.update({ 'max_scan_len': max_scan_len })
-          if record_size in [100]:
+          if record_size in [10, 100]:
             ycsb.update({ 'column_count': 1 })
 
           read_ratio = 0.95
@@ -490,8 +493,41 @@ def enum_exps(seq):
           yield dict(ycsb)
           del ycsb['no_inlining']
 
-          if record_size in [100]:
+          if record_size in [10, 100]:
             del ycsb['column_count']
+
+
+  tag = 'native-full-table-scan'
+  for alg in ['MICA+INDEX']:
+    for thread_count in [28]:
+      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+
+      # YCSB
+      ycsb = dict(common)
+      total_count = 10 * 1000 * 1000
+      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+
+      for record_size in [10, 100, 1000]:
+        req_per_query = 1
+        tx_count = 20
+        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+        ycsb.update({ 'full_table_scan': 1 })
+        if record_size in [10, 100]:
+          ycsb.update({ 'column_count': 1 })
+
+        read_ratio = 0.95
+        zipf_theta = 0.99
+
+        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+        yield dict(ycsb)
+
+        ycsb.update({ 'no_inlining': 1 })
+        yield dict(ycsb)
+        del ycsb['no_inlining']
+
+        if record_size in [10, 100]:
+          del ycsb['column_count']
 
 
 def update_conf(conf, exp):
