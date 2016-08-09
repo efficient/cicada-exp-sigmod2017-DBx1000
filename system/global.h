@@ -91,7 +91,7 @@ typedef DBConfig::Timing MICATiming;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
-typedef ::mica::transaction::HashIndex<DBConfig> MICAIndex;
+typedef ::mica::transaction::HashIndex<DBConfig, false, uint64_t> MICAIndex;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
 typedef ::mica::transaction::RowAccessHandle<DBConfig> MICARowAccessHandle;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;

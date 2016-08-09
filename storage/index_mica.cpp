@@ -31,10 +31,12 @@ RC IndexMICA::init(int part_cnt, table_t* table, uint64_t bucket_cnt) {
     int i = 0;
     while (true) {
       sprintf(buf, "%d", i);
-      if (mica_tbl->db()->create_hash_index(buf, mica_tbl, bucket_cnt)) break;
+      if (mica_tbl->db()->create_hash_index_nonunique_u64(buf, mica_tbl,
+                                                          bucket_cnt))
+        break;
       i++;
     }
-    auto p = mica_tbl->db()->get_hash_index(buf);
+    auto p = mica_tbl->db()->get_hash_index_nonunique_u64(buf);
     assert(p != nullptr);
 
     MICATransaction tx(db->context(thread_id));
@@ -96,46 +98,15 @@ RC IndexMICA::index_read(idx_key_t key, itemid_t*& item, int part_id,
   bool skip_validation = !(MICA_FULLINDEX);
 
   auto tx = item->mica_tx;
-  item->state1 = nullptr;
-  item->state2 = 0;
-  auto row_id = mica_idx[part_id]->lookup(tx, key, skip_validation,
-                                          item->state1, item->state2);
-  if (row_id == MICAIndex::kNotFound) return ERROR;
-  if (row_id == MICAIndex::kHaveToAbort) return Abort;
+  uint64_t row_id;
+  auto ret = mica_idx[part_id]->lookup(tx, key, skip_validation,
+                                       [&row_id](auto& key, auto value) {
+                                         row_id = value;
+                                         return false;
+                                       });
+  if (ret == 0) return ERROR;
+  if (ret == MICAIndex::kHaveToAbort) return Abort;
   // printf("%lu %lu\n", key, row_id);
-  item->location = reinterpret_cast<void*>(row_id);
-  return RCOK;
-}
-
-RC IndexMICA::index_read_first(idx_key_t key, itemid_t*& item, int part_id,
-                               int thd_id) {
-  (void)thd_id;
-
-  bool skip_validation = !(MICA_FULLINDEX);
-
-  auto tx = item->mica_tx;
-  item->state1 = nullptr;
-  item->state2 = 0;
-  auto row_id = mica_idx[part_id]->lookup(tx, key, skip_validation,
-                                          item->state1, item->state2);
-  if (row_id == MICAIndex::kNotFound) return ERROR;
-  if (row_id == MICAIndex::kHaveToAbort) return Abort;
-  // printf("%lu %lu\n", key, row_id);
-  item->location = reinterpret_cast<void*>(row_id);
-  return RCOK;
-}
-
-RC IndexMICA::index_read_next(idx_key_t key, itemid_t*& item, int part_id,
-                              int thd_id) {
-  (void)thd_id;
-
-  bool skip_validation = !(MICA_FULLINDEX);
-
-  auto tx = item->mica_tx;
-  auto row_id = mica_idx[part_id]->lookup(tx, key, skip_validation,
-                                          item->state1, item->state2);
-  if (row_id == MICAIndex::kNotFound) return ERROR;
-  if (row_id == MICAIndex::kHaveToAbort) return Abort;
   item->location = reinterpret_cast<void*>(row_id);
   return RCOK;
 }
@@ -145,14 +116,30 @@ RC IndexMICA::index_read_multiple(MICATransaction* tx, idx_key_t key,
                                   int part_id, int thd_id) {
   (void)thd_id;
 
+  if (count == 0) return RCOK;
+
   bool skip_validation = !(MICA_FULLINDEX);
 
-  const ::mica::transaction::HashIndexBucket* state1 = nullptr;
-  uint64_t state2 = 0;
-  uint64_t found = mica_idx[part_id]->lookup_multiple(
-      tx, key, skip_validation, state1, state2, row_ids, count);
-  if (found == MICAIndex::kHaveToAbort) return Abort;
-  count = found;
+  uint64_t i = 0;
+#if !MICA_INDEX_RANGE
+  uint64_t ret = mica_idx[part_id]->lookup(
+      tx, key, skip_validation, [&i, row_ids, count](auto& key, auto value) {
+        row_ids[i++] = value;
+        // printf("%" PRIu64 "\n", i);
+        return i < count;
+      });
+#else
+  uint64_t ret =
+      mica_idx[part_id]
+          ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kOpen, false>(
+              tx, key, key, skip_validation,
+              [&i, row_ids, count](auto& key, auto value) {
+                row_ids[i++] = value;
+                return i < count;
+              });
+#endif
+  if (ret == MICAIndex::kHaveToAbort) return Abort;
+  count = i;
   // printf("%lu %lu\n", key, row_id);
   return RCOK;
 }

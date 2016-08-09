@@ -154,8 +154,6 @@ public:
 	void * location; // points to the table | page | row
 #if INDEX_STRUCT == IDX_MICA
 	MICATransaction* mica_tx;
-	const ::mica::transaction::HashIndexBucket* state1;
-	uint64_t state2;
 #endif
 	itemid_t * next;
 	bool valid;
