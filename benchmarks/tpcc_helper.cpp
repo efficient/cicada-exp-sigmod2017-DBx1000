@@ -12,7 +12,8 @@ uint64_t custKey(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id) {
 }
 
 uint64_t orderlineKey(uint64_t w_id, uint64_t d_id, uint64_t o_id) {
-	return distKey(d_id, w_id) * g_cust_per_dist + o_id;
+	//return distKey(d_id, w_id) * g_cust_per_dist + o_id;
+	return distKey(d_id, w_id) * g_cust_per_dist * (uint64_t(1) << 16) + o_id;
 }
 
 uint64_t orderPrimaryKey(uint64_t w_id, uint64_t d_id, uint64_t o_id) {

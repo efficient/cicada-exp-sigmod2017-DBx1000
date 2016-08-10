@@ -135,6 +135,7 @@
 #define WH_UPDATE					true
 #define NUM_WH 						1
 //
+#define TPCC_FULL					false
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,
 				TPCC_NEW_ORDER,

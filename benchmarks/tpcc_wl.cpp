@@ -48,6 +48,9 @@ RC tpcc_wl::init_schema(const char * schema_file) {
 	i_customer_id = indexes["CUSTOMER_ID_IDX"];
 	i_customer_last = indexes["CUSTOMER_LAST_IDX"];
 	i_stock = indexes["STOCK_IDX"];
+	i_order = indexes["ORDER_IDX"];
+	i_orderline = ordered_indexes["ORDERED_ORDERLINE_IDX"];
+	i_orderline_wd = ordered_indexes["ORDERED_ORDERLINE_WD_IDX"];
 	return RCOK;
 }
 
@@ -350,6 +353,10 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
 			char ol_dist_info[24];
 	        MakeAlphaString(24, 24, ol_dist_info, wid-1);
 			row->set_value(OL_DIST_INFO, ol_dist_info);
+#if TPCC_FULL
+			index_insert(i_orderline, orderlineKey(wid, did, oid), row, wh_to_part(wid));
+			index_insert(i_orderline_wd, distKey(did, wid), row, wh_to_part(wid));
+#endif
 		}
 #endif
 		// NEW ORDER
@@ -358,6 +365,9 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
 			row->set_value(NO_O_ID, oid);
 			row->set_value(NO_D_ID, did);
 			row->set_value(NO_W_ID, wid);
+#if TPCC_FULL
+			index_insert(i_order, orderPrimaryKey(wid, did, oid), row, wh_to_part(wid));
+#endif
 		}
 	}
 }

@@ -8,12 +8,25 @@
 
 void tpcc_query::init(uint64_t thd_id, workload * h_wl) {
 	double x = (double)(rand() % 100) / 100.0;
-	part_to_access = (uint64_t *) 
+	part_to_access = (uint64_t *)
 		mem_allocator.alloc(sizeof(uint64_t) * g_part_cnt, thd_id);
+#if !TPCC_FULL
 	if (x < g_perc_payment)
 		gen_payment(thd_id);
-	else 
+	else
 		gen_new_order(thd_id);
+#else
+	if (x < 0.04)
+		gen_stock_level(thd_id);
+	else if (x < 0.04 + 0.04)
+		gen_delivery(thd_id);
+	else if (x < 0.04 + 0.04 + 0.04)
+		gen_order_status(thd_id);
+	else if (x < 0.04 + 0.04 + 0.04 + 0.43)
+		gen_payment(thd_id);
+	else
+		gen_new_order(thd_id);
+#endif
 }
 
 void tpcc_query::gen_payment(uint64_t thd_id) {
@@ -33,11 +46,11 @@ void tpcc_query::gen_payment(uint64_t thd_id) {
 	int y = URand(1, 100, w_id-1);
 
 
-	if(x <= 85) { 
+	if(x <= 85) {
 		// home warehouse
 		c_d_id = d_id;
 		c_w_id = w_id;
-	} else {	
+	} else {
 		// remote warehouse
 		c_d_id = URand(1, DIST_PER_WARE, w_id-1);
 		if(g_num_wh > 1) {
@@ -46,7 +59,7 @@ void tpcc_query::gen_payment(uint64_t thd_id) {
 				part_to_access[1] = wh_to_part(c_w_id);
 				part_num = 2;
 			}
-		} else 
+		} else
 			c_w_id = w_id;
 	}
 	if(y <= 60) {
@@ -98,13 +111,13 @@ void tpcc_query::gen_new_order(uint64_t thd_id) {
 			}
 		}
 	}
-	for (UInt32 i = 0; i < ol_cnt; i ++) 
-		for (UInt32 j = 0; j < i; j++) 
+	for (UInt32 i = 0; i < ol_cnt; i ++)
+		for (UInt32 j = 0; j < i; j++)
 			assert(items[i].ol_i_id != items[j].ol_i_id);
 	// update part_to_access
 	for (UInt32 i = 0; i < ol_cnt; i ++) {
 		UInt32 j;
-		for (j = 0; j < part_num; j++ ) 
+		for (j = 0; j < part_num; j++ )
 			if (part_to_access[j] == wh_to_part(items[i].ol_supply_w_id))
 				break;
 		if (j == part_num) // not found! add to it.
@@ -112,7 +125,7 @@ void tpcc_query::gen_new_order(uint64_t thd_id) {
 	}
 }
 
-void 
+void
 tpcc_query::gen_order_status(uint64_t thd_id) {
 	type = TPCC_ORDER_STATUS;
 	if (FIRST_PART_LOCAL)
@@ -132,4 +145,28 @@ tpcc_query::gen_order_status(uint64_t thd_id) {
 		by_last_name = false;
 		c_id = NURand(1023, 1, g_cust_per_dist, w_id-1);
 	}
+}
+
+void
+tpcc_query::gen_stock_level(uint64_t thd_id) {
+	type = TPCC_STOCK_LEVEL;
+	if (FIRST_PART_LOCAL)
+		w_id = thd_id % g_num_wh + 1;
+	else
+		w_id = URand(1, g_num_wh, thd_id % g_num_wh);
+	d_w_id = w_id;
+	d_id = URand(1, DIST_PER_WARE, w_id-1);
+	threshold = URand(10, 20, w_id-1);
+}
+
+void
+tpcc_query::gen_delivery(uint64_t thd_id) {
+	type = TPCC_DELIVERY;
+	if (FIRST_PART_LOCAL)
+		w_id = thd_id % g_num_wh + 1;
+	else
+		w_id = URand(1, g_num_wh, thd_id % g_num_wh);
+	d_w_id = w_id;
+	o_carrier_id = URand(1, 10, w_id-1);
+	ol_delivery_d = 2013;
 }

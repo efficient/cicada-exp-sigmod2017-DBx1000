@@ -31,8 +31,8 @@ public:
 	INDEX * 	i_customer_last;
 	INDEX * 	i_stock;
 	INDEX * 	i_order; // key = (w_id, d_id, o_id)
-	INDEX * 	i_orderline; // key = (w_id, d_id, o_id)
-	INDEX * 	i_orderline_wd; // key = (w_id, d_id).
+	ORDERED_INDEX * 	i_orderline; // key = (w_id, d_id, o_id)
+	ORDERED_INDEX * 	i_orderline_wd; // key = (d_id, w_id).
 
 	bool ** delivering;
 	uint32_t next_tid;
