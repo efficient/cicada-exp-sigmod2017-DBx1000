@@ -80,6 +80,18 @@ int main(int argc, char* argv[])
 			mica_tbl->print_table_status();
 		}
 	}
+	for (auto it : m_wl->ordered_indexes) {
+		auto index = it.second;
+		for (auto idx : index->mica_idx) {
+			auto mica_tbl = idx->index_table();
+
+			uint64_t i = 0;
+			mica_tbl->renew_rows(m_wl->mica_db->context(0), i, static_cast<uint64_t>(-1), false);
+
+			printf("index %s:\n", it.first.c_str());
+			mica_tbl->print_table_status();
+		}
+	}
 #endif
 
 	m_wl->mica_db->deactivate(0);

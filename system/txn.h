@@ -9,6 +9,7 @@ class row_t;
 class table_t;
 class base_query;
 class INDEX;
+class ORDERED_INDEX;
 
 // each thread has a txn_man.
 // a txn_man corresponds to a single transaction.
@@ -54,6 +55,8 @@ public:
 	void 			set_ts(ts_t timestamp);
 	ts_t 			get_ts();
 
+	void			set_readonly();
+
 	pthread_mutex_t txn_lock;
 	row_t * volatile cur_row;
 #if CC_ALG == HEKATON
@@ -77,6 +80,7 @@ public:
 	ts_t 			last_tid;
 #elif CC_ALG == MICA
   MICATransaction* mica_tx;
+	bool			readonly;
 #endif
 
 	// For OCC
@@ -92,17 +96,22 @@ public:
 	TxnType 		vll_txn_type;
 
 #if INDEX_STRUCT != IDX_MICA
-	itemid_t *		index_read(INDEX * index, idx_key_t key, int part_id);
-	void 			index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item);
+	template <typename INDEX_T>
+	itemid_t *		index_read(INDEX_T * index, idx_key_t key, int part_id);
+	template <typename INDEX_T>
+	void 			index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& item);
 #else
-	RC		index_read(INDEX * index, idx_key_t key, itemid_t* item, int part_id);
-	RC		index_read_multiple(INDEX * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
+	template <typename INDEX_T>
+	RC		index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id);
+	template <typename INDEX_T>
+	RC		index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
 	row_t * 		get_row(row_t * row, access_t type);
 
 #if CC_ALG == MICA
-	row_t * 		get_row(INDEX* index, itemid_t * item, access_t type);
+	template <typename INDEX_T>
+	row_t * 		get_row(INDEX_T* index, itemid_t * item, access_t type);
 #endif
 
 protected:

@@ -6,7 +6,8 @@
 
 #if INDEX_STRUCT == IDX_MICA
 
-class IndexMICA : public index_base {
+template <typename MICAIndexT>
+class IndexMICAGeneric : public index_base {
  public:
   RC init(uint64_t bucket_cnt, int part_cnt);
   RC init(int part_cnt, table_t* table, uint64_t bucket_cnt);
@@ -23,12 +24,16 @@ class IndexMICA : public index_base {
                          size_t& count, int part_id = -1, int thd_id = 0);
 
   table_t* table;
-  std::vector<MICAIndex*> mica_idx;
+  std::vector<MICAIndexT*> mica_idx;
 
  private:
   uint64_t bucket_cnt;
   volatile uint64_t item_cnt;
   bool overload_warning;
 };
+
+class IndexMICA : public IndexMICAGeneric<MICAIndex> {};
+
+class OrderedIndexMICA : public IndexMICAGeneric<MICAOrderedIndex> {};
 
 #endif

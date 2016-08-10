@@ -125,24 +125,39 @@ RC workload::init_schema(string schema_file) {
 			}
 
 			string tname(items[0]);
-			INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
-			new(index) INDEX();
-			int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
-			if (tname == "ITEM")
-				part_cnt = 1;
+		if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
+				INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
+				new(index) INDEX();
+				int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
+				if (tname == "ITEM")
+					part_cnt = 1;
 #if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
 	#if WORKLOAD == YCSB
-			index->init(part_cnt, tables[tname], g_synth_table_size * 2);
-			// index->init(part_cnt, tables[tname], g_synth_table_size);
+				index->init(part_cnt, tables[tname], g_synth_table_size * 2);
+				// index->init(part_cnt, tables[tname], g_synth_table_size);
 	#elif WORKLOAD == TPCC
-			assert(tables[tname] != NULL);
-			// index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt);
-			index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt * g_num_wh);
+				assert(tables[tname] != NULL);
+				// index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt);
+				index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt * g_num_wh);
 	#endif
 #else
-			index->init(part_cnt, tables[tname]);
+				index->init(part_cnt, tables[tname]);
 #endif
-			indexes[iname] = index;
+				indexes[iname] = index;
+			}
+			else {
+				ORDERED_INDEX * index = (ORDERED_INDEX *) _mm_malloc(sizeof(ORDERED_INDEX), 64);
+				new(index) ORDERED_INDEX();
+				int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
+				if (tname == "ITEM")
+					part_cnt = 1;
+#if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
+				index->init(part_cnt, tables[tname], 0);
+#else
+				index->init(part_cnt, tables[tname]);
+#endif
+				ordered_indexes[iname] = index;
+			}
 		}
     }
 	fin.close();
@@ -157,11 +172,18 @@ RC workload::init_schema(string schema_file) {
 
 void workload::index_insert(string index_name, uint64_t key, row_t * row) {
 	assert(false);
-	INDEX * index = (INDEX *) indexes[index_name];
-	index_insert(index, key, row);
+	if (strncmp(index_name.c_str(), "ORDERED_", 8) != 0) {
+		INDEX * index = (INDEX *) indexes[index_name];
+		index_insert(index, key, row);
+	}
+	else {
+		ORDERED_INDEX * index = (ORDERED_INDEX *) ordered_indexes[index_name];
+		index_insert(index, key, row);
+	}
 }
 
-void workload::index_insert(INDEX * index, uint64_t key, row_t * row, int64_t part_id) {
+template <class INDEX_T>
+void workload::index_insert(INDEX_T * index, uint64_t key, row_t * row, int64_t part_id) {
 	uint64_t pid = part_id;
 	if (part_id == -1)
 		pid = get_part_id(row);
@@ -175,4 +197,11 @@ void workload::index_insert(INDEX * index, uint64_t key, row_t * row, int64_t pa
     assert( index->index_insert(key, m_item, pid) == RCOK );
 }
 
+template void workload::index_insert(index_btree * index, uint64_t key, row_t * row, int64_t part_id);
+template void workload::index_insert(IndexHash * index, uint64_t key, row_t * row, int64_t part_id);
+
+#if INDEX_STRUCT == IDX_MICA
+template void workload::index_insert(IndexMICA * index, uint64_t key, row_t * row, int64_t part_id);
+template void workload::index_insert(OrderedIndexMICA * index, uint64_t key, row_t * row, int64_t part_id);
+#endif
 

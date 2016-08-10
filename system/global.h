@@ -91,7 +91,8 @@ typedef DBConfig::Timing MICATiming;
 typedef ::mica::transaction::PagePool<DBConfig> MICAPagePool;
 typedef ::mica::transaction::DB<DBConfig> MICADB;
 typedef ::mica::transaction::Table<DBConfig> MICATable;
-typedef ::mica::transaction::HashIndex<DBConfig, false, uint64_t> MICAIndex;
+typedef MICADB::HashIndexNonuniqueU64 MICAIndex;
+typedef MICADB::BTreeIndexNonuniqueU64 MICAOrderedIndex;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
 typedef ::mica::transaction::RowAccessHandle<DBConfig> MICARowAccessHandle;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
@@ -220,10 +221,13 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
 #if (INDEX_STRUCT == IDX_BTREE)
 #define INDEX		index_btree
+#define ORDERED_INDEX		index_btree
 #elif (INDEX_STRUCT == IDX_MICA)
 #define INDEX		IndexMICA
+#define ORDERED_INDEX		OrderedIndexMICA
 #else  // IDX_HASH
 #define INDEX		IndexHash
+#define ORDERED_INDEX		index_btree
 #endif
 
 /************************************************/
