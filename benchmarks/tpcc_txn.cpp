@@ -534,8 +534,8 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
     FAIL_ON_ABORT();
     return finish(Abort);
   };
-  // uint64_t c_discount;
-  // customer->get_value(C_DISCOUNT, c_discount);
+// uint64_t c_discount;
+// customer->get_value(C_DISCOUNT, c_discount);
 
 #if TPCC_INSERT_ROWS
   uint64_t o_carrier_id = 0;
@@ -764,6 +764,10 @@ RC tpcc_txn_man::run_order_status(tpcc_query* query) {
   return finish(RCOK);
 }
 
+//////////////////////////////////////////////////////
+// Delivery
+//////////////////////////////////////////////////////
+
 // "getNewOrder": "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1", #
 // "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?", # d_id, w_id, no_o_id
 // "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?", # no_o_id, d_id, w_id
@@ -883,92 +887,80 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
   return finish(RCOK);
 }
 
-RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
-#if 0
-// #if TPCC_FULL
+//////////////////////////////////////////////////////
+// Stock Level
+//////////////////////////////////////////////////////
 
-  itemid_t* item;
+row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
+  // SELECT D_NEXT_O_ID FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?
+  auto index = _wl->i_district;
+  auto key = distKey(d_id, d_w_id);
+  auto part_id = wh_to_part(d_w_id);
+  return search(index, key, part_id, RD);
+}
 
-#if INDEX_STRUCT == IDX_MICA
-  RC idx_rc;
-  itemid_t idx_item;
-  item = &idx_item;
-#endif
-
-  set_readonly();
-
-  // EXEC SQL SELECT d_next_o_id FROM district
-  // WHERE d_w_id=:d_w_id AND d_id=:d_id;
-
-  uint64_t key = distKey(query->d_id, query->w_id);
-#if INDEX_STRUCT != IDX_MICA
-  item = index_read(_wl->i_district, key, wh_to_part(query->w_id));
-  assert(item != NULL);
-#else
-  idx_rc = index_read(_wl->i_district, key, item, wh_to_part(query->w_id));
-  assert(idx_rc == RCOK);
-#endif
-  row_t* r_dist = ((row_t*)item->location);
-#if CC_ALG != MICA
-  row_t* r_dist_local = get_row(r_dist, RD);
-#else
-  (void)r_dist;
-  row_t* r_dist_local = get_row(_wl->i_district, item, RD);
-#endif
-  if (r_dist_local == NULL) {
-    return finish(Abort);
-  }
-
-  int64_t o_id;
-  o_id = *(int64_t*)r_dist_local->get_value(D_NEXT_O_ID);
-
-  // EXEC SQL SELECT count(distinct(ol_i_id)) FROM order_line, stock
-  // WHERE ol_w_id=:ol_w_id AND ol_d_id=:ol_d_id
-  //   AND ol_o_id<:ol_o_id_max AND ol_o_id>=ol_o_id_min
-  //   AND s_w_id=:s_w_id AND s_i_id=ol_i_id
-  //   AND s_quantity<:s_quantity;
+uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
+                                                 uint64_t ol_d_id,
+                                                 uint64_t ol_o_id,
+                                                 uint64_t s_w_id,
+                                                 uint64_t threshold) {
+  // SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK
+  // WHERE OL_W_ID = ?
+  //   AND OL_D_ID = ?
+  //   AND OL_O_ID < ?
+  //   AND OL_O_ID >= ?
+  //   AND S_W_ID = ?
+  //   AND S_I_ID = OL_I_ID
+  //   AND S_QUANTITY < ?
 
   uint64_t ol_i_id_list[20];
   uint64_t ol_supply_w_id_list[20];
   size_t list_size = 0;
 
-  ORDERED_INDEX* index = _wl->i_orderline;
-
-  key = orderlineKey(query->w_id, query->d_id, o_id - 20);
+  auto index = _wl->i_orderline;
+  auto key = orderlineKey(ol_o_id - 1, ol_d_id, ol_w_id);
+  auto part_id = wh_to_part(ol_w_id);
 
 #if INDEX_STRUCT != IDX_MICA
-  item = index_read(index, key, wh_to_part(query->w_id));
+  item = index_read(index, key, part_id);
   assert(item != NULL);
 
   itemid_t* it = item;
   while (item != NULL) {
 #if CC_ALG != MICA
-    // TODO the rows are simply read without any locking mechanism
-    row_t* r_orderline = (row_t*)item->location;
+    auto orderline_shared = (row_t*)item->location;
+    auto orderline = get_row(orderline_shared, RD);
 #else
-    row_t* r_orderline = get_row(index, item, RD);
+    auto orderline = get_row(index, item, RD);
 #endif
-    assert(r_orderline != NULL);
+    assert(orderline != NULL);
 
     int64_t ol_o_id, ol_i_id, ol_supply_w_id;
-    r_orderline->get_value(OL_O_ID, ol_o_id);
-    r_orderline->get_value(OL_I_ID, ol_i_id);
-    r_orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
+    orderline->get_value(OL_O_ID, ol_o_id);
+    orderline->get_value(OL_I_ID, ol_i_id);
+    orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
     item = item->next;
 
     if (ol_o_id >= o_id) break;
 
+    if (ol_supply_w_id != s_w_id) continue;
+
+    assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
     ol_supply_w_id_list[list_size] = ol_supply_w_id;
     list_size++;
   }
 #else
+  auto max_key = orderlineKey(ol_o_id - 20, ol_d_id, ol_w_id);
   uint64_t cnt = 20;
   uint64_t row_ids[20];
 
-  idx_rc =
-      index_read_multiple(index, key, row_ids, cnt, wh_to_part(query->w_id));
+  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
+  assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
+
+  itemid_t idx_item;
+  auto item = &idx_item;
 
   for (uint64_t i = 0; i < cnt; i++) {
     item->location = reinterpret_cast<void*>(row_ids[i]);
@@ -976,26 +968,26 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
     row_t* r_orderline = get_row(index, item, RD);
     assert(r_orderline != NULL);
 
-    int64_t ol_o_id, ol_i_id, ol_supply_w_id;
+    uint64_t ol_o_id, ol_i_id, ol_supply_w_id;
     r_orderline->get_value(OL_O_ID, ol_o_id);
     r_orderline->get_value(OL_I_ID, ol_i_id);
     r_orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
 
-    if (ol_o_id >= o_id) break;
+    if (ol_supply_w_id != s_w_id) continue;
 
+    assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
     ol_supply_w_id_list[list_size] = ol_supply_w_id;
     list_size++;
   }
-
 #endif
 
-  int64_t distinct_ol_i_id_list[20];
+  uint64_t distinct_ol_i_id_list[20];
   uint64_t distinct_count = 0;
 
   for (uint64_t i = 0; i < list_size; i++) {
-    int64_t ol_i_id = ol_i_id_list[i];
-    int64_t ol_supply_w_id = ol_supply_w_id_list[i];
+    uint64_t ol_i_id = ol_i_id_list[i];
+    uint64_t ol_supply_w_id = ol_supply_w_id_list[i];
 
     bool duplicate = false;
     for (uint64_t j = 0; j < distinct_count; j++)
@@ -1005,38 +997,55 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
       }
     if (duplicate) continue;
 
-    uint64_t stock_key = stockKey(ol_i_id, ol_supply_w_id);
-    INDEX* stock_index = _wl->i_stock;
-    itemid_t* stock_item;
+    auto key = stockKey(ol_i_id, ol_supply_w_id);
+    auto index = _wl->i_stock;
+    auto part_id = wh_to_part(ol_supply_w_id);
 
 #if INDEX_STRUCT != IDX_MICA
-    index_read(stock_index, stock_key, wh_to_part(ol_supply_w_id), stock_item);
-    assert(stock_item != NULL);
+    auto item = index_read(index, key, part_id);
+    assert(item != NULL);
 #else
-    itemid_t idx_stock_item;
-    stock_item = &idx_stock_item;
-
-    idx_rc = index_read(stock_index, stock_key, stock_item,
-                        wh_to_part(ol_supply_w_id));
+    idx_rc = index_read(index, key, item, part_id);
+    assert(idx_rc != Abort);
     assert(idx_rc == RCOK);
 #endif
 
-    row_t* r_stock = ((row_t*)stock_item->location);
 #if CC_ALG != MICA
-    row_t* r_stock_local = get_row(r_stock, RD);
+    auto shared = (row_t*)item->location;
+    auto local = get_row(shared, RD);
 #else
-    (void)r_stock;
-    row_t* r_stock_local = get_row(stock_index, stock_item, RD);
+    auto local = get_row(index, item, RD);
 #endif
-    if (r_stock_local == NULL) {
-      return finish(Abort);
-    }
+    assert(local != NULL);
 
-    UInt64 s_quantity;
-    s_quantity = *(int64_t*)r_stock_local->get_value(S_QUANTITY);
-    if (s_quantity < query->threshold)
+    uint64_t s_quantity;
+    local->get_value(S_QUANTITY, s_quantity);
+    if (s_quantity < threshold)
       distinct_ol_i_id_list[distinct_count++] = ol_i_id;
   }
+
+  // printf("stock_level_getStockCount: w_id=%" PRIu64 " d_id=%" PRIu64
+  //        " o_id=%" PRIu64 " s_w_id=%" PRIu64 " list_size=%" PRIu64
+  //        " distinct_cnt=%" PRIu64 "\n",
+  //        ol_w_id, ol_d_id, ol_o_id, s_w_id, list_size, distinct_count);
+  return distinct_count;
+}
+
+RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
+#if TPCC_FULL
+  set_readonly();
+
+  auto& arg = query->args.stock_level;
+
+  auto district = stock_level_getOId(arg.w_id, arg.d_id);
+  assert(district != NULL);
+  int64_t o_id;
+  district->get_value(D_NEXT_O_ID, o_id);
+
+  auto distinct_count = stock_level_getStockCount(arg.w_id, arg.d_id, o_id,
+                                                  arg.w_id, arg.threshold);
+  (void)distinct_count;
 #endif
+
   return finish(RCOK);
 }
