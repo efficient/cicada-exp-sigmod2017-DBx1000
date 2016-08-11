@@ -560,7 +560,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
       FAIL_ON_ABORT();
       return finish(Abort);
     };
-    bool remote = ol_supply_w_id == arg.w_id;
+    bool remote = ol_supply_w_id != arg.w_id;
     new_order_updateStock(stock, ol_quantity, remote);
 
 #if TPCC_INSERT_ROWS
