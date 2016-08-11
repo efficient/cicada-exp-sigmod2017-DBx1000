@@ -271,7 +271,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     char phone[16];
     MakeNumberString(16, 16, phone, wid - 1); /* Phone */
     row->set_value(C_PHONE, phone);
-    row->set_value(C_SINCE, 0);
+    row->set_value(C_SINCE, uint64_t(0));
     row->set_value(C_CREDIT_LIM, 50000.0);
     row->set_value(C_DELIVERY_CNT, uint64_t(0));
     char c_data[500];
