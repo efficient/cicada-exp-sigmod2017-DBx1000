@@ -41,13 +41,9 @@ RC tpcc_txn_man::run_txn(base_query* query) {
   }
 }
 
-#define FAIL_ON_ABORT() \
-  do {                  \
-    assert(false);      \
-  } while (0)
-// #define FAIL_ON_ABORT() \
-//   do {                  \
-//   } while (0)
+// void FAIL_ON_ABORT() {assert(false);}
+
+void FAIL_ON_ABORT() {}
 
 //////////////////////////////////////////////////////
 // Helper
@@ -163,6 +159,7 @@ row_t* tpcc_txn_man::payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
   uint64_t row_ids[100];
 
   auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
+  if (idx_rc == Abort) return NULL;
   assert(idx_rc == RCOK);
   assert(cnt != 0 && cnt != 100);
 
@@ -584,10 +581,7 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
   auto item = index_read(index, key, part_id);
-  if (item == NULL) {
-    assert(false);
-    return NULL;
-  }
+  assert(item != NULL);
 
   uint64_t cnt = 0;
   auto it = item;
@@ -602,6 +596,7 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
   uint64_t row_ids[100];
 
   auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
+  assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
   assert(cnt != 0 && cnt != 100);
 
@@ -628,13 +623,14 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
   auto item = index_read(index, key, part_id);
-  if (item == NULL) return NULL;
+  assert(item != NULL);
 #else
   auto max_key = orderKey(1, c_id, d_id, w_id);
   uint64_t cnt = 1;
   uint64_t row_ids[1];
 
   auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
+  assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
 
   // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
@@ -663,10 +659,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
   auto item = index_read(index, key, part_id);
-  if (item == NULL) {
-    assert(false);
-    return;
-  }
+  assert(item != NULL);
   uint64_t cnt = 0;
   while (item != NULL) {
 #if CC_ALG != MICA
@@ -690,6 +683,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   uint64_t row_ids[100];
 
   auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
+  assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
   assert(cnt != 100);
 
