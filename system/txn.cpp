@@ -287,7 +287,7 @@ RC
 txn_man::index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id)
 {
 	if (row_cnt == 0 && !mica_tx->has_began())
-		mica_tx->begin();
+		mica_tx->begin(readonly);
 
 	item->mica_tx = mica_tx;
 	return index->index_read(key, item, part_id, get_thd_id());
@@ -299,6 +299,9 @@ template RC txn_man::index_read(OrderedIndexMICA * index, idx_key_t key, itemid_
 template <typename INDEX_T>
 RC
 txn_man::index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
 	return index->index_read_multiple(mica_tx, key, row_ids, count, part_id, get_thd_id());
 }
 
@@ -308,6 +311,9 @@ template RC txn_man::index_read_multiple(OrderedIndexMICA * index, idx_key_t key
 template <typename INDEX_T>
 RC
 txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
 	return index->index_read_range(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
 }
 
