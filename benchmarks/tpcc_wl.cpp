@@ -359,10 +359,10 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
         row->set_value(OL_AMOUNT, (double)URand(1, 999999, wid - 1) / 100.0);
       }
       row->set_value(OL_QUANTITY, uint64_t(5));
-      // char ol_dist_info[24];
-      // MakeAlphaString(24, 24, ol_dist_info, wid - 1);
-      // row->set_value(OL_DIST_INFO, ol_dist_info);
-      row->set_value(OL_DIST_INFO, URand(1, 10, wid - 1));
+      char ol_dist_info[24];
+      MakeAlphaString(24, 24, ol_dist_info, wid - 1);
+      row->set_value(OL_DIST_INFO, ol_dist_info);
+// row->set_value(OL_DIST_INFO, URand(1, 10, wid - 1));
 #if TPCC_FULL
       index_insert(i_orderline, orderlineKey(oid, did, wid), row,
                    wh_to_part(wid));

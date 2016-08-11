@@ -459,8 +459,8 @@ bool tpcc_txn_man::new_order_createOrderLine(
   row->set_value(OL_SUPPLY_W_ID, ol_supply_w_id);
   row->set_value(OL_QUANTITY, ol_quantity);
   row->set_value(OL_AMOUNT, ol_amount);
-  row->set_value(OL_DIST_INFO, d_id);
-// row->set_value(OL_DIST_INFO, const_cast<char*>(ol_dist_info));
+  row->set_value(OL_DIST_INFO, const_cast<char*>(ol_dist_info));
+// row->set_value(OL_DIST_INFO, d_id);
 #endif
 #if CC_ALG != MICA
   insert_row(row, _wl->t_orderline);
