@@ -8,6 +8,7 @@
 #include "row.h"
 #include "index_hash.h"
 #include "index_btree.h"
+#include "index_mica.h"
 #include "tpcc_const.h"
 
 void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
@@ -196,7 +197,6 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
   row->get_value(C_PAYMENT_CNT, c_payment_cnt);
   row->set_value(C_PAYMENT_CNT, c_payment_cnt + 1);
 
-#if TPCC_INSERT_ROWS
   const char* c_credit = row->get_value(C_CREDIT);
   if (strstr(c_credit, "BC")) {
     char c_new_data[501];
@@ -206,7 +206,6 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
     strncat(c_new_data, c_data, 500 - strlen(c_new_data));
     row->set_value(C_DATA, c_new_data);
   }
-#endif
 }
 
 bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
@@ -235,7 +234,7 @@ bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
 #if CC_ALG != MICA
   insert_row(row, _wl->t_history);
 #else
-// get_new_row() also does insert_row()
+// No index to update.
 #endif
   return true;
 }
@@ -364,8 +363,9 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 #if CC_ALG != MICA
   insert_row(row, _wl->t_order);
 #else
-// get_new_row() also does insert_row()
-// TODO: Insert it into the index.
+  auto mica_idx = _wl->i_order->mica_idx;
+  auto key = orderKey(o_id, c_id, d_id, w_id);
+  return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
 #endif
   return true;
 }
@@ -388,8 +388,9 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
 #if CC_ALG != MICA
   insert_row(row, _wl->t_neworder);
 #else
-// get_new_row() also does insert_row()
-// TODO: Insert it into the index.
+  auto mica_idx = _wl->i_neworder->mica_idx;
+  auto key = neworderKey(o_id);
+  return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
 #endif
   return true;
 }
@@ -466,7 +467,9 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #if CC_ALG != MICA
   insert_row(row, _wl->t_orderline);
 #else
-// get_new_row() also does insert_row()
+  auto mica_idx = _wl->i_orderline->mica_idx;
+  auto key = orderlineKey(o_id, d_id, w_id);
+  return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
 #endif
   return true;
 }
@@ -681,12 +684,12 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     cnt++;
   }
 #else
-  uint64_t cnt = 100;
-  uint64_t row_ids[100];
+  uint64_t cnt = 1000;
+  uint64_t row_ids[1000];
 
   auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
   assert(idx_rc == RCOK);
-  assert(cnt != 100);
+  assert(cnt != 1000);
 
   itemid_t idx_item;
   auto item = &idx_item;
@@ -738,6 +741,14 @@ RC tpcc_txn_man::run_order_status(tpcc_query* query) {
 
   return finish(RCOK);
 }
+
+// "getNewOrder": "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1", #
+// "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?", # d_id, w_id, no_o_id
+// "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?", # no_o_id, d_id, w_id
+// "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = ? WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?", # o_carrier_id, no_o_id, d_id, w_id
+// "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = ? WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?", # o_entry_d, no_o_id, d_id, w_id
+// "sumOLAmount": "SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?", # no_o_id, d_id, w_id
+// "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?", # ol_total, c_id, d_id, w_id
 
 RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #if 0

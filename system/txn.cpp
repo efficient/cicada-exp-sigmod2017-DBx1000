@@ -208,6 +208,7 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 		mica_tx->begin();
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
+	assert(row_cnt < MAX_ROW_PER_TXN);
 	if (accesses[row_cnt] == NULL) {
 		Access * access = (Access *) _mm_malloc(sizeof(Access), 64);
 		accesses[row_cnt] = access;

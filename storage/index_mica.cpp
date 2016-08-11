@@ -132,7 +132,7 @@ RC IndexMICAGeneric<MICAIndex>::index_insert(idx_key_t key, itemid_t* item,
     // printf("idx=%p part_id=%d key=%lu row_id=%lu\n", this, part_id, key,
     // row_id);
     if (!tx.begin()) assert(false);
-    if (!mica_idx[part_id]->insert(&tx, key, row_id)) {
+    if (mica_idx[part_id]->insert(&tx, key, row_id) != 1) {
       if (!tx.abort()) assert(false);
       continue;
     }
@@ -225,7 +225,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_insert(idx_key_t key,
     // printf("idx=%p part_id=%d key=%lu row_id=%lu\n", this, part_id, key,
     // row_id);
     if (!tx.begin()) assert(false);
-    if (!mica_idx[part_id]->insert(&tx, make_pair(key, row_id), 0)) {
+    if (mica_idx[part_id]->insert(&tx, make_pair(key, row_id), 0) != 1) {
       if (!tx.abort()) assert(false);
       continue;
     }

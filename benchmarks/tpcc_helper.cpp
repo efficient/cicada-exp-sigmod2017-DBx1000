@@ -32,7 +32,7 @@ uint64_t orderKey(int64_t o_id, uint64_t o_c_id, uint64_t o_d_id,
          o_c_id * g_max_orderline + (g_max_orderline - o_id);
 }
 
-uint64_t orderKey(int64_t o_id) { return o_id; }
+uint64_t neworderKey(int64_t o_id) { return o_id; }
 
 uint64_t orderlineKey(int64_t ol_o_id, uint64_t ol_d_id, uint64_t ol_w_id) {
   // Use negative ol_o_id to allow reusing the current index interface.
