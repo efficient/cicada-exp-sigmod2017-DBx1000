@@ -103,7 +103,7 @@ RC tpcc_wl::get_txn_man(txn_man*& txn_manager, thread_t* h_thd) {
 
 // TODO ITEM table is assumed to be in partition 0
 void tpcc_wl::init_tab_item() {
-  for (UInt32 i = 1; i <= g_max_items; i++) {
+  for (uint64_t i = 1; i <= g_max_items; i++) {
     row_t* row;
     uint64_t row_id;
     t_item->get_new_row(row, 0, row_id);
@@ -187,7 +187,7 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
     double w_ytd = 30000.00;
     row->set_value(D_TAX, tax);
     row->set_value(D_YTD, w_ytd);
-    row->set_value(D_NEXT_O_ID, 3001);
+    row->set_value(D_NEXT_O_ID, uint64_t(3001));
 
     index_insert(i_district, distKey(did, wid), row, wh_to_part(wid));
   }
@@ -202,7 +202,7 @@ void tpcc_wl::init_tab_stock(uint64_t wid) {
     row->set_value(S_I_ID, sid);
     row->set_value(S_W_ID, wid);
     row->set_value(S_QUANTITY, URand(10, 100, wid - 1));
-    row->set_value(S_REMOTE_CNT, 0);
+    row->set_value(S_REMOTE_CNT, uint64_t(0));
 #if !TPCC_SMALL
     char s_dist[25];
     char row_name[10] = "S_DIST_";
@@ -218,8 +218,8 @@ void tpcc_wl::init_tab_stock(uint64_t wid) {
       MakeAlphaString(24, 24, s_dist, wid - 1);
       row->set_value(row_name, s_dist);
     }
-    row->set_value(S_YTD, 0);
-    row->set_value(S_ORDER_CNT, 0);
+    row->set_value(S_YTD, uint64_t(0));
+    row->set_value(S_ORDER_CNT, uint64_t(0));
     char s_data[50];
     int len = MakeAlphaString(26, 50, s_data, wid - 1);
     if (RAND(10, wid - 1) == 0) {
@@ -273,7 +273,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     row->set_value(C_PHONE, phone);
     row->set_value(C_SINCE, 0);
     row->set_value(C_CREDIT_LIM, 50000.0);
-    row->set_value(C_DELIVERY_CNT, 0);
+    row->set_value(C_DELIVERY_CNT, uint64_t(0));
     char c_data[500];
     MakeAlphaString(300, 500, c_data, wid - 1);
     row->set_value(C_DATA, c_data);
@@ -288,7 +288,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     row->set_value(C_DISCOUNT, (double)URand(1, 5000, wid - 1) / 10000.0);
     row->set_value(C_BALANCE, -10.0);
     row->set_value(C_YTD_PAYMENT, 10.0);
-    row->set_value(C_PAYMENT_CNT, 1);
+    row->set_value(C_PAYMENT_CNT, uint64_t(1));
     index_insert(i_customer_last, custNPKey(did, wid, c_last), row,
                  wh_to_part(wid));
     index_insert(i_customer_id, custKey(cid, did, wid), row, wh_to_part(wid));
@@ -305,7 +305,7 @@ void tpcc_wl::init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id) {
   row->set_value(H_D_ID, d_id);
   row->set_value(H_C_W_ID, w_id);
   row->set_value(H_W_ID, w_id);
-  row->set_value(H_DATE, 0);
+  row->set_value(H_DATE, uint64_t(0));
   row->set_value(H_AMOUNT, 10.0);
 #if !TPCC_SMALL
   char h_data[24];
@@ -332,10 +332,10 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
     if (oid < 2101)
       row->set_value(O_CARRIER_ID, URand(1, 10, wid - 1));
     else
-      row->set_value(O_CARRIER_ID, 0);
+      row->set_value(O_CARRIER_ID, uint64_t(0));
     uint64_t o_ol_cnt = URand(5, 15, wid - 1);
     row->set_value(O_OL_CNT, o_ol_cnt);
-    row->set_value(O_ALL_LOCAL, 1);
+    row->set_value(O_ALL_LOCAL, uint64_t(1));
 
 #if TPCC_FULL
     index_insert(i_order, orderKey(oid, cid, did, wid), row, wh_to_part(wid));
@@ -355,10 +355,10 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
         row->set_value(OL_DELIVERY_D, o_entry);
         row->set_value(OL_AMOUNT, 0.0);
       } else {
-        row->set_value(OL_DELIVERY_D, 0);
+        row->set_value(OL_DELIVERY_D, uint64_t(0));
         row->set_value(OL_AMOUNT, (double)URand(1, 999999, wid - 1) / 100.0);
       }
-      row->set_value(OL_QUANTITY, 5);
+      row->set_value(OL_QUANTITY, uint64_t(5));
       // char ol_dist_info[24];
       // MakeAlphaString(24, 24, ol_dist_info, wid - 1);
       // row->set_value(OL_DIST_INFO, ol_dist_info);

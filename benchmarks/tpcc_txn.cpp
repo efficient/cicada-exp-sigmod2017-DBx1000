@@ -322,10 +322,11 @@ void tpcc_txn_man::new_order_incrementNextOrderId(row_t* row,
                                                   int64_t* out_o_id) {
   // UPDATE DISTRICT SET D_NEXT_O_ID = ? WHERE D_ID = ? AND D_W_ID = ?
   int64_t o_id;
-  o_id = *(int64_t*)row->get_value(D_NEXT_O_ID);
+  row->get_value(D_NEXT_O_ID, o_id);
+  // printf("%" PRIi64 "\n", o_id);
   *out_o_id = o_id;
   o_id++;
-  row->set_value(D_NEXT_O_ID, &o_id);
+  row->set_value(D_NEXT_O_ID, o_id);
 }
 
 row_t* tpcc_txn_man::new_order_getCustomer(uint64_t w_id, uint64_t d_id,
@@ -352,7 +353,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!get_new_row(_wl->t_order, row, part_id, row_id)) return false;
-  row->set_value(O_ID, &o_id);
+  row->set_value(O_ID, o_id);
   row->set_value(O_D_ID, d_id);
   row->set_value(O_W_ID, w_id);
   row->set_value(O_C_ID, c_id);
@@ -382,7 +383,7 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!get_new_row(_wl->t_neworder, row, part_id, row_id)) return false;
-  row->set_value(O_ID, &o_id);
+  row->set_value(O_ID, o_id);
   row->set_value(O_D_ID, d_id);
   row->set_value(O_W_ID, w_id);
 #if CC_ALG != MICA
@@ -452,7 +453,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!get_new_row(_wl->t_orderline, row, part_id, row_id)) return false;
-  row->set_value(OL_O_ID, &o_id);
+  row->set_value(OL_O_ID, o_id);
   row->set_value(OL_D_ID, d_id);
   row->set_value(OL_W_ID, w_id);
   row->set_value(OL_NUMBER, ol_number);
@@ -638,6 +639,7 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
 
   // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
   if (cnt == 0) return NULL;
+  assert(cnt == 1);
 
   itemid_t idx_item;
   auto item = &idx_item;
@@ -663,7 +665,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   auto item = index_read(index, key, part_id);
   if (item == NULL) {
     assert(false);
-    return NULL;
+    return;
   }
   uint64_t cnt = 0;
   while (item != NULL) {
@@ -684,12 +686,12 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     cnt++;
   }
 #else
-  uint64_t cnt = 1000;
-  uint64_t row_ids[1000];
+  uint64_t cnt = 100;
+  uint64_t row_ids[100];
 
   auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
   assert(idx_rc == RCOK);
-  assert(cnt != 1000);
+  assert(cnt != 100);
 
   itemid_t idx_item;
   auto item = &idx_item;
