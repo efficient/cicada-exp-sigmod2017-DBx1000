@@ -158,6 +158,10 @@ int main(int argc, char* argv[])
 
 	// spawn and run txns again.
 	// int ret = system("perf record -a sleep 1 &");
+	// int ret = system("perf record -C 1 sleep 1 &");
+	// int ret = system("perf record -C 2 sleep 1 &");
+	// int ret = system("perf stat -C 1 sleep 1 &");
+	// int ret = system("perf stat -C 2 sleep 1 &");
 	// (void)ret;
 
 	// int64_t starttime = get_server_clock();

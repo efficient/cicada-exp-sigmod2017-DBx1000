@@ -237,8 +237,10 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 
 template row_t * txn_man::get_row(index_btree* index, itemid_t * item, access_t type);
 template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, access_t type);
+#if INDEX_STRUCT == IDX_MICA
 template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, access_t type);
 template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, access_t type);
+#endif
 #endif
 
 
@@ -274,8 +276,8 @@ txn_man::index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& ite
 	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
 }
 
-template itemid_t * txn_man::index_read(index_btree * index, idx_key_t key, int part_id, itemid_t *& item);
-template itemid_t * txn_man::index_read(IndexHash * index, idx_key_t key, int part_id, itemid_t *& itemd);
+template void txn_man::index_read(index_btree * index, idx_key_t key, int part_id, itemid_t *& item);
+template void txn_man::index_read(IndexHash * index, idx_key_t key, int part_id, itemid_t *& itemd);
 
 #else
 
@@ -301,6 +303,15 @@ txn_man::index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, 
 
 template RC txn_man::index_read_multiple(IndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
 template RC txn_man::index_read_multiple(OrderedIndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
+
+template <typename INDEX_T>
+RC
+txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	return index->index_read_range(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+template RC txn_man::index_read_range(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
 RC txn_man::finish(RC rc) {
@@ -327,8 +338,12 @@ RC txn_man::finish(RC rc) {
 	rc = validate_hekaton(rc);
 	cleanup(rc);
 #elif CC_ALG == MICA
-	if (rc == RCOK)
-		rc = mica_tx->commit() ? RCOK : Abort;
+	if (rc == RCOK) {
+		if (mica_tx->has_began())
+			rc = mica_tx->commit() ? RCOK : Abort;
+		else
+			rc = RCOK;
+	}
 	else
 		if (!mica_tx->abort())
 			assert(false);

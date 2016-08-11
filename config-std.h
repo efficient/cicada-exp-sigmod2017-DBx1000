@@ -10,8 +10,6 @@
 #define VIRTUAL_PART_CNT			1
 #define PAGE_SIZE					4096
 #define CL_SIZE						64
-// CPU_FREQ is used to get accurate timing info
-#define CPU_FREQ 					2.60 	// in GHz/s
 
 // # of transactions to run for warmup
 #define WARMUP						0
@@ -135,7 +133,10 @@
 #define WH_UPDATE					true
 #define NUM_WH 						1
 //
-#define TPCC_FULL					false
+#define TPCC_INSERT_ROWS  false
+// TPCC_FULL requires TPCC_INSERT_ROWS set to true
+#define TPCC_FULL         false
+//
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,
 				TPCC_NEW_ORDER,

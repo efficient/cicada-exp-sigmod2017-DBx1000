@@ -6,11 +6,11 @@
 #include "row.h"
 #endif
 
-RC IndexHash::init(uint64_t bucket_cnt, int part_cnt) {
+RC IndexHash::init(uint64_t part_cnt, uint64_t bucket_cnt) {
 	_bucket_cnt = bucket_cnt;
 	_bucket_cnt_per_part = bucket_cnt / part_cnt;
 	_buckets = new BucketHeader * [part_cnt];
-	for (int i = 0; i < part_cnt; i++) {
+	for (uint64_t i = 0; i < part_cnt; i++) {
 		_buckets[i] = (BucketHeader *) _mm_malloc(sizeof(BucketHeader) * _bucket_cnt_per_part, 64);
 		for (uint32_t n = 0; n < _bucket_cnt_per_part; n ++)
 			_buckets[i][n].init();
@@ -19,8 +19,8 @@ RC IndexHash::init(uint64_t bucket_cnt, int part_cnt) {
 }
 
 RC
-IndexHash::init(int part_cnt, table_t * table, uint64_t bucket_cnt) {
-	init(bucket_cnt, part_cnt);
+IndexHash::init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt) {
+	init(part_cnt, bucket_cnt);
 	this->table = table;
 	return RCOK;
 }

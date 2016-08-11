@@ -63,6 +63,7 @@ uint64_t merge_idx_key(uint64_t key1, uint64_t key2, uint64_t key3) {
 /****************************************************/
 // Global Clock!
 /****************************************************/
+double gCPUFreq;
 /*
 inline uint64_t get_server_clock() {
 #if defined(__i386__)
@@ -72,7 +73,7 @@ inline uint64_t get_server_clock() {
     unsigned hi, lo;
     __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
     uint64_t ret = ( (uint64_t)lo)|( ((uint64_t)hi)<<32 );
-	ret = (uint64_t) ((double)ret / CPU_FREQ);
+	ret = (uint64_t) ((double)ret / gCPUFreq);
 #else
 	timespec * tp = new timespec;
     clock_gettime(CLOCK_REALTIME, tp);

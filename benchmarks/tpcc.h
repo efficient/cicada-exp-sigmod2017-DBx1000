@@ -30,9 +30,9 @@ class tpcc_wl : public workload {
   INDEX* i_customer_id;
   INDEX* i_customer_last;
   INDEX* i_stock;
-  INDEX* i_order;                 // key = (w_id, d_id, o_id)
-  ORDERED_INDEX* i_orderline;     // key = (w_id, d_id, o_id)
-  ORDERED_INDEX* i_orderline_wd;  // key = (d_id, w_id).
+  ORDERED_INDEX* i_order;
+  ORDERED_INDEX* i_neworder;
+  ORDERED_INDEX* i_orderline;
 
   bool** delivering;
   uint32_t next_tid;
@@ -74,6 +74,51 @@ class tpcc_txn_man : public txn_man {
   RC run_order_status(tpcc_query* query);
   RC run_delivery(tpcc_query* query);
   RC run_stock_level(tpcc_query* query);
+
+  template <typename IndexT>
+  row_t* search(IndexT* index, uint64_t key, uint64_t part, access_t type);
+  bool get_new_row(table_t* tbl, row_t* row, uint64_t part_id,
+                   uint64_t& out_row_id);
+
+  row_t* payment_getWarehouse(uint64_t w_id);
+  void payment_updateWarehouseBalance(row_t* row, double h_amount);
+  row_t* payment_getDistrict(uint64_t d_w_id, uint64_t d_id);
+  void payment_updateDistrictBalance(row_t* row, double h_amount);
+  row_t* payment_getCustomerByCustomerId(uint64_t w_id, uint64_t d_id,
+                                         uint64_t c_id);
+  row_t* payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
+                                       const char* c_last, uint64_t* out_c_id);
+  void payment_updateCustomer(row_t* row, uint64_t c_id, uint64_t c_d_id,
+                              uint64_t c_w_id, uint64_t d_id, uint64_t w_id,
+                              double h_amount);
+  bool payment_insertHistory(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id,
+                             uint64_t d_id, uint64_t w_id, uint64_t h_date,
+                             double h_amount, const char* h_data);
+
+  row_t* new_order_getWarehouseTaxRate(uint64_t w_id);
+  row_t* new_order_getDistrict(uint64_t d_id, uint64_t d_w_id);
+  void new_order_incrementNextOrderId(row_t* row, int64_t* out_o_id);
+  row_t* new_order_getCustomer(uint64_t w_id, uint64_t d_id, uint64_t c_id);
+  bool new_order_createOrder(int64_t o_id, uint64_t d_id, uint64_t w_id,
+                             uint64_t c_id, uint64_t o_entry_d,
+                             uint64_t o_carrier_id, uint64_t ol_cnt,
+                             bool all_local);
+  bool new_order_createNewOrder(int64_t o_id, uint64_t d_id, uint64_t w_id);
+  row_t* new_order_getItemInfo(uint64_t ol_i_id);
+  row_t* new_order_getStockInfo(uint64_t ol_i_id, uint64_t ol_supply_w_id);
+  void new_order_updateStock(row_t* row, uint64_t ol_quantity, bool remote);
+  bool new_order_createOrderLine(int64_t o_id, uint64_t d_id, uint64_t w_id,
+                                 uint64_t ol_number, uint64_t ol_i_id,
+                                 uint64_t ol_supply_w_id, uint64_t ol_quantity,
+                                 uint64_t ol_amount, const char* ol_dist_info);
+
+  row_t* order_status_getCustomerByCustomerId(uint64_t w_id, uint64_t d_id,
+                                              uint64_t c_id);
+  row_t* order_status_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
+                                            const char* c_last,
+                                            uint64_t* out_c_id);
+  row_t* order_status_getLastOrder(uint64_t w_id, uint64_t d_id, uint64_t c_id);
+  void order_status_getOrderLines(uint64_t w_id, uint64_t d_id, uint64_t o_id);
 };
 
 #endif

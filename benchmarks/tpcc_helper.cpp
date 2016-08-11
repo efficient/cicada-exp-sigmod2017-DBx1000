@@ -2,40 +2,42 @@
 #include <city.h>
 
 drand48_data** tpcc_buffer;
+uint64_t C_255, C_1023, C_8191;
+
+uint64_t itemKey(uint64_t i_id) { return i_id; }
+
+uint64_t warehouseKey(uint64_t w_id) { return w_id; }
 
 uint64_t distKey(uint64_t d_id, uint64_t d_w_id) {
   return d_w_id * DIST_PER_WARE + d_id;
 }
 
 uint64_t custKey(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id) {
-  return (distKey(c_d_id, c_w_id) * g_cust_per_dist + c_id);
+  return distKey(c_d_id, c_w_id) * g_cust_per_dist + c_id;
 }
 
-uint64_t orderlineKey(uint64_t w_id, uint64_t d_id, uint64_t o_id) {
-  //return distKey(d_id, w_id) * g_cust_per_dist + o_id;
-  return distKey(d_id, w_id) * g_cust_per_dist * (uint64_t(1) << 16) + o_id;
-}
-
-uint64_t orderPrimaryKey(uint64_t w_id, uint64_t d_id, uint64_t o_id) {
-  return orderlineKey(w_id, d_id, o_id);
-}
-
-uint64_t custNPKey(char* c_last, uint64_t c_d_id, uint64_t c_w_id) {
-  // uint64_t key = 0;
-  // char offset = 'A';
-  // for (uint32_t i = 0; i < strlen(c_last); i++)
-  // 	key = (key << 2) + (c_last[i] - offset);
-  // key = key << 3;
-
-  uint64_t key = CityHash64(c_last, strlen(c_last));
-  key = key * g_num_wh * DIST_PER_WARE;
-
-  key += c_w_id * DIST_PER_WARE + c_d_id;
-  return key;
+uint64_t custNPKey(uint64_t c_d_id, uint64_t c_w_id, const char* c_last) {
+  return CityHash64(c_last, strlen(c_last)) * g_num_wh * DIST_PER_WARE +
+         distKey(c_d_id, c_w_id);
 }
 
 uint64_t stockKey(uint64_t s_i_id, uint64_t s_w_id) {
   return s_w_id * g_max_items + s_i_id;
+}
+
+uint64_t orderKey(int64_t o_id, uint64_t o_c_id, uint64_t o_d_id,
+                  uint64_t o_w_id) {
+  // Use negative o_id to allow reusing the current index interface.
+  return distKey(o_d_id, o_w_id) * g_cust_per_dist * g_max_orderline +
+         o_c_id * g_max_orderline + (g_max_orderline - o_id);
+}
+
+uint64_t orderKey(int64_t o_id) { return o_id; }
+
+uint64_t orderlineKey(int64_t ol_o_id, uint64_t ol_d_id, uint64_t ol_w_id) {
+  // Use negative ol_o_id to allow reusing the current index interface.
+  return distKey(ol_d_id, ol_w_id) * g_max_orderline +
+         (g_max_orderline - ol_o_id);
 }
 
 uint64_t Lastname(uint64_t num, char* name) {
@@ -57,32 +59,22 @@ uint64_t URand(uint64_t x, uint64_t y, uint64_t thd_id) {
   return x + RAND(y - x + 1, thd_id);
 }
 
+void InitNURand(uint64_t thd_id) {
+  C_255 = (uint64_t)URand(0, 255, thd_id);
+  C_1023 = (uint64_t)URand(0, 1023, thd_id);
+  C_8191 = (uint64_t)URand(0, 8191, thd_id);
+}
+
 uint64_t NURand(uint64_t A, uint64_t x, uint64_t y, uint64_t thd_id) {
-  static bool C_255_init = false;
-  static bool C_1023_init = false;
-  static bool C_8191_init = false;
-  static uint64_t C_255, C_1023, C_8191;
   int C = 0;
   switch (A) {
     case 255:
-      if (!C_255_init) {
-        C_255 = (uint64_t)URand(0, 255, thd_id);
-        C_255_init = true;
-      }
       C = C_255;
       break;
     case 1023:
-      if (!C_1023_init) {
-        C_1023 = (uint64_t)URand(0, 1023, thd_id);
-        C_1023_init = true;
-      }
       C = C_1023;
       break;
     case 8191:
-      if (!C_8191_init) {
-        C_8191 = (uint64_t)URand(0, 8191, thd_id);
-        C_8191_init = true;
-      }
       C = C_8191;
       break;
     default:

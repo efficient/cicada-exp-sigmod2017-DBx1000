@@ -132,6 +132,9 @@ public:
 	#endif
 #endif
 
+	void set_part_id(uint64_t part_id) { _part_id = part_id; }
+	void set_row_id(uint64_t row_id) { _row_id = row_id; }
+
 private:
 	// primary key should be calculated from the data stored in the row.
 	uint64_t 		_primary_key;

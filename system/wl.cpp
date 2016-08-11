@@ -14,6 +14,10 @@ RC workload::init() {
 
 	mica_sw.init_start();
 	mica_sw.init_end();
+
+	gCPUFreq = mica_sw.c_1_sec() / 1000000000.;
+	printf("detected CPU frequency = %.3f GHz\n", gCPUFreq);
+
 #if CC_ALG == MICA
 	auto config = ::mica::util::Config::load_file("test_tx.json");
 	mica_alloc = new MICAAlloc(config.get("alloc"));
@@ -125,21 +129,29 @@ RC workload::init_schema(string schema_file) {
 			}
 
 			string tname(items[0]);
+
+			int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
+#if WORKLOAD == TPCC
+				if (tname == "ITEM")
+					part_cnt = 1;
+#endif
+
+				uint64_t table_size;
+#if WORKLOAD == YCSB
+				table_size = g_synth_table_size;
+#elif WORKLOAD == TPCC
+				if (tname == "ITEM")
+					table_size = stoi(items[1]);
+				else
+					table_size = stoi(items[1]) * g_num_wh;
+#endif
+
 		if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
 				INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
 				new(index) INDEX();
-				int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
-				if (tname == "ITEM")
-					part_cnt = 1;
+
 #if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
-	#if WORKLOAD == YCSB
-				index->init(part_cnt, tables[tname], g_synth_table_size * 2);
-				// index->init(part_cnt, tables[tname], g_synth_table_size);
-	#elif WORKLOAD == TPCC
-				assert(tables[tname] != NULL);
-				// index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt);
-				index->init(part_cnt, tables[tname], stoi( items[1] ) * part_cnt * g_num_wh);
-	#endif
+				index->init(part_cnt, tables[tname], table_size * 2);
 #else
 				index->init(part_cnt, tables[tname]);
 #endif
@@ -148,14 +160,8 @@ RC workload::init_schema(string schema_file) {
 			else {
 				ORDERED_INDEX * index = (ORDERED_INDEX *) _mm_malloc(sizeof(ORDERED_INDEX), 64);
 				new(index) ORDERED_INDEX();
-				int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
-				if (tname == "ITEM")
-					part_cnt = 1;
-#if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
-				index->init(part_cnt, tables[tname], 0);
-#else
+
 				index->init(part_cnt, tables[tname]);
-#endif
 				ordered_indexes[iname] = index;
 			}
 		}

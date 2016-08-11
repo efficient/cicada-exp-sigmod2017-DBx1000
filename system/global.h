@@ -183,6 +183,7 @@ extern bool g_wh_update;
 extern char * output_file;
 extern UInt32 g_max_items;
 extern UInt32 g_cust_per_dist;
+extern uint64_t g_max_orderline;
 
 enum RC { RCOK, Commit, Abort, WAIT, ERROR, FINISH};
 
@@ -224,6 +225,7 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 #define ORDERED_INDEX		index_btree
 #elif (INDEX_STRUCT == IDX_MICA)
 #define INDEX		IndexMICA
+// #define INDEX		OrderedIndexMICA
 #define ORDERED_INDEX		OrderedIndexMICA
 #else  // IDX_HASH
 #define INDEX		IndexHash
