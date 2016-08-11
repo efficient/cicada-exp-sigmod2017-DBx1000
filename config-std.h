@@ -134,7 +134,8 @@
 #define NUM_WH 						1
 //
 #define TPCC_INSERT_ROWS  false
-// TPCC_FULL requires TPCC_INSERT_ROWS set to true
+#define TPCC_UPDATE_INDEX false
+// TPCC_FULL requires TPCC_INSERT_ROWS and TPCC_UPDATE_INDEX to fully function
 #define TPCC_FULL         false
 //
 enum TPCCTxnType {TPCC_ALL,
