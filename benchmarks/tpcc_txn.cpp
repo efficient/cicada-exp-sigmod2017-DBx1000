@@ -175,6 +175,7 @@ row_t* tpcc_txn_man::payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
   auto local = get_row(index, mid, WR);
 #endif
   if (local != NULL) local->get_value(C_ID, *out_c_id);
+  // printf("payment_getCustomerByLastName: %" PRIu64 "\n", cnt);
   return local;
 }
 
@@ -194,6 +195,8 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
   row->get_value(C_PAYMENT_CNT, c_payment_cnt);
   row->set_value(C_PAYMENT_CNT, c_payment_cnt + 1);
 
+#if TPCC_FULL
+#if !TPCC_SMALL
   const char* c_credit = row->get_value(C_CREDIT);
   if (strstr(c_credit, "BC")) {
     char c_new_data[501];
@@ -203,6 +206,8 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
     strncat(c_new_data, c_data, 500 - strlen(c_new_data));
     row->set_value(C_DATA, c_new_data);
   }
+#endif
+#endif
 }
 
 bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
@@ -279,11 +284,13 @@ RC tpcc_txn_man::run_payment(tpcc_query* query) {
   d_name[10] = '\0';
 
   char h_data[25];
+#if !TPCC_SMALL
   strcpy(h_data, w_name);
   int length = strlen(h_data);
   strcpy(&h_data[length], "    ");
   strcpy(&h_data[length + 4], d_name);
   h_data[length + 14] = '\0';
+#endif
 
   if (!payment_insertHistory(c_id, arg.c_d_id, arg.c_w_id, arg.d_id, arg.w_id,
                              arg.h_date, arg.h_amount, h_data)) {
@@ -361,9 +368,15 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 #if CC_ALG != MICA
   insert_row(row, _wl->t_order);
 #else
+
+#if TPCC_UPDATE_INDEX
   auto mica_idx = _wl->i_order->mica_idx;
   auto key = orderKey(o_id, c_id, d_id, w_id);
   return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
+#else
+  return true;
+#endif
+
 #endif
   return true;
 }
@@ -386,9 +399,15 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
 #if CC_ALG != MICA
   insert_row(row, _wl->t_neworder);
 #else
+
+#if TPCC_UPDATE_INDEX
   auto mica_idx = _wl->i_neworder->mica_idx;
   auto key = neworderKey(o_id);
   return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
+#else
+  return true;
+#endif
+
 #endif
   return true;
 }
@@ -465,9 +484,15 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #if CC_ALG != MICA
   insert_row(row, _wl->t_orderline);
 #else
+
+#if TPCC_UPDATE_INDEX
   auto mica_idx = _wl->i_orderline->mica_idx;
   auto key = orderlineKey(o_id, d_id, w_id);
   return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
+#else
+  return true;
+#endif
+
 #endif
   return true;
 }
@@ -490,8 +515,8 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
     FAIL_ON_ABORT();
     return finish(Abort);
   };
-  double w_tax;
-  warehouse->get_value(W_TAX, w_tax);
+  // double w_tax;
+  // warehouse->get_value(W_TAX, w_tax);
 
   auto district = new_order_getDistrict(arg.d_id, arg.w_id);
   if (district == NULL) {
@@ -509,8 +534,8 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
     FAIL_ON_ABORT();
     return finish(Abort);
   };
-  uint64_t c_discount;
-  customer->get_value(C_DISCOUNT, c_discount);
+  // uint64_t c_discount;
+  // customer->get_value(C_DISCOUNT, c_discount);
 
 #if TPCC_INSERT_ROWS
   uint64_t o_carrier_id = 0;
@@ -612,6 +637,7 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
   auto local = get_row(index, mid, RD);
 #endif
   if (local != NULL) local->get_value(C_ID, *out_c_id);
+  // printf("order_status_getCustomerByLastName: %" PRIu64 "\n", cnt);
   return local;
 }
 
