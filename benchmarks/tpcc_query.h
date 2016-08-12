@@ -54,7 +54,6 @@ struct tpcc_query_stock_level {
 
 struct tpcc_query_delivery {
   uint64_t w_id;
-  uint64_t d_id;
   uint64_t o_carrier_id;
   uint64_t ol_delivery_d;
 };

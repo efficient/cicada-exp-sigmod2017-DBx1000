@@ -245,6 +245,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read(idx_key_t key,
   (void)thd_id;
 
   bool skip_validation = !(MICA_FULLINDEX);
+  // bool skip_validation = false;
 
   auto tx = item->mica_tx;
   uint64_t row_id = (uint64_t)-1;
@@ -272,6 +273,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(
   if (count == 0) return RCOK;
 
   bool skip_validation = !(MICA_FULLINDEX);
+  // bool skip_validation = false;
 
   uint64_t i = 0;
   uint64_t ret =
@@ -300,6 +302,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
   if (count == 0) return RCOK;
 
   bool skip_validation = !(MICA_FULLINDEX);
+  // bool skip_validation = false;
 
   uint64_t i = 0;
   uint64_t ret =

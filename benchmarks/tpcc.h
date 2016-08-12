@@ -31,6 +31,7 @@ class tpcc_wl : public workload {
   INDEX* i_customer_last;
   INDEX* i_stock;
   ORDERED_INDEX* i_order;
+  ORDERED_INDEX* i_order_cust;
   ORDERED_INDEX* i_neworder;
   ORDERED_INDEX* i_orderline;
 
@@ -110,7 +111,7 @@ class tpcc_txn_man : public txn_man {
   bool new_order_createOrderLine(int64_t o_id, uint64_t d_id, uint64_t w_id,
                                  uint64_t ol_number, uint64_t ol_i_id,
                                  uint64_t ol_supply_w_id, uint64_t ol_quantity,
-                                 uint64_t ol_amount, const char* ol_dist_info);
+                                 double ol_amount, const char* ol_dist_info);
 
   row_t* order_status_getCustomerByCustomerId(uint64_t w_id, uint64_t d_id,
                                               uint64_t c_id);
@@ -119,6 +120,16 @@ class tpcc_txn_man : public txn_man {
                                             uint64_t* out_c_id);
   row_t* order_status_getLastOrder(uint64_t w_id, uint64_t d_id, uint64_t c_id);
   void order_status_getOrderLines(uint64_t w_id, uint64_t d_id, uint64_t o_id);
+
+  bool delivery_getNewOrder_deleteNewOrder(uint64_t d_id, uint64_t w_id,
+                                           int64_t* out_o_id);
+  row_t* delivery_getCId(int64_t no_o_id, uint64_t d_id, uint64_t w_id);
+  void delivery_updateOrders(row_t* row, uint64_t o_carrier_id);
+  bool delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d, int64_t no_o_id,
+                                            uint64_t d_id, uint64_t w_id,
+                                            double* out_ol_total);
+  bool delivery_updateCustomer(double ol_total, uint64_t c_id, uint64_t d_id,
+                               uint64_t w_id);
 
   row_t* stock_level_getOId(uint64_t d_w_id, uint64_t d_id);
   uint64_t stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,

@@ -82,7 +82,6 @@ TABLE=ORDER-LINE
 	8,int64_t,OL_QUANTITY
 	8,double,OL_AMOUNT
 	24,string,OL_DIST_INFO
-//8,int64_t,OL_DIST_INFO
 
 TABLE=ITEM
 	8,int64_t,I_ID
@@ -138,6 +137,10 @@ STOCK,100000
 
 // = DIST_PER_WARE * g_cust_per_dist
 INDEX=ORDERED_ORDER_IDX
+ORDER,30000
+
+// = DIST_PER_WARE * g_cust_per_dist
+INDEX=ORDERED_ORDER_CUST_IDX
 ORDER,30000
 
 // = DIST_PER_WARE * (g_cust_per_dist - 2100)

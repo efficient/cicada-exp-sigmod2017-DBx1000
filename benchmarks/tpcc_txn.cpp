@@ -41,7 +41,7 @@ RC tpcc_txn_man::run_txn(base_query* query) {
   }
 }
 
-// void FAIL_ON_ABORT() {assert(false);}
+// void FAIL_ON_ABORT() { assert(false); }
 
 void FAIL_ON_ABORT() {}
 
@@ -370,12 +370,20 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 #else
 
 #if TPCC_UPDATE_INDEX
-  auto mica_idx = _wl->i_order->mica_idx;
-  auto key = orderKey(o_id, c_id, d_id, w_id);
-  return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
-#else
-  return true;
+  {
+    auto mica_idx = _wl->i_order->mica_idx;
+    auto key = orderKey(o_id, d_id, w_id);
+    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+      return false;
+  }
+  {
+    auto mica_idx = _wl->i_order_cust->mica_idx;
+    auto key = orderCustKey(o_id, c_id, d_id, w_id);
+    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+      return false;
+  }
 #endif
+  return true;
 
 #endif
   return true;
@@ -393,16 +401,16 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!get_new_row(_wl->t_neworder, row, part_id, row_id)) return false;
-  row->set_value(O_ID, o_id);
-  row->set_value(O_D_ID, d_id);
-  row->set_value(O_W_ID, w_id);
+  row->set_value(NO_O_ID, o_id);
+  row->set_value(NO_D_ID, d_id);
+  row->set_value(NO_W_ID, w_id);
 #if CC_ALG != MICA
   insert_row(row, _wl->t_neworder);
 #else
 
 #if TPCC_UPDATE_INDEX
   auto mica_idx = _wl->i_neworder->mica_idx;
-  auto key = neworderKey(o_id);
+  auto key = neworderKey(o_id, d_id, w_id);
   return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
 #else
   return true;
@@ -458,7 +466,7 @@ void tpcc_txn_man::new_order_updateStock(row_t* row, uint64_t ol_quantity,
 bool tpcc_txn_man::new_order_createOrderLine(
     int64_t o_id, uint64_t d_id, uint64_t w_id, uint64_t ol_number,
     uint64_t ol_i_id, uint64_t ol_supply_w_id, uint64_t ol_quantity,
-    uint64_t ol_amount, const char* ol_dist_info) {
+    double ol_amount, const char* ol_dist_info) {
 // INSERT INTO ORDER_LINE (OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 #if CC_ALG != MICA
   row_t* row = NULL;
@@ -479,7 +487,6 @@ bool tpcc_txn_man::new_order_createOrderLine(
   row->set_value(OL_QUANTITY, ol_quantity);
   row->set_value(OL_AMOUNT, ol_amount);
   row->set_value(OL_DIST_INFO, const_cast<char*>(ol_dist_info));
-// row->set_value(OL_DIST_INFO, d_id);
 #endif
 #if CC_ALG != MICA
   insert_row(row, _wl->t_orderline);
@@ -644,14 +651,25 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
 row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
                                                uint64_t c_id) {
   // SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE O_W_ID = ? AND O_D_ID = ? AND O_C_ID = ? ORDER BY O_ID DESC LIMIT 1
-  auto index = _wl->i_order;
-  auto key = orderKey(g_max_orderline, c_id, d_id, w_id);
+  auto index = _wl->i_order_cust;
+  auto key = orderCustKey(g_max_orderline, c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
   auto item = index_read(index, key, part_id);
-  assert(item != NULL);
+  if (item == NULL) return NULL;
+
+#if CC_ALG != MICA
+  auto shared = (row_t*)item->location;
+  auto local = get_row(shared, RD);
+  item = item->next;
 #else
-  auto max_key = orderKey(1, c_id, d_id, w_id);
+  auto local = get_row(index, item, RD);
+#endif
+
+#else
+
+  auto max_key = orderCustKey(1, c_id, d_id, w_id);
+
   uint64_t cnt = 1;
   uint64_t row_ids[1];
 
@@ -660,20 +678,16 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   assert(idx_rc == RCOK);
 
   // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
+  // TODO: Why is it sometimes 0?
   if (cnt == 0) return NULL;
-  assert(cnt == 1);
 
   itemid_t idx_item;
   auto item = &idx_item;
   item->location = reinterpret_cast<void*>(row_ids[0]);
-#endif
 
-#if CC_ALG != MICA
-  auto shared = (row_t*)item->location;
-  auto local = get_row(shared, RD);
-#else
   auto local = get_row(index, item, RD);
 #endif
+  assert(local != NULL);
   return local;
 }
 
@@ -694,7 +708,9 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
 #else
     auto local = get_row(index, item, RD);
 #endif
-    // uint64_t ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_delivery_d;
+    // int64_t ol_i_id;
+    // uint64_t ol_supply_w_id, ol_amount, ol_delivery_d;
+    // double ol_amount;
     // local->get_value(OL_I_ID, ol_i_id);
     // local->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
     // local->get_value(OL_QUANTITY, ol_quantity);
@@ -719,7 +735,9 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   for (uint64_t i = 0; i < cnt; i++) {
     item->location = reinterpret_cast<void*>(row_ids[i]);
     auto local = get_row(index, item, RD);
-    // uint64_t ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_delivery_d;
+    // int64_t ol_i_id;
+    // uint64_t ol_supply_w_id, ol_amount, ol_delivery_d;
+    // double ol_amount;
     // local->get_value(OL_I_ID, ol_i_id);
     // local->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
     // local->get_value(OL_QUANTITY, ol_quantity);
@@ -768,122 +786,228 @@ RC tpcc_txn_man::run_order_status(tpcc_query* query) {
 // Delivery
 //////////////////////////////////////////////////////
 
-// "getNewOrder": "SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1", #
-// "deleteNewOrder": "DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?", # d_id, w_id, no_o_id
-// "getCId": "SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?", # no_o_id, d_id, w_id
-// "updateOrders": "UPDATE ORDERS SET O_CARRIER_ID = ? WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?", # o_carrier_id, no_o_id, d_id, w_id
-// "updateOrderLine": "UPDATE ORDER_LINE SET OL_DELIVERY_D = ? WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?", # o_entry_d, no_o_id, d_id, w_id
-// "sumOLAmount": "SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?", # no_o_id, d_id, w_id
-// "updateCustomer": "UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?", # ol_total, c_id, d_id, w_id
+bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
+                                                       uint64_t w_id,
+                                                       int64_t* out_o_id) {
+  // SELECT NO_O_ID FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID > -1 LIMIT 1
+  // DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?
 
-RC tpcc_txn_man::run_delivery(tpcc_query* query) {
-#if 0
-// #if TPCC_FULL
+  auto index = _wl->i_neworder;
+  auto key = neworderKey(g_max_orderline, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
+#if INDEX_STRUCT != IDX_MICA
+  auto item = index_read(index, key, part_id);
+  if (item == NULL) {
+    // No new order; this is acceptable and we do not need to abort TX.
+    *out_o_id = -1;
+    return true;
+  }
+#else
+  auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
+  uint64_t cnt = 1;
+  uint64_t row_ids[1];
 
-  itemid_t* item;
-#if INDEX_STRUCT == IDX_MICA
-  RC idx_rc;
+  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
+  if (idx_rc == Abort) return false;
+  assert(idx_rc == RCOK);
+
+  // printf("delivery_getNewOrder_deleteNewOrder: %" PRIu64 "\n", cnt);
+  if (cnt == 0) {
+    // No new order; this is acceptable and we do not need to abort TX.
+    *out_o_id = -1;
+    return true;
+  }
+
   itemid_t idx_item;
-  item = &idx_item;
+  auto item = &idx_item;
+  item->location = reinterpret_cast<void*>(row_ids[0]);
 #endif
 
-  // XXX HACK if another delivery txn is running on this warehouse, simply commit.
-  // if ( !ATOM_CAS(_wl->delivering[query->w_id], false, true) )
-  // 	return finish(RCOK);
-
-  for (int d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
-    uint64_t key = distKey(d_id, query->w_id);
-    ORDERED_INDEX* index2 = _wl->i_orderline_wd;
-#if INDEX_STRUCT != IDX_MICA
-    item = index_read(index2, key, wh_to_part(query->w_id));
-    assert(item != NULL);
-#else
-    idx_rc = index_read(index2, key, item, wh_to_part(query->w_id));
-    assert(idx_rc == RCOK);
-#endif
-    // TODO: Reenable this
-    /*
-		while (item->next != NULL) {
-#if DEBUG_ASSERT
-			uint64_t o_id_1, o_id_2;
-			((row_t *)item->location)->get_value(OL_O_ID, o_id_1);
-			((row_t *)item->next->location)->get_value(OL_O_ID, o_id_2);
-			assert(o_id_1 > o_id_2);
-#endif
-			item = item->next;
-		}
-*/
-    uint64_t no_o_id;
 #if CC_ALG != MICA
-    // TODO the row is not locked
-    row_t* r_orderline = (row_t*)item->location;
-#else
-    row_t* r_orderline = get_row(index2, item, RD);
-#endif
-    r_orderline->get_value(OL_O_ID, no_o_id);
-    // TODO the orderline row should be removed from the table and indexes.
+  auto shared = (row_t*)item->location;
+  auto local = get_row(shared, WR);
+  if (local == NULL) return false;
 
-    INDEX* index = _wl->i_order;
-    key = orderPrimaryKey(query->w_id, d_id, no_o_id);
+  int64_t o_id;
+  local->get_value(NO_O_ID, o_id);
+  *out_o_id = o_id;
+
+  // XXX: DBx1000 CC schemes do not implement removes
+  assert(false);
+  return false;
+#else
+  // auto local = get_row(index, item, WR);
+  // Use the raw interface directly for deletion.
+  auto table = _wl->t_neworder;
+  auto row_id = reinterpret_cast<uint64_t>(item->location);
+  // printf("%" PRIu64 "\n", row_id);
+  MICARowAccessHandle rah(mica_tx);
+  if (!rah.peek_row(table->mica_tbl, row_id, false, true, true) ||
+      !rah.read_row() || !rah.write_row()) {
+    return false;
+  }
+
+  row_t tmp_row;
+  auto row = &tmp_row;
+  row->table = table;
+  row->data = rah.data();
+
+  int64_t o_id;
+  row->get_value(NO_O_ID, o_id);
+  *out_o_id = o_id;
+
+  if (!rah.delete_row()) return false;
+#endif
+
 #if INDEX_STRUCT != IDX_MICA
-    item = index_read(index, key, wh_to_part(query->w_id));
-    assert(item != NULL);
+  // XXX: DBx1000 indexes do not implement removes
+  assert(false);
+  return true;
 #else
-    idx_rc = index_read(index, key, item, wh_to_part(query->w_id));
-    // TODO: pass this for now
-    if (idx_rc != RCOK) return finish(RCOK);
-// assert(idx_rc == RCOK);
-#endif
-    row_t* r_order = (row_t*)item->location;
-#if CC_ALG != MICA
-    row_t* r_order_local = get_row(r_order, WR);
-#else
-    (void)r_order;
-    row_t* r_order_local = get_row(index, item, WR);
-#endif
-
-    uint64_t o_c_id;
-    r_order_local->get_value(O_C_ID, o_c_id);
-    r_order_local->set_value(O_CARRIER_ID, query->o_carrier_id);
-
-#if INDEX_STRUCT != IDX_MICA
-    item =
-        index_read(_wl->i_orderline, orderlineKey(query->w_id, d_id, no_o_id),
-                   wh_to_part(query->w_id));
-    assert(item != NULL);
-#else
-    idx_rc =
-        index_read(_wl->i_orderline, orderlineKey(query->w_id, d_id, no_o_id),
-                   item, wh_to_part(query->w_id));
-    assert(idx_rc == RCOK);
-#endif
-    double sum_ol_amount;
-    double ol_amount;
-    while (item != NULL) {
-#if CC_ALG != MICA
-      // TODO the row is not locked
-      row_t* r_orderline = (row_t*)item->location;
-#else
-      row_t* r_orderline = get_row(index, item, RD);
-#endif
-      r_orderline->set_value(OL_DELIVERY_D, query->ol_delivery_d);
-      r_orderline->get_value(OL_AMOUNT, ol_amount);
-      sum_ol_amount += ol_amount;
-    }
-
-    key = custKey(o_c_id, d_id, query->w_id);
-#if INDEX_STRUCT != IDX_MICA
-    item = index_read(_wl->i_customer_id, key, wh_to_part(query->w_id));
-    assert(item != NULL);
-#else
-    idx_rc = index_read(_wl->i_customer_id, key, item, wh_to_part(query->w_id));
-    assert(idx_rc == RCOK);
-#endif
-    row_t* r_cust = (row_t*)item->location;
-    double c_balance;
-    uint64_t c_delivery_cnt;
+  {
+    // printf("w_id=%" PRIu64 " d_id=%" PRIu64 " o_id=%" PRIu64 "\n", w_id, d_id, o_id);
+    auto mica_idx = _wl->i_neworder->mica_idx;
+    auto key = neworderKey(o_id, d_id, w_id);
+    return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
   }
 #endif
+}
+
+row_t* tpcc_txn_man::delivery_getCId(int64_t no_o_id, uint64_t d_id,
+                                     uint64_t w_id) {
+  // SELECT O_C_ID FROM ORDERS WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?
+  auto index = _wl->i_order;
+  auto key = orderKey(no_o_id, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
+  return search(index, key, part_id, WR);
+}
+
+void tpcc_txn_man::delivery_updateOrders(row_t* row, uint64_t o_carrier_id) {
+  // UPDATE ORDERS SET O_CARRIER_ID = ? WHERE O_ID = ? AND O_D_ID = ? AND O_W_ID = ?
+  row->set_value(O_CARRIER_ID, o_carrier_id);
+}
+
+bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
+                                                        int64_t no_o_id,
+                                                        uint64_t d_id,
+                                                        uint64_t w_id,
+                                                        double* out_ol_total) {
+  // UPDATE ORDER_LINE SET OL_DELIVERY_D = ? WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?
+  // SELECT SUM(OL_AMOUNT) FROM ORDER_LINE WHERE OL_O_ID = ? AND OL_D_ID = ? AND OL_W_ID = ?", # no_o_id, d_id, w_id
+  double ol_total = 0.0;
+
+  auto index = _wl->i_orderline;
+  auto key = orderlineKey(no_o_id, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
+#if INDEX_STRUCT != IDX_MICA
+  auto item = index_read(index, key, part_id);
+  if (item == NULL) return false;
+  uint64_t cnt = 0;
+  while (item != NULL) {
+#if CC_ALG != MICA
+    row_t* shared = (row_t*)item->location;
+    auto local = get_row(shared, WR);
+#else
+    auto local = get_row(index, item, WR);
+#endif
+    if (local == NULL) return false;
+    double ol_amount;
+    local->get_value(OL_AMOUNT, ol_amount);
+    local->set_value(OL_DELIVERY_D, o_entry_d);
+    ol_total += ol_amount;
+    item = item->next;
+    cnt++;
+  }
+#else
+  uint64_t cnt = 100;
+  uint64_t row_ids[100];
+
+  auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
+  if (idx_rc != RCOK) return false;
+  assert(cnt != 100);
+
+  itemid_t idx_item;
+  auto item = &idx_item;
+
+  for (uint64_t i = 0; i < cnt; i++) {
+    item->location = reinterpret_cast<void*>(row_ids[i]);
+    auto local = get_row(index, item, WR);
+    if (local == NULL) return false;
+    double ol_amount;
+    local->get_value(OL_AMOUNT, ol_amount);
+    local->set_value(OL_DELIVERY_D, o_entry_d);
+    ol_total += ol_amount;
+  }
+#endif
+  // printf("delivery_updateOrderLine_sumOLAmount: w_id=%" PRIu64 " d_id=%" PRIu64
+  //        " o_id=%" PRIu64 " cnt=%" PRIu64 "\n",
+  //        w_id, d_id, no_o_id, cnt);
+  *out_ol_total = ol_total;
+  return true;
+}
+
+bool tpcc_txn_man::delivery_updateCustomer(double ol_total, uint64_t c_id,
+                                           uint64_t d_id, uint64_t w_id) {
+  // UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?
+  auto index = _wl->i_customer_id;
+  auto key = custKey(c_id, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
+  auto row = search(index, key, part_id, WR);
+  if (row == NULL) return false;
+
+  double c_balance;
+  row->get_value(C_BALANCE, c_balance);
+  row->set_value(C_BALANCE, c_balance + ol_total);
+  return true;
+}
+
+RC tpcc_txn_man::run_delivery(tpcc_query* query) {
+#if TPCC_FULL
+  auto& arg = query->args.delivery;
+
+  for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
+    int64_t o_id;
+    if (!delivery_getNewOrder_deleteNewOrder(arg.w_id, d_id, &o_id)) {
+      FAIL_ON_ABORT();
+      // printf("oops0\n");
+      return finish(Abort);
+    }
+    // No new order for this district.
+    if (o_id == -1) {
+      // printf("skipping w_id=%" PRIu64 " d_id=%" PRIu64 " for no new order\n",
+      //        arg.w_id, d_id);
+      continue;
+    }
+
+    auto order = delivery_getCId(o_id, d_id, arg.w_id);
+    if (order == NULL) {
+      // There is no guarantee that we will see a order row even after seeing a related new_order row.  We ignore this (as in Silo) and try later.
+      continue;
+      // FAIL_ON_ABORT();
+      // printf("oops1\n");
+      // return finish(Abort);
+    }
+    uint64_t c_id;
+    order->get_value(O_C_ID, c_id);
+
+    delivery_updateOrders(order, arg.o_carrier_id);
+
+    double ol_total;
+    if (!delivery_updateOrderLine_sumOLAmount(arg.ol_delivery_d, o_id, d_id,
+                                              arg.w_id, &ol_total)) {
+      FAIL_ON_ABORT();
+      // printf("oops2\n");
+      return finish(Abort);
+    }
+
+    if (!delivery_updateCustomer(ol_total, c_id, d_id, arg.w_id)) {
+      FAIL_ON_ABORT();
+      // printf("oops3\n");
+      return finish(Abort);
+    }
+  }
+#endif
+
   return finish(RCOK);
 }
 

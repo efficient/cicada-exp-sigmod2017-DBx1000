@@ -177,6 +177,6 @@ void tpcc_query::gen_delivery(uint64_t thd_id) {
     arg.w_id = thd_id % g_num_wh + 1;
   else
     arg.w_id = URand(1, g_num_wh, thd_id);
-  arg.o_carrier_id = URand(1, 10, thd_id);
+  arg.o_carrier_id = URand(1, DIST_PER_WARE, thd_id);
   arg.ol_delivery_d = 2013;
 }
