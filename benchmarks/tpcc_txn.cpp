@@ -371,9 +371,9 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 
 #if TPCC_UPDATE_INDEX
 #if INDEX_STRUCT != IDX_MICA
-  // DBx1000 indexes do not support concurrent inserts well.
+  // XXX: DBx1000 indexes do not support concurrent inserts well
   assert(false);
-  return false;
+  return true;
 #else
   {
     auto mica_idx = _wl->i_order->mica_idx;
@@ -415,9 +415,15 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
 #else
 
 #if TPCC_UPDATE_INDEX
+#if INDEX_STRUCT != IDX_MICA
+  // XXX: DBx1000 indexes do not support concurrent inserts well
+  assert(false);
+  return true;
+#else
   auto mica_idx = _wl->i_neworder->mica_idx;
   auto key = neworderKey(o_id, d_id, w_id);
   return mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) == 1;
+#endif
 #else
   return true;
 #endif
@@ -698,7 +704,7 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
 }
 
 void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
-                                              uint64_t o_id) {
+                                              int64_t o_id) {
   // SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?
   auto index = _wl->i_orderline;
   auto key = orderlineKey(o_id, d_id, w_id);
@@ -840,7 +846,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
   // XXX: DBx1000 CC schemes do not implement removes
   assert(false);
-  return false;
+  return true;
 #else
   // auto local = get_row(index, item, WR);
   // Use the raw interface directly for deletion.
@@ -1031,7 +1037,7 @@ row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
 
 uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
                                                  uint64_t ol_d_id,
-                                                 uint64_t ol_o_id,
+                                                 int64_t ol_o_id,
                                                  uint64_t s_w_id,
                                                  uint64_t threshold) {
   // SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK
@@ -1052,10 +1058,9 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
   auto part_id = wh_to_part(ol_w_id);
 
 #if INDEX_STRUCT != IDX_MICA
-  item = index_read(index, key, part_id);
+  auto item = index_read(index, key, part_id);
   assert(item != NULL);
 
-  itemid_t* it = item;
   while (item != NULL) {
 #if CC_ALG != MICA
     auto orderline_shared = (row_t*)item->location;
@@ -1065,13 +1070,15 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
 #endif
     assert(orderline != NULL);
 
-    int64_t ol_o_id, ol_i_id, ol_supply_w_id;
-    orderline->get_value(OL_O_ID, ol_o_id);
+    int64_t current_ol_o_id;
+    orderline->get_value(OL_O_ID, current_ol_o_id);
+    if (current_ol_o_id < ol_o_id) break;
+
+    uint64_t ol_i_id, ol_supply_w_id;
     orderline->get_value(OL_I_ID, ol_i_id);
     orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
-    item = item->next;
 
-    if (ol_o_id >= o_id) break;
+    item = item->next;
 
     if (ol_supply_w_id != s_w_id) continue;
 
@@ -1098,8 +1105,7 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
     row_t* r_orderline = get_row(index, item, RD);
     assert(r_orderline != NULL);
 
-    uint64_t ol_o_id, ol_i_id, ol_supply_w_id;
-    r_orderline->get_value(OL_O_ID, ol_o_id);
+    uint64_t ol_i_id, ol_supply_w_id;
     r_orderline->get_value(OL_I_ID, ol_i_id);
     r_orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
 
