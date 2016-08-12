@@ -370,6 +370,11 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 #else
 
 #if TPCC_UPDATE_INDEX
+#if INDEX_STRUCT != IDX_MICA
+  // DBx1000 indexes do not support concurrent inserts well.
+  assert(false);
+  return false;
+#else
   {
     auto mica_idx = _wl->i_order->mica_idx;
     auto key = orderKey(o_id, d_id, w_id);
@@ -382,6 +387,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
     if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
       return false;
   }
+#endif
 #endif
   return true;
 
