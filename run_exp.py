@@ -64,14 +64,24 @@ def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_the
   return conf
 
 
-def set_tpcc(conf, warehouse_count, tx_count, **kwargs):
+def set_tpcc(conf, warehouse_count, tx_count, full_tpcc, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
-  conf = replace_def(conf, 'INIT_PARALLELISM', '2')
+  # INIT_PARALLELISM does not affect tpcc initialization
+  # conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
-
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
+  conf = replace_def(conf, 'PART_CNT', str(warehouse_count))
+
+  if full_tpcc == 0:
+    conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'false')
+    conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'false')
+    conf = replace_def(conf, 'TPCC_FULL', 'false')
+  else:
+    conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'true')
+    conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'true')
+    conf = replace_def(conf, 'TPCC_FULL', 'true')
 
   return conf
 
@@ -119,6 +129,11 @@ old_dir_name = 'old_exp_data'
 prefix = ''
 suffix = ''
 total_seqs = 5
+# max_thread_count = 28
+max_thread_count = 32
+# hugepage_count = 32768  # 64 GiB
+hugepage_count = 40960  # 80 GiB
+# hugepage_count = 51200  # 100 GiB
 
 def gen_filename(exp):
   s = ''
@@ -139,7 +154,7 @@ def parse_filename(filename):
     filename = filename[:-len(suffix)]
   for entry in filename.split('__'):
     key, _, value = entry.partition('@')
-    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len'):
+    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len', 'full_tpcc'):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
@@ -201,7 +216,7 @@ def enum_exps(seq):
       if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
         continue
 
-      for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+      for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, max_thread_count]:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -237,21 +252,40 @@ def enum_exps(seq):
         # TPCC
         tpcc = dict(common)
         tx_count = 200000
-        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 0 })
 
-        # for warehouse_count in [1, 4, 16, 28]:
-        for warehouse_count in [1, 4, 28]:
+        # for warehouse_count in [1, 4, 16, max_thread_count]:
+        for warehouse_count in [1, 4, max_thread_count]:
           if tag != 'macrobench': continue
           tpcc.update({ 'warehouse_count': warehouse_count })
           yield dict(tpcc)
 
-        for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+        for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, max_thread_count]:
           if tag != 'macrobench': continue
-          if thread_count not in [28, warehouse_count]: continue
+          if thread_count not in [max_thread_count, warehouse_count]: continue
           tpcc.update({ 'warehouse_count': warehouse_count })
           yield dict(tpcc)
 
-      for thread_count in [28]:
+        # full TPCC
+        # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
+        if alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
+          tpcc = dict(common)
+          tx_count = 100000   # half of the usual due to memory use
+          tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 1 })
+
+          # for warehouse_count in [1, 4, 16, max_thread_count]:
+          for warehouse_count in [1, 4, max_thread_count]:
+            if tag != 'macrobench': continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+          for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, max_thread_count]:
+            if tag != 'macrobench': continue
+            if thread_count not in [max_thread_count, warehouse_count]: continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+      for thread_count in [max_thread_count]:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -276,7 +310,7 @@ def enum_exps(seq):
   for alg in all_algs:
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
-    for thread_count in [28]:
+    for thread_count in [max_thread_count]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
       # YCSB
@@ -305,7 +339,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX']:
   for alg in []:
-    for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28]:
+    for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, max_thread_count]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
       # YCSB
@@ -389,7 +423,7 @@ def enum_exps(seq):
       # TPCC
       tpcc = dict(common)
       tx_count = 200000
-      tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+      tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 0 })
 
       warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
@@ -402,7 +436,7 @@ def enum_exps(seq):
 
       # if common['tag'] in ('gc', 'factor'):
       if common['tag'] in ('gc',):
-        warehouse_count = 28
+        warehouse_count = max_thread_count
         tpcc.update({ 'warehouse_count': warehouse_count })
         yield dict(tpcc)
 
@@ -412,7 +446,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX']:
   for alg in ['MICA+INDEX']:
-    thread_count = 28
+    thread_count = max_thread_count
     for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
@@ -422,7 +456,7 @@ def enum_exps(seq):
   for tag in factors:
     # for alg in ['MICA', 'MICA+INDEX']:
     for alg in ['MICA+INDEX']:
-      thread_count = 28
+      thread_count = max_thread_count
       for i in range(7):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -450,7 +484,7 @@ def enum_exps(seq):
   tag = 'gc'
   # for alg in ['MICA', 'MICA+INDEX']:
   for alg in ['MICA+INDEX']:
-    thread_count = 28
+    thread_count = max_thread_count
     for slow_gc in [1, 2, 4,
                     10, 20, 40,
                     100, 200, 400,
@@ -465,7 +499,7 @@ def enum_exps(seq):
 
   tag = 'native-scan'
   for alg in ['MICA+INDEX']:
-    for thread_count in [28]:
+    for thread_count in [max_thread_count]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
       # YCSB
@@ -499,7 +533,7 @@ def enum_exps(seq):
 
   tag = 'native-full-table-scan'
   for alg in ['MICA+INDEX']:
-    for thread_count in [28]:
+    for thread_count in [max_thread_count]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
       # YCSB
@@ -561,7 +595,7 @@ def sort_exps(exps):
     if exp['alg'] == 'SILO' or exp['alg'] == 'TICTOC': pri -= 1
 
     # prefer max cores
-    if exp['thread_count'] in (28, 56): pri -= 1
+    if exp['thread_count'] in (max_thread_count, max_thread_count * 2): pri -= 1
 
     # prefer write-intensive workloads
     if exp['bench'] == 'YCSB' and exp['read_ratio'] == 0.50: pri -= 1
@@ -571,7 +605,7 @@ def sort_exps(exps):
     # prefer (warehouse count) = (thread count)
     if exp['bench'] == 'TPCC' and exp['thread_count'] == exp['warehouse_count']: pri -= 1
     # prefer standard warehouse counts
-    if exp['bench'] == 'TPCC' and exp['warehouse_count'] in (1, 4, 16, 28, 56): pri -= 1
+    if exp['bench'] == 'TPCC' and exp['warehouse_count'] in (1, 4, 16, max_thread_count, max_thread_count * 2): pri -= 1
 
     # run exps in their sequence number
     return (exp['seq'], pri)
@@ -635,9 +669,9 @@ def run(exp, prepare_only):
   os.system('rm -f ./rundb')
 
   if exp['alg'].startswith('MICA'):
-    if hugepage_status != 16384:
-      os.system('../script/setup.sh 16384 16384 > /dev/null')   # 64 GiB
-      hugepage_status = 16384
+    if hugepage_status != hugepage_count:
+      os.system('../script/setup.sh %d %d > /dev/null' % (hugepage_count / 2, hugepage_count / 2))
+      hugepage_status = hugepage_count
   else:
     if hugepage_status != 0:
       os.system('../script/setup.sh 0 0 > /dev/null')
