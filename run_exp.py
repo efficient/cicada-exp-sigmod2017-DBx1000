@@ -64,7 +64,7 @@ def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_the
   return conf
 
 
-def set_tpcc(conf, warehouse_count, tx_count, full_tpcc, **kwargs):
+def set_tpcc(conf, bench, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
@@ -74,14 +74,16 @@ def set_tpcc(conf, warehouse_count, tx_count, full_tpcc, **kwargs):
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
   conf = replace_def(conf, 'PART_CNT', str(warehouse_count))
 
-  if full_tpcc == 0:
+  if bench == 'TPCC':
     conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'false')
     conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'false')
     conf = replace_def(conf, 'TPCC_FULL', 'false')
-  else:
+  elif bench == 'TPCC-FULL':
     conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'true')
     conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'true')
     conf = replace_def(conf, 'TPCC_FULL', 'true')
+  else:
+    assert False
 
   return conf
 
@@ -154,7 +156,7 @@ def parse_filename(filename):
     filename = filename[:-len(suffix)]
   for entry in filename.split('__'):
     key, _, value = entry.partition('@')
-    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len', 'full_tpcc'):
+    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len'):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
@@ -252,7 +254,7 @@ def enum_exps(seq):
         # TPCC
         tpcc = dict(common)
         tx_count = 200000
-        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 0 })
+        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
         # for warehouse_count in [1, 4, 16, max_thread_count]:
         for warehouse_count in [1, 4, max_thread_count]:
@@ -271,7 +273,7 @@ def enum_exps(seq):
         if alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
           tpcc = dict(common)
           tx_count = 100000   # half of the usual due to memory use
-          tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 1 })
+          tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count })
 
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
@@ -423,7 +425,7 @@ def enum_exps(seq):
       # TPCC
       tpcc = dict(common)
       tx_count = 200000
-      tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count, 'full_tpcc': 0 })
+      tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
       warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
@@ -569,7 +571,7 @@ def update_conf(conf, exp):
   conf = set_threads(conf, **exp)
   if exp['bench'] == 'YCSB':
     conf = set_ycsb(conf, **exp)
-  elif exp['bench'] == 'TPCC':
+  elif exp['bench'] in ('TPCC', 'TPCC-FULL'):
     conf = set_tpcc(conf, **exp)
   else: assert False
   if exp['alg'].startswith('MICA') or exp['tag'] == 'backoff':
