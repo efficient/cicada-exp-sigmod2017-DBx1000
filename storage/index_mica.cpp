@@ -30,6 +30,8 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
   auto db = table->mica_db;
   auto thread_id = ::mica::util::lcore.lcore_id();
 
+  bucket_cnt = (bucket_cnt + part_cnt - 1) / part_cnt;
+
   // printf("idx=%p part_cnt=%d bucket_cnt=%" PRIu64 "\n", this, part_cnt,
   // bucket_cnt);
 
@@ -39,7 +41,7 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
     while (true) {
       sprintf(buf, "%s_IDX_%d", table->get_table_name(), i);
       if (mica_tbl->db()->create_hash_index_nonunique_u64(
-              buf, mica_tbl, bucket_cnt / part_cnt))
+              buf, mica_tbl, bucket_cnt))
         break;
       i++;
     }
@@ -72,6 +74,8 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
   auto mica_tbl = table->mica_tbl;
   auto db = table->mica_db;
   auto thread_id = ::mica::util::lcore.lcore_id();
+
+  bucket_cnt = (bucket_cnt + part_cnt - 1) / part_cnt;
 
   // printf("idx=%p part_cnt=%d bucket_cnt=%" PRIu64 "\n", this, part_cnt,
   // bucket_cnt);
