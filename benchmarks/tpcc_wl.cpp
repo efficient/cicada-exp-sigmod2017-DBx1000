@@ -81,7 +81,7 @@ RC tpcc_wl::init_table() {
   InitNURand(0);
 
   // RNG will use warehouse-specific states (wid - 1) because each warehouse data is initialized by a single thread.
-  // It could use thread-specific states (which is idential to above) for consistnecy, but we just keep those functions with no thread ID unchanged.
+  // It could use thread-specific states (which is idential to above) for consistency, but we just keep those functions with no thread ID unchanged.
 
   pthread_t* p_thds = new pthread_t[g_num_wh - 1];
   for (uint32_t i = 0; i < g_num_wh; i++) tid_lock[i] = 0;
