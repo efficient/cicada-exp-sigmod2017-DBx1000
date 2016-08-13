@@ -48,11 +48,12 @@ def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_r
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
-  conf = replace_def(conf, 'PART_CNT', str(thread_count))
   if total_count == 1:
+    conf = replace_def(conf, 'PART_CNT', '1')
     conf = replace_def(conf, 'INIT_PARALLELISM', '1')
   else:
-    conf = replace_def(conf, 'INIT_PARALLELISM', str(thread_count))
+    conf = replace_def(conf, 'PART_CNT', '2')
+    conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
@@ -132,8 +133,8 @@ old_dir_name = 'old_exp_data'
 prefix = ''
 suffix = ''
 total_seqs = 5
-# max_thread_count = 28
-max_thread_count = 32
+max_thread_count = 28
+# max_thread_count = 32
 # hugepage_count = 32768  # 64 GiB
 hugepage_count = 40960  # 80 GiB
 # hugepage_count = 51200  # 100 GiB
