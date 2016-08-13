@@ -1059,8 +1059,9 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
   //   AND S_I_ID = OL_I_ID
   //   AND S_QUANTITY < ?
 
-  uint64_t ol_i_id_list[20];
-  uint64_t ol_supply_w_id_list[20];
+  // 20 orders * 15 items = 300; use 301 to check any errors.
+  uint64_t ol_i_id_list[301];
+  uint64_t ol_supply_w_id_list[301];
   size_t list_size = 0;
 
   auto index = _wl->i_orderline;
@@ -1080,17 +1081,18 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
 #endif
     assert(orderline != NULL);
 
+    item = item->next;
+
     int64_t current_ol_o_id;
     orderline->get_value(OL_O_ID, current_ol_o_id);
     if (current_ol_o_id < ol_o_id) break;
 
     uint64_t ol_i_id, ol_supply_w_id;
-    orderline->get_value(OL_I_ID, ol_i_id);
     orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
 
-    item = item->next;
-
     if (ol_supply_w_id != s_w_id) continue;
+
+    orderline->get_value(OL_I_ID, ol_i_id);
 
     assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
@@ -1099,8 +1101,8 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
   }
 #else
   auto max_key = orderlineKey(ol_o_id - 20, ol_d_id, ol_w_id);
-  uint64_t cnt = 20;
-  uint64_t row_ids[20];
+  uint64_t cnt = 301;
+  uint64_t row_ids[301];
 
   auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
   assert(idx_rc != Abort);
@@ -1116,10 +1118,10 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
     assert(r_orderline != NULL);
 
     uint64_t ol_i_id, ol_supply_w_id;
-    r_orderline->get_value(OL_I_ID, ol_i_id);
     r_orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
-
     if (ol_supply_w_id != s_w_id) continue;
+
+    r_orderline->get_value(OL_I_ID, ol_i_id);
 
     assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
@@ -1127,8 +1129,9 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
     list_size++;
   }
 #endif
+  assert(list_size <= 300);
 
-  uint64_t distinct_ol_i_id_list[20];
+  uint64_t distinct_ol_i_id_list[300];
   uint64_t distinct_count = 0;
 
   for (uint64_t i = 0; i < list_size; i++) {
