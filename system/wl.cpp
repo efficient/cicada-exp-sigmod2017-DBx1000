@@ -224,6 +224,11 @@ void workload::index_insert(INDEX_T * index, uint64_t key, row_t * row, int64_t 
 
   auto rc = index->index_insert(key, m_item, pid);
   assert(rc == RCOK);
+
+#if INDEX_STRUCT == IDX_MICA
+  // We do not need to keep the index item.
+  mem_allocator.free(m_item, sizeof(itemid_t));
+#endif
 }
 
 template void workload::index_insert(index_btree * index, uint64_t key, row_t * row, int64_t part_id);

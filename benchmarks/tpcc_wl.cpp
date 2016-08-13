@@ -106,6 +106,10 @@ RC tpcc_wl::get_txn_man(txn_man*& txn_manager, thread_t* h_thd) {
 void tpcc_wl::init_tab_item() {
   for (uint64_t i = 1; i <= g_max_items; i++) {
     row_t* row;
+#if CC_ALG == MICA
+    row_t row_container;
+    row = &row_container;
+#endif
     uint64_t row_id;
     t_item->get_new_row(row, 0, row_id);
     row->set_primary_key(i);
@@ -130,6 +134,10 @@ void tpcc_wl::init_tab_item() {
 void tpcc_wl::init_tab_wh(uint32_t wid) {
   assert(wid >= 1 && wid <= g_num_wh);
   row_t* row;
+#if CC_ALG == MICA
+  row_t row_container;
+  row = &row_container;
+#endif
   uint64_t row_id;
   t_warehouse->get_new_row(row, 0, row_id);
   row->set_primary_key(wid);
@@ -162,6 +170,10 @@ void tpcc_wl::init_tab_wh(uint32_t wid) {
 void tpcc_wl::init_tab_dist(uint64_t wid) {
   for (uint64_t did = 1; did <= DIST_PER_WARE; did++) {
     row_t* row;
+#if CC_ALG == MICA
+    row_t row_container;
+    row = &row_container;
+#endif
     uint64_t row_id;
     t_district->get_new_row(row, 0, row_id);
     row->set_primary_key(did);
@@ -197,6 +209,10 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
 void tpcc_wl::init_tab_stock(uint64_t wid) {
   for (uint64_t sid = 1; sid <= g_max_items; sid++) {
     row_t* row;
+#if CC_ALG == MICA
+    row_t row_container;
+    row = &row_container;
+#endif
     uint64_t row_id;
     t_stock->get_new_row(row, 0, row_id);
     row->set_primary_key(sid);
@@ -237,6 +253,10 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
   assert(g_cust_per_dist >= 1000);
   for (uint64_t cid = 1; cid <= g_cust_per_dist; cid++) {
     row_t* row;
+#if CC_ALG == MICA
+    row_t row_container;
+    row = &row_container;
+#endif
     uint64_t row_id;
     t_customer->get_new_row(row, 0, row_id);
     row->set_primary_key(cid);
@@ -298,6 +318,10 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
 
 void tpcc_wl::init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id) {
   row_t* row;
+#if CC_ALG == MICA
+  row_t row_container;
+  row = &row_container;
+#endif
   uint64_t row_id;
   t_history->get_new_row(row, 0, row_id);
   row->set_primary_key(0);
@@ -320,6 +344,10 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
   init_permutation(perm, wid); /* initialize permutation of customer numbers */
   for (uint64_t oid = 1; oid <= g_cust_per_dist; oid++) {
     row_t* row;
+#if CC_ALG == MICA
+    row_t row_container;
+    row = &row_container;
+#endif
     uint64_t row_id;
     t_order->get_new_row(row, 0, row_id);
     row->set_primary_key(oid);

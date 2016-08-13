@@ -21,7 +21,12 @@ RC table_t::get_new_row(row_t *& row, uint64_t part_id, uint64_t &row_id) {
 	RC rc = RCOK;
 	cur_tab_size ++;
 
+#if CC_ALG == MICA
+	assert(row != NULL);
+	// We do not need a new row instance because MICA has it.
+#else
 	row = (row_t *) _mm_malloc(sizeof(row_t), 64);
+#endif
 	rc = row->init(this, part_id, row_id);
 	row->init_manager(row);
 

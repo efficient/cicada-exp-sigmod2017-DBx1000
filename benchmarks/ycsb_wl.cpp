@@ -65,6 +65,10 @@ RC ycsb_wl::init_table() {
     for (UInt32 part_id = 0; part_id < g_part_cnt; part_id++) {
       if (total_row > g_synth_table_size) goto ins_done;
       row_t* new_row = NULL;
+#if CC_ALG == MICA
+      row_t row_container;
+      new_row = &row_container;
+#endif
       uint64_t row_id;
       rc = the_table->get_new_row(new_row, part_id, row_id);
       // TODO insertion of last row may fail after the table_size
@@ -139,6 +143,10 @@ void* ycsb_wl::init_table_slice() {
   for (uint64_t key_i = slice_size * tid; key_i < slice_size * (tid + 1); key_i++) {
     uint64_t key = shuffled_ids[key_i];
     row_t* new_row = NULL;
+#if CC_ALG == MICA
+    row_t row_container;
+    new_row = &row_container;
+#endif
     uint64_t row_id;
     int part_id = key_to_part(key);
     rc = the_table->get_new_row(new_row, part_id, row_id);
