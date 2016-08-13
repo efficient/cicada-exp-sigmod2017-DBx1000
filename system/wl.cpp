@@ -132,21 +132,21 @@ RC workload::init_schema(string schema_file) {
 
 			int part_cnt = (CENTRAL_INDEX)? 1 : g_part_cnt;
 #if WORKLOAD == TPCC
-				if (tname == "ITEM")
-					part_cnt = 1;
+			if (tname == "ITEM")
+				part_cnt = 1;
 #endif
 
-				uint64_t table_size;
+			uint64_t table_size;
 #if WORKLOAD == YCSB
-				table_size = g_synth_table_size;
+			table_size = g_synth_table_size;
 #elif WORKLOAD == TPCC
-				if (tname == "ITEM")
-					table_size = stoi(items[1]);
-				else
-					table_size = stoi(items[1]) * g_num_wh;
+			if (tname == "ITEM")
+				table_size = stoi(items[1]);
+			else
+				table_size = stoi(items[1]) * g_num_wh;
 #endif
 
-		if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
+			if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
 				INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
 				new(index) INDEX();
 
