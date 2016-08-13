@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
           auto index = it.second;
           uint64_t part_id = 0;
           for (auto idx : index->mica_idx) {
-            if (part_id++ != thread_id) continue;
+            if ((part_id++) % g_thread_cnt != thread_id) continue;
 
             auto mica_tbl = idx->index_table();
 
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
           auto index = it.second;
           uint64_t part_id = 0;
           for (auto idx : index->mica_idx) {
-            if (part_id++ != thread_id) continue;
+            if ((part_id++) % g_thread_cnt != thread_id) continue;
 
             auto mica_tbl = idx->index_table();
 
