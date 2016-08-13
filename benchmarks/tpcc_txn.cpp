@@ -814,6 +814,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   // DELETE FROM NEW_ORDER WHERE NO_D_ID = ? AND NO_W_ID = ? AND NO_O_ID = ?
 
   auto index = _wl->i_neworder;
+  // TODO: This may cause a match with other district with a negative order ID.  It is safe for now because the lowest order ID is 1, but we should give more gap (or use tuple keys) to avoid accidental matches.
   auto key = neworderKey(g_max_orderline, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
