@@ -781,7 +781,7 @@ RC tpcc_txn_man::run_order_status(tpcc_query* query) {
     return finish(Abort);
   };
 
-  auto order = order_status_getLastOrder(arg.w_id, arg.d_id, arg.c_id);
+  auto order = order_status_getLastOrder(arg.w_id, arg.d_id, c_id);
   if (order != NULL) {
     int64_t o_id;
     order->get_value(O_ID, o_id);
@@ -992,7 +992,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 
     auto order = delivery_getCId(o_id, d_id, arg.w_id);
     if (order == NULL) {
-      // There is no guarantee that we will see a order row even after seeing a related new_order row.  We ignore this (as in Silo) and try later.
+      // There is no guarantee that we will see a order row even after seeing a related new_order row in this read-write transaction.  We ignore this (as in Silo) and try later.
       continue;
       // FAIL_ON_ABORT();
       // printf("oops1\n");
