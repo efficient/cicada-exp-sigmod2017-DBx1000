@@ -49,7 +49,7 @@ RC tpcc_wl::init_schema(const char* schema_file) {
   i_customer_id = indexes["CUSTOMER_ID_IDX"];
   i_customer_last = indexes["CUSTOMER_LAST_IDX"];
   i_stock = indexes["STOCK_IDX"];
-  i_order = indexes["ORDER_IDX"];
+  i_order = ordered_indexes["ORDERED_ORDER_IDX"];
   i_order_cust = ordered_indexes["ORDERED_ORDER_CUST_IDX"];
   i_neworder = ordered_indexes["ORDERED_NEWORDER_IDX"];
   i_orderline = ordered_indexes["ORDERED_ORDERLINE_IDX"];

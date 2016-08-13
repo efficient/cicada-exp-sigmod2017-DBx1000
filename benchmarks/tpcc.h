@@ -30,7 +30,7 @@ class tpcc_wl : public workload {
   INDEX* i_customer_id;
   INDEX* i_customer_last;
   INDEX* i_stock;
-  INDEX* i_order;
+  ORDERED_INDEX* i_order;
   ORDERED_INDEX* i_order_cust;
   ORDERED_INDEX* i_neworder;
   ORDERED_INDEX* i_orderline;
