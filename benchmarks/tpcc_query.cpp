@@ -206,11 +206,14 @@ void tpcc_query::gen_delivery(uint64_t thd_id) {
   tpcc_query_delivery& arg = args.delivery;
 
   if (FIRST_PART_LOCAL) {
-    do {
-      arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
-                     (g_num_wh + g_thread_cnt - 1) / g_thread_cnt +
-                 thd_id + 1;
-    } while (arg.w_id > g_num_wh);
+    if (g_num_wh <= g_thread_cnt)
+      arg.w_id = thd_id % g_num_wh + 1;
+    else
+      do {
+        arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
+                       (g_num_wh + g_thread_cnt - 1) / g_thread_cnt +
+                   thd_id + 1;
+      } while (arg.w_id > g_num_wh);
     assert((arg.w_id - 1) % g_num_wh == thd_id);
   } else
     arg.w_id = URand(1, g_num_wh, thd_id);
