@@ -42,8 +42,8 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
     int i = 0;
     while (true) {
       sprintf(buf, "%s_IDX_%d", table->get_table_name(), i);
-      if (mica_tbl->db()->create_hash_index_nonunique_u64(
-              buf, mica_tbl, bucket_cnt))
+      if (mica_tbl->db()->create_hash_index_nonunique_u64(buf, mica_tbl,
+                                                          bucket_cnt))
         break;
       i++;
     }
@@ -313,15 +313,15 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
   // bool skip_validation = false;
 
   uint64_t i = 0;
-  uint64_t ret =
-      mica_idx[part_id]
-          ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kInclusive,
-                   false>(tx, std::make_pair(min_key, 0),
-                          std::make_pair(max_key, 0), skip_validation,
-                          [&i, row_ids, count](auto& k, auto v) {
-                            row_ids[i++] = k.second;
-                            return i < count;
-                          });
+  uint64_t ret = mica_idx[part_id]
+                     ->lookup<BTreeRangeType::kInclusive,
+                              BTreeRangeType::kInclusive, false>(
+                         tx, std::make_pair(min_key, 0),
+                         std::make_pair(max_key, uint64_t(-1)), skip_validation,
+                         [&i, row_ids, count](auto& k, auto v) {
+                           row_ids[i++] = k.second;
+                           return i < count;
+                         });
   if (ret == MICAOrderedIndex::kHaveToAbort) return Abort;
   count = i;
   // printf("%lu %lu\n", key, row_id);

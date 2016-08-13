@@ -689,7 +689,16 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   assert(idx_rc == RCOK);
 
   // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
-  // TODO: Why is it sometimes 0?
+  if (cnt == 0) {
+    // There must be at least one order per customer.
+    printf("order_status_getLastOrder: w_id=%" PRIu64 " d_id=%" PRIu64
+           " c_id=%" PRIu64 " cnt=%" PRIu64 "\n",
+           w_id, d_id, c_id, cnt);
+    assert(mica_tx->is_peek_only());
+    index->mica_idx[part_id]->check(mica_tx);
+    assert(false);
+    return NULL;
+  }
   if (cnt == 0) return NULL;
 
   itemid_t idx_item;

@@ -222,7 +222,8 @@ void workload::index_insert(INDEX_T * index, uint64_t key, row_t * row, int64_t 
 	m_item->location = row;
 	m_item->valid = true;
 
-    assert( index->index_insert(key, m_item, pid) == RCOK );
+  auto rc = index->index_insert(key, m_item, pid);
+  assert(rc == RCOK);
 }
 
 template void workload::index_insert(index_btree * index, uint64_t key, row_t * row, int64_t part_id);
