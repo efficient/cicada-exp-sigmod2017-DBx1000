@@ -36,10 +36,9 @@ void tpcc_query::gen_payment(uint64_t thd_id) {
   tpcc_query_payment& arg = args.payment;
 
   if (FIRST_PART_LOCAL) {
-    if (g_num_wh <= g_thread_cnt) {
+    if (g_num_wh <= g_thread_cnt)
       arg.w_id = thd_id % g_num_wh + 1;
-      assert((arg.w_id - 1) % g_num_wh == thd_id);
-    } else {
+    else {
       do {
         arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
                        g_thread_cnt +
@@ -92,10 +91,9 @@ void tpcc_query::gen_new_order(uint64_t thd_id) {
   tpcc_query_new_order& arg = args.new_order;
 
   if (FIRST_PART_LOCAL) {
-    if (g_num_wh <= g_thread_cnt) {
+    if (g_num_wh <= g_thread_cnt)
       arg.w_id = thd_id % g_num_wh + 1;
-      assert((arg.w_id - 1) % g_num_wh == thd_id);
-    } else {
+    else {
       do {
         arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
                        g_thread_cnt +
@@ -160,10 +158,9 @@ void tpcc_query::gen_order_status(uint64_t thd_id) {
   tpcc_query_order_status& arg = args.order_status;
 
   if (FIRST_PART_LOCAL) {
-    if (g_num_wh <= g_thread_cnt) {
+    if (g_num_wh <= g_thread_cnt)
       arg.w_id = thd_id % g_num_wh + 1;
-      assert((arg.w_id - 1) % g_num_wh == thd_id);
-    } else {
+    else {
       do {
         arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
                        g_thread_cnt +
@@ -192,10 +189,9 @@ void tpcc_query::gen_stock_level(uint64_t thd_id) {
   tpcc_query_stock_level& arg = args.stock_level;
 
   if (FIRST_PART_LOCAL) {
-    if (g_num_wh <= g_thread_cnt) {
+    if (g_num_wh <= g_thread_cnt)
       arg.w_id = thd_id % g_num_wh + 1;
-      assert((arg.w_id - 1) % g_num_wh == thd_id);
-    } else {
+    else {
       do {
         arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
                        g_thread_cnt +
@@ -214,10 +210,9 @@ void tpcc_query::gen_delivery(uint64_t thd_id) {
   tpcc_query_delivery& arg = args.delivery;
 
   if (FIRST_PART_LOCAL) {
-    if (g_num_wh <= g_thread_cnt) {
+    if (g_num_wh <= g_thread_cnt)
       arg.w_id = thd_id % g_num_wh + 1;
-      assert((arg.w_id - 1) % g_num_wh == thd_id);
-    } else {
+    else {
       do {
         arg.w_id = RAND((g_num_wh + g_thread_cnt - 1) / g_thread_cnt, thd_id) *
                        g_thread_cnt +
