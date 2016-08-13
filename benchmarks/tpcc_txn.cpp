@@ -117,7 +117,7 @@ void tpcc_txn_man::payment_updateDistrictBalance(row_t* row, double h_amount) {
   // UPDATE DISTRICT SET D_YTD = D_YTD + ? WHERE D_W_ID  = ? AND D_ID = ?
   double d_ytd;
   row->get_value(D_YTD, d_ytd);
-  if (g_wh_update) row->set_value(D_YTD, d_ytd + h_amount);
+  row->set_value(D_YTD, d_ytd + h_amount);
 }
 
 row_t* tpcc_txn_man::payment_getCustomerByCustomerId(uint64_t w_id,
