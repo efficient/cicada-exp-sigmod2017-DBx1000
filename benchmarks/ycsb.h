@@ -28,6 +28,8 @@ class ycsb_wl : public workload {
   pthread_mutex_t insert_lock;
   //  For parallel initialization
   static int next_tid;
+
+  std::vector<uint64_t> shuffled_ids;
 };
 
 class ycsb_txn_man : public txn_man {

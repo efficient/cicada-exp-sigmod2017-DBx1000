@@ -16,6 +16,7 @@
 #include "row_mvcc.h"
 #include "mem_alloc.h"
 #include "query.h"
+#include <random>
 
 int ycsb_wl::next_tid;
 
@@ -31,6 +32,14 @@ RC ycsb_wl::init() {
     path += "/tests/apps/dbms/YCSB_schema.txt";
   }
   init_schema(path);
+
+  // Randomize the data layout by shuffling row insert order.
+  std::mt19937 g;
+  g.seed(std::random_device()());
+  shuffled_ids.reserve(g_synth_table_size);
+  for (uint64_t i = 0; i < g_synth_table_size; i++)
+    shuffled_ids.push_back(i);
+  std::shuffle(shuffled_ids.begin(), shuffled_ids.end(), g);
 
   init_table_parallel();
   //	init_table();
@@ -61,7 +70,7 @@ RC ycsb_wl::init_table() {
       // TODO insertion of last row may fail after the table_size
       // is updated. So never access the last record in a table
       assert(rc == RCOK);
-      uint64_t primary_key = total_row;
+      uint64_t primary_key = shuffled_ids[total_row];
       new_row->set_primary_key(primary_key);
       new_row->set_value(0, &primary_key);
       Catalog* schema = the_table->get_schema();
@@ -127,7 +136,8 @@ void* ycsb_wl::init_table_slice() {
   }
   assert((UInt32)ATOM_FETCH_ADD(next_tid, 0) == g_init_parallelism);
   uint64_t slice_size = g_synth_table_size / g_init_parallelism;
-  for (uint64_t key = slice_size * tid; key < slice_size * (tid + 1); key++) {
+  for (uint64_t key_i = slice_size * tid; key_i < slice_size * (tid + 1); key_i++) {
+    uint64_t key = shuffled_ids[key_i];
     row_t* new_row = NULL;
     uint64_t row_id;
     int part_id = key_to_part(key);
