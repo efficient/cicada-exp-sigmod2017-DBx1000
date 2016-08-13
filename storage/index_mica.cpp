@@ -28,7 +28,7 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
 
   auto mica_tbl = table->mica_tbl;
   auto db = table->mica_db;
-  auto thread_id = ::mica::util::lcore.lcore_id();
+  // auto thread_id = ::mica::util::lcore.lcore_id();
 
   bucket_cnt = (bucket_cnt + part_cnt - 1) / part_cnt;
 
@@ -36,6 +36,8 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
   // bucket_cnt);
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
+    uint64_t thread_id = part_id % g_thread_cnt;
+
     char buf[1024];
     int i = 0;
     while (true) {
@@ -73,7 +75,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
 
   auto mica_tbl = table->mica_tbl;
   auto db = table->mica_db;
-  auto thread_id = ::mica::util::lcore.lcore_id();
+  // auto thread_id = ::mica::util::lcore.lcore_id();
 
   bucket_cnt = (bucket_cnt + part_cnt - 1) / part_cnt;
 
@@ -81,6 +83,8 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
   // bucket_cnt);
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
+    uint64_t thread_id = part_id % g_thread_cnt;
+
     char buf[1024];
     int i = 0;
     while (true) {

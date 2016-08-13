@@ -8,6 +8,7 @@
 #include "index_mica.h"
 #include "catalog.h"
 #include "mem_alloc.h"
+#include <thread>
 
 RC workload::init() {
 	sim_done = false;
@@ -41,7 +42,18 @@ RC workload::init() {
 
 RC workload::init_schema(string schema_file) {
 #if CC_ALG == MICA
-	mica_db->activate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+  // mica_db->activate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+  std::vector<std::thread> threads;
+  for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
+    threads.emplace_back([&, thread_id] {
+      ::mica::util::lcore.pin_thread(thread_id);
+      mica_db->activate(thread_id);
+    });
+  }
+  while (threads.size() > 0) {
+    threads.back().join();
+    threads.pop_back();
+  }
 #endif
 
     assert(sizeof(uint64_t) == 8);
@@ -169,7 +181,17 @@ RC workload::init_schema(string schema_file) {
 	fin.close();
 
 #if CC_ALG == MICA
-	mica_db->deactivate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+  // mica_db->deactivate(static_cast<uint64_t>(::mica::util::lcore.lcore_id()));
+  for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
+    threads.emplace_back([&, thread_id] {
+      ::mica::util::lcore.pin_thread(thread_id);
+      mica_db->deactivate(thread_id);
+    });
+  }
+  while (threads.size() > 0) {
+    threads.back().join();
+    threads.pop_back();
+  }
 #endif
 	return RCOK;
 }

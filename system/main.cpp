@@ -66,9 +66,9 @@ int main(int argc, char* argv[]) {
           auto table = it.second;
           if (thread_id != 0) continue;
 
-          // uint64_t i = 0;
-          // table->mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
-          //                             static_cast<uint64_t>(-1), false);
+          uint64_t i = 0;
+          table->mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
+                                      static_cast<uint64_t>(-1), false);
 
           printf("thread %2" PRIu64 ": table %s:\n", thread_id,
                  it.first.c_str());
@@ -88,9 +88,11 @@ int main(int argc, char* argv[]) {
             mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
                                  static_cast<uint64_t>(-1), false);
 
-            // printf("thread %2" PRIu64 ": index %s part %2" PRIu64 ":\n",
-            //        thread_id, it.first.c_str(), part_id - 1);
-            // mica_tbl->print_table_status();
+            if (thread_id == 0) {
+              printf("thread %2" PRIu64 ": index %s part %2" PRIu64 ":\n",
+                     thread_id, it.first.c_str(), part_id - 1);
+              mica_tbl->print_table_status();
+            }
           }
         }
         for (auto it : m_wl->ordered_indexes) {
@@ -105,9 +107,11 @@ int main(int argc, char* argv[]) {
             mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
                                  static_cast<uint64_t>(-1), false);
 
-            // printf("thread %2" PRIu64 ": index %s part %2" PRIu64 ":\n",
-            //        thread_id, it.first.c_str(), part_id - 1);
-            // mica_tbl->print_table_status();
+            if (thread_id == 0) {
+              printf("thread %2" PRIu64 ": index %s part %2" PRIu64 ":\n",
+                     thread_id, it.first.c_str(), part_id - 1);
+              mica_tbl->print_table_status();
+            }
           }
         }
 #endif
