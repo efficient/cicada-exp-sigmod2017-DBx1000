@@ -378,8 +378,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   {
     auto mica_idx = _wl->i_order->mica_idx;
     auto key = orderKey(o_id, d_id, w_id);
-    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-      return false;
+    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
   }
   {
     auto mica_idx = _wl->i_order_cust->mica_idx;
