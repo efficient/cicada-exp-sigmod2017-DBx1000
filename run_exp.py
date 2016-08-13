@@ -44,14 +44,15 @@ def set_alg(conf, alg, **kwargs):
   return conf
 
 
-def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
+def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
+  conf = replace_def(conf, 'PART_CNT', str(thread_count))
   if total_count == 1:
     conf = replace_def(conf, 'INIT_PARALLELISM', '1')
   else:
-    conf = replace_def(conf, 'INIT_PARALLELISM', '2')
+    conf = replace_def(conf, 'INIT_PARALLELISM', str(thread_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
@@ -64,7 +65,7 @@ def set_ycsb(conf, total_count, record_size, req_per_query, read_ratio, zipf_the
   return conf
 
 
-def set_tpcc(conf, bench, warehouse_count, tx_count, **kwargs):
+def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
