@@ -133,6 +133,7 @@ old_dir_name = 'old_exp_data'
 prefix = ''
 suffix = ''
 total_seqs = 5
+node_count = 2
 max_thread_count = 28
 # max_thread_count = 32
 # hugepage_count = 32768  # 64 GiB
@@ -205,7 +206,8 @@ def format_exp(exp):
 
 def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
-              'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT']
+              'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
+              'SILO-REF']
 
   macrobenchs = ['macrobench']
   factors = ['factor']
@@ -224,55 +226,57 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        ycsb = dict(common)
-        total_count = 10 * 1000 * 1000
-        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+        if alg not in ('SILO-REF',):
+          ycsb = dict(common)
+          total_count = 10 * 1000 * 1000
+          ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-        record_size = 1000
-        req_per_query = 16
-        tx_count = 200000
-        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+          record_size = 1000
+          req_per_query = 16
+          tx_count = 200000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        for read_ratio in [0.50, 0.95]:
-          # for zipf_theta in [0.00, 0.90, 0.99]:
-          for zipf_theta in [0.00, 0.99]:
-            if zipf_theta >= 0.95:
-              if read_ratio == 0.50 and alg == 'NO_WAIT': continue
-              if read_ratio == 0.50 and alg == 'HEKATON': continue
-            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-            yield dict(ycsb)
+          for read_ratio in [0.50, 0.95]:
+            # for zipf_theta in [0.00, 0.90, 0.99]:
+            for zipf_theta in [0.00, 0.99]:
+              if zipf_theta >= 0.95:
+                if read_ratio == 0.50 and alg == 'NO_WAIT': continue
+                if read_ratio == 0.50 and alg == 'HEKATON': continue
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
 
-        record_size = 1000
-        req_per_query = 1
-        tx_count = 2000000
-        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+          record_size = 1000
+          req_per_query = 1
+          tx_count = 2000000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        for read_ratio in [0.50, 0.95]:
-          # for zipf_theta in [0.00, 0.90, 0.99]:
-          for zipf_theta in [0.00, 0.99]:
-            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-            yield dict(ycsb)
+          for read_ratio in [0.50, 0.95]:
+            # for zipf_theta in [0.00, 0.90, 0.99]:
+            for zipf_theta in [0.00, 0.99]:
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
 
         # TPCC
-        tpcc = dict(common)
-        tx_count = 200000
-        tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+        if alg not in ('SILO-REF',):
+          tpcc = dict(common)
+          tx_count = 200000
+          tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
-        # for warehouse_count in [1, 4, 16, max_thread_count]:
-        for warehouse_count in [1, 4, max_thread_count]:
-          if tag != 'macrobench': continue
-          tpcc.update({ 'warehouse_count': warehouse_count })
-          yield dict(tpcc)
+          # for warehouse_count in [1, 4, 16, max_thread_count]:
+          for warehouse_count in [1, 4, max_thread_count]:
+            if tag != 'macrobench': continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
 
-        for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
-          if tag != 'macrobench': continue
-          if thread_count not in [max_thread_count, warehouse_count]: continue
-          tpcc.update({ 'warehouse_count': warehouse_count })
-          yield dict(tpcc)
+          for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
+            if tag != 'macrobench': continue
+            if thread_count not in [max_thread_count, warehouse_count]: continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        if alg in ('MICA+INDEX', 'MICA+FULLINDEX'):
+        if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF'):
           tpcc = dict(common)
           tx_count = 200000
           # tx_count = 100000   # half of the usual due to memory use
@@ -294,49 +298,51 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        ycsb = dict(common)
-        total_count = 10 * 1000 * 1000
-        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+        if alg not in ('SILO-REF',):
+          ycsb = dict(common)
+          total_count = 10 * 1000 * 1000
+          ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-        record_size = 1000
-        req_per_query = 16
-        tx_count = 200000
-        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+          record_size = 1000
+          req_per_query = 16
+          tx_count = 200000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        for read_ratio in [0.50, 0.95]:
-          for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
-            if zipf_theta >= 0.95:
-              if read_ratio == 0.50 and alg == 'NO_WAIT': continue
-              if read_ratio == 0.50 and alg == 'HEKATON': continue
-            ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-            yield dict(ycsb)
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
+              if zipf_theta >= 0.95:
+                if read_ratio == 0.50 and alg == 'NO_WAIT': continue
+                if read_ratio == 0.50 and alg == 'HEKATON': continue
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
 
   tag = 'inlining'
   for alg in all_algs:
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
+      if alg not in ('SILO-REF',):
+        common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
-      # YCSB
-      ycsb = dict(common)
-      total_count = 10 * 1000 * 1000
-      ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
+        # YCSB
+        ycsb = dict(common)
+        total_count = 10 * 1000 * 1000
+        ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-      for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
-        req_per_query = 16
-        tx_count = 200000
-        ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+        for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
+          req_per_query = 16
+          tx_count = 200000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
-        read_ratio = 0.95
-        zipf_theta = 0.00
-        ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
-        yield dict(ycsb)
-
-        if alg in ['MICA', 'MICA+INDEX']:
-          ycsb.update({ 'no_inlining': 1 })
+          read_ratio = 0.95
+          zipf_theta = 0.00
+          ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
           yield dict(ycsb)
-          del ycsb['no_inlining']
+
+          if alg in ['MICA', 'MICA+INDEX']:
+            ycsb.update({ 'no_inlining': 1 })
+            yield dict(ycsb)
+            del ycsb['no_inlining']
 
   tag = 'singlekey'
   # for alg in all_algs:
@@ -654,7 +660,49 @@ def validate_result(exp, output):
     return output.find('cleaning up') != -1
 
 
-hugepage_status = -1
+def make_silo_cmd(exp):
+  cmd = 'silo/out-perf.masstree/benchmarks/dbtest'
+  cmd += ' --verbose'
+  cmd += ' --parallel-loading'
+  cmd += ' --pin-cpus'
+  cmd += ' --retry-aborted-transactions'
+  cmd += ' --bench tpcc'
+  cmd += ' --scale-factor %d' % exp['warehouse_count']
+  cmd += ' --num-threads %d' % exp['thread_count']
+  # cmd += ' --ops-per-worker %d' % exp['tx_count']
+  cmd += ' --runtime 5'
+  cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+  cmd += ' --numa-memory %dG' % int(hugepage_count * 2 / 1024)
+  return cmd
+
+def make_ermia_cmd(exp):
+  tmpfs_dir = '/tmp'
+  log_dir = '/tmp/ermia-log'
+  if not os.path.exists(log_dir): os.mkdir(log_dir)
+
+   # --parallel-loading seems to be broken
+   # --ops-per-worker is somehow very slow
+
+  cmd = 'ermia/out-perf.masstree/benchmarks/dbtest'
+  cmd += ' --verbose'
+  cmd += ' --retry-aborted-transactions'
+  cmd += ' --bench tpcc'
+  cmd += ' --scale-factor %d' % exp['warehouse_count']
+  cmd += ' --num-threads %d' % exp['thread_count']
+  # cmd += ' --ops-per-worker %d' % exp['tx_count']
+  cmd += ' --runtime 5'
+  cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+  cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count)
+  cmd += ' --enable-gc'
+  cmd += ' --tmpfs-dir %s' % tmpfs_dir
+  cmd += ' --log-dir %s' % log_dir
+  cmd += ' --log-buffer-mb 512'
+  cmd += ' --log-segment-mb 8192'
+  cmd += ' --null-log-device'
+  return cmd
+
+
+hugepage_status = None
 
 def run(exp, prepare_only):
   global hugepage_status
@@ -673,20 +721,40 @@ def run(exp, prepare_only):
   os.system('make clean > /dev/null')
   os.system('rm -f ./rundb')
 
-  if exp['alg'].startswith('MICA'):
-    if hugepage_status != hugepage_count:
+  if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-REF',):
+    if hugepage_status != (hugepage_count, exp['alg']):
       os.system('../script/setup.sh %d %d > /dev/null' % (hugepage_count / 2, hugepage_count / 2))
-      hugepage_status = hugepage_count
+      hugepage_status = (hugepage_count, exp['alg'])
   else:
-    if hugepage_status != 0:
+    if hugepage_status != (0, ''):
       os.system('../script/setup.sh 0 0 > /dev/null')
-      hugepage_status = 0
+      hugepage_status = (0, '')
+
+  # cmd
+  filename = dir_name + '/' + gen_filename(exp)
+
+  if not exp['tag'].startswith('native-') and exp['alg'] != 'SILO-REF':
+    # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
+    cmd = 'sudo ./rundb'
+  elif exp['alg'] == 'SILO-REF':
+    assert exp['bench'] == 'TPCC-FULL'
+    cmd = make_silo_cmd(exp)
+  elif exp['alg'] == 'ERMIA-REF':
+    assert exp['bench'] == 'TPCC-FULL'
+    cmd = make_ermia_cmd(exp)
+  else:
+    cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
+
+  print('cmd: ' + cmd);
+
 
   if prepare_only: return
 
   # compile
   if not exp['tag'].startswith('native-'):
     ret = os.system('make -j > /dev/null')
+  elif exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
+    ret = 0
   else:
     pdir = os.getcwd()
     os.chdir('../build')
@@ -699,13 +767,6 @@ def run(exp, prepare_only):
   time.sleep(1)
 
   # run
-  filename = dir_name + '/' + gen_filename(exp)
-
-  if not exp['tag'].startswith('native-'):
-    # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
-    cmd = 'sudo ./rundb'
-  else:
-    cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
   p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   stdout, stderr = p.communicate()
   stdout = stdout.decode('utf-8')
