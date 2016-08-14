@@ -207,7 +207,9 @@ def format_exp(exp):
 def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
-              'SILO-REF']
+              'SILO-REF',
+              'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF',
+              ]
 
   macrobenchs = ['macrobench']
   factors = ['factor']
@@ -226,7 +228,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF',):
+        if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -257,7 +259,7 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        if alg not in ('SILO-REF',):
+        if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
@@ -276,7 +278,7 @@ def enum_exps(seq):
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF'):
+        if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
           tpcc = dict(common)
           tx_count = 200000
           # tx_count = 100000   # half of the usual due to memory use
@@ -298,7 +300,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF',):
+        if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -321,7 +323,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg not in ('SILO-REF',):
+      if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -654,8 +656,8 @@ def find_exps_to_run(exps, pats):
 
 
 def validate_result(exp, output):
-  if exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
-    return output.find('agg_throughput: ') != -1
+  if exp['alg'] in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+    return output.find('txn breakdown: ') != -1
   elif not exp['tag'].startswith('native-'):
     return output.find('[summary] tput=') != -1
   else:
@@ -685,17 +687,22 @@ def make_ermia_cmd(exp):
    # --parallel-loading seems to be broken
    # --ops-per-worker is somehow very slow
 
-  cmd = 'ermia/out-perf.masstree/benchmarks/dbtest'
+  if exp['ALG'] == 'ERMIA-SI-REF':
+    cmd = 'ermia/dbtest-SI'
+  elif exp['ALG'] == 'ERMIA-SI_SSN-REF':
+    cmd = 'ermia/dbtest-SI_SSN'
+  else: assert False
   cmd += ' --verbose'
+  # cmd += ' --parallel-loading'  # Broken in the current code
   cmd += ' --retry-aborted-transactions'
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 5'
-  cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+  # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
   cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count)
-  cmd += ' --enable-gc'
+  # cmd += ' --enable-gc'   # Broken in the current code
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
   cmd += ' --log-buffer-mb 512'
@@ -723,7 +730,7 @@ def run(exp, prepare_only):
   os.system('make clean > /dev/null')
   os.system('rm -f ./rundb')
 
-  if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-REF',):
+  if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
     if hugepage_status != (hugepage_count, exp['alg']):
       os.system('../script/setup.sh %d %d > /dev/null' % (hugepage_count / 2, hugepage_count / 2))
       hugepage_status = (hugepage_count, exp['alg'])
@@ -738,7 +745,7 @@ def run(exp, prepare_only):
   if exp['alg'] == 'SILO-REF':
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_silo_cmd(exp)
-  elif exp['alg'] == 'ERMIA-REF':
+  elif exp['alg'] in ('ERMIA-REF', 'ERMIA-SI_SSN-REF'):
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_ermia_cmd(exp)
   elif not exp['tag'].startswith('native-'):
@@ -753,7 +760,7 @@ def run(exp, prepare_only):
   if prepare_only: return
 
   # compile
-  if exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
+  if exp['alg'] in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
     ret = 0
   elif not exp['tag'].startswith('native-'):
     ret = os.system('make -j > /dev/null')
