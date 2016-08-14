@@ -687,9 +687,9 @@ def make_ermia_cmd(exp):
    # --parallel-loading seems to be broken
    # --ops-per-worker is somehow very slow
 
-  if exp['ALG'] == 'ERMIA-SI-REF':
+  if exp['alg'] == 'ERMIA-SI-REF':
     cmd = 'ermia/dbtest-SI'
-  elif exp['ALG'] == 'ERMIA-SI_SSN-REF':
+  elif exp['alg'] == 'ERMIA-SI_SSN-REF':
     cmd = 'ermia/dbtest-SI_SSN'
   else: assert False
   cmd += ' --verbose'
