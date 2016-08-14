@@ -287,12 +287,18 @@ def enum_exps(seq):
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
             if tag != 'macrobench': continue
+            if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+              # Seem to be broken in ERMIA
+              continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
           for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
+            if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+              # Seem to be broken in ERMIA
+              continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -754,7 +760,7 @@ def run(exp, prepare_only):
   else:
     cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
 
-  print('cmd: ' + cmd);
+  print('  ' + cmd)
 
 
   if prepare_only: return
