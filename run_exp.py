@@ -208,7 +208,7 @@ def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
               'SILO-REF',
-              'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF',
+              #'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF',
               ]
 
   macrobenchs = ['macrobench']
