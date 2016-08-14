@@ -745,7 +745,7 @@ def run(exp, prepare_only):
   if exp['alg'] == 'SILO-REF':
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_silo_cmd(exp)
-  elif exp['alg'] in ('ERMIA-REF', 'ERMIA-SI_SSN-REF'):
+  elif exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_ermia_cmd(exp)
   elif not exp['tag'].startswith('native-'):
