@@ -654,7 +654,9 @@ def find_exps_to_run(exps, pats):
 
 
 def validate_result(exp, output):
-  if not exp['tag'].startswith('native-'):
+  if exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
+    return output.find('agg_throughput: ') != -1
+  elif not exp['tag'].startswith('native-'):
     return output.find('[summary] tput=') != -1
   else:
     return output.find('cleaning up') != -1
@@ -733,15 +735,15 @@ def run(exp, prepare_only):
   # cmd
   filename = dir_name + '/' + gen_filename(exp)
 
-  if not exp['tag'].startswith('native-') and exp['alg'] != 'SILO-REF':
-    # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
-    cmd = 'sudo ./rundb'
-  elif exp['alg'] == 'SILO-REF':
+  if exp['alg'] == 'SILO-REF':
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_silo_cmd(exp)
   elif exp['alg'] == 'ERMIA-REF':
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_ermia_cmd(exp)
+  elif not exp['tag'].startswith('native-'):
+    # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
+    cmd = 'sudo ./rundb'
   else:
     cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
 
@@ -751,10 +753,10 @@ def run(exp, prepare_only):
   if prepare_only: return
 
   # compile
-  if not exp['tag'].startswith('native-'):
-    ret = os.system('make -j > /dev/null')
-  elif exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
+  if exp['alg'] in ('SILO-REF', 'ERMIA-REF'):
     ret = 0
+  elif not exp['tag'].startswith('native-'):
+    ret = os.system('make -j > /dev/null')
   else:
     pdir = os.getcwd()
     os.chdir('../build')
@@ -771,17 +773,18 @@ def run(exp, prepare_only):
   stdout, stderr = p.communicate()
   stdout = stdout.decode('utf-8')
   stderr = stderr.decode('utf-8')
+  output = stdout + '\n\n' + stderr
   if p.returncode != 0:
     print('failed to run exp for %s' % format_exp(exp))
-    open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
+    open(filename + '.failed', 'w').write(output)
     return
-  if not validate_result(exp, stdout):
+  if not validate_result(exp, output):
     print('validation failed for %s' % format_exp(exp))
-    open(filename + '.failed', 'w').write(stdout + '\n' + stderr)
+    open(filename + '.failed', 'w').write(output)
     return
 
   # finalize
-  open(filename, 'w').write(stdout)
+  open(filename, 'w').write(output)
 
 def run_all(pats, prepare_only):
   exps = []
