@@ -402,6 +402,9 @@ RC txn_man::finish(RC rc) {
 
 #if INDEX_STRUCT != IDX_MICA
 	if (rc == RCOK) {
+		// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
+
+		// XXX: Because this code is after the commit, two duplicate keys might be inserted to the index, causing assertion failure.
 		for (size_t i = 0; i < insert_idx_cnt; i++) {
 			auto idx = insert_idx_idx[i];
 			auto key = insert_idx_key[i];
@@ -430,7 +433,7 @@ RC txn_man::finish(RC rc) {
 			auto rc = idx->index_remove(key, &m_item);
 			assert(rc == RCOK);
 
-			// Freeing the index item immediately is unsafe due to concurrency.
+			// XXX: Freeing the index item immediately is unsafe due to concurrency.
 			// mem_allocator.free(m_item, sizeof(itemid_t));
 		}
 	}
