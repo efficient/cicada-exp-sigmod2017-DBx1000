@@ -48,7 +48,7 @@ RC IndexMBTree::index_insert(idx_key_t key, itemid_t* item, int part_id) {
 
   u64_varkey mbtree_key(key);
 
-  if (!idx->insert(mbtree_key, item)) return ERROR;
+  if (!idx->insert_if_absent(mbtree_key, item)) return ERROR;
 
   return RCOK;
 }
