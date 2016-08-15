@@ -380,7 +380,7 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
       row->set_value(OL_D_ID, did);
       row->set_value(OL_W_ID, wid);
       row->set_value(OL_NUMBER, ol);
-      row->set_value(OL_I_ID, URand(1, 100000, wid - 1));
+      row->set_value(OL_I_ID, URand(1, g_max_items, wid - 1));
       row->set_value(OL_SUPPLY_W_ID, wid);
       if (oid < 2101) {
         row->set_value(OL_DELIVERY_D, o_entry);

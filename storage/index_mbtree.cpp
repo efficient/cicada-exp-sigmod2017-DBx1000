@@ -4,6 +4,10 @@
 #include "silo/masstree/config.h"
 #include "silo/masstree_btree.h"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include "index_mbtree.h"
 
 // #ifdef DEBUG

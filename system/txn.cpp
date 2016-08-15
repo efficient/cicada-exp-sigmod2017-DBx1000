@@ -400,6 +400,7 @@ RC txn_man::finish(RC rc) {
 	cleanup(rc);
 #endif
 
+#if INDEX_STRUCT != IDX_MICA
 	if (rc == RCOK) {
 		for (size_t i = 0; i < insert_idx_cnt; i++) {
 			auto idx = insert_idx_idx[i];
@@ -433,6 +434,7 @@ RC txn_man::finish(RC rc) {
 			// mem_allocator.free(m_item, sizeof(itemid_t));
 		}
 	}
+#endif
 
 	uint64_t timespan = get_sys_clock() - starttime;
 	INC_TMP_STATS(get_thd_id(), time_man,  timespan);

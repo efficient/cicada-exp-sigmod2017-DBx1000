@@ -409,14 +409,14 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   {
     auto mica_idx = _wl->i_order->mica_idx;
     auto key = orderKey(o_id, d_id, w_id);
-    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-      return false;
+    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
   }
   {
     auto mica_idx = _wl->i_order_cust->mica_idx;
     auto key = orderCustKey(o_id, c_id, d_id, w_id);
-    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-      return false;
+    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
   }
 #endif
 #endif
@@ -450,8 +450,8 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   {
     auto mica_idx = _wl->i_neworder->mica_idx;
     auto key = neworderKey(o_id, d_id, w_id);
-    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-      return false;
+    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
   }
 #endif
 #endif
@@ -531,15 +531,19 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #if CC_ALG != MICA
   {
     auto idx = _wl->i_orderline;
-    auto key = orderlineKey(ol_i_id, o_id, d_id, w_id);
+    auto key = orderlineKey(ol_number, o_id, d_id, w_id);
     if (!index_insert(idx, key, row, part_id)) return false;
   }
 #else
   {
     auto mica_idx = _wl->i_orderline->mica_idx;
-    auto key = orderlineKey(ol_i_id, o_id, d_id, w_id);
-    if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+    auto key = orderlineKey(ol_number, o_id, d_id, w_id);
+    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
+    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) {
+      // printf("ol_i_id=%d o_id=%d d_id=%d w_id=%d\n", (int)ol_i_id, (int)o_id,
+      //        (int)d_id, (int)w_id);
       return false;
+    }
   }
 #endif
 #endif
@@ -551,10 +555,13 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
 
   row_t* items[15];
   assert(arg.ol_cnt <= sizeof(items) / sizeof(items[0]));
-  for (uint64_t ol_number = 0; ol_number < arg.ol_cnt; ol_number++) {
-    items[ol_number] = new_order_getItemInfo(arg.items[ol_number].ol_i_id);
-    if (items[ol_number] == NULL) {
-      FAIL_ON_ABORT();
+  for (uint64_t ol_number = 1; ol_number <= arg.ol_cnt; ol_number++) {
+    items[ol_number - 1] =
+        new_order_getItemInfo(arg.items[ol_number - 1].ol_i_id);
+    // printf("ol_i_id %d\n", (int)arg.items[ol_number - 1].ol_i_id);
+    if (items[ol_number - 1] == NULL) {
+      assert(false);
+      // FAIL_ON_ABORT();
       return finish(Abort);
     };
   }
@@ -599,10 +606,10 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
   };
 #endif
 
-  for (uint64_t ol_number = 0; ol_number < arg.ol_cnt; ol_number++) {
-    uint64_t ol_i_id = arg.items[ol_number].ol_i_id;
-    uint64_t ol_supply_w_id = arg.items[ol_number].ol_supply_w_id;
-    uint64_t ol_quantity = arg.items[ol_number].ol_quantity;
+  for (uint64_t ol_number = 1; ol_number <= arg.ol_cnt; ol_number++) {
+    uint64_t ol_i_id = arg.items[ol_number - 1].ol_i_id;
+    uint64_t ol_supply_w_id = arg.items[ol_number - 1].ol_supply_w_id;
+    uint64_t ol_quantity = arg.items[ol_number - 1].ol_quantity;
 
     auto stock = new_order_getStockInfo(ol_i_id, ol_supply_w_id);
     if (stock == NULL) {
@@ -614,7 +621,7 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
 
 #if TPCC_INSERT_ROWS
     double i_price;
-    items[ol_number]->get_value(I_PRICE, i_price);
+    items[ol_number - 1]->get_value(I_PRICE, i_price);
     double ol_amount = ol_quantity * i_price;
     assert(arg.d_id >= 1 && arg.d_id <= DIST_PER_WARE);
     const char* ol_dist_info = stock->get_value(S_DIST_01 + arg.d_id - 1);
@@ -973,7 +980,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     // printf("w_id=%" PRIu64 " d_id=%" PRIu64 " o_id=%" PRIu64 "\n", w_id, d_id, o_id);
     auto mica_idx = _wl->i_neworder->mica_idx;
     auto key = neworderKey(o_id, d_id, w_id);
-    return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
+    // return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
+    return mica_idx[part_id]->remove(mica_tx, key, row_id) == 1;
   }
 #endif
 }

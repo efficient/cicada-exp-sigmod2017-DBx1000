@@ -89,11 +89,12 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
     int i = 0;
     while (true) {
       sprintf(buf, "%s_IDX_%d", table->get_table_name(), i);
-      if (mica_tbl->db()->create_btree_index_nonunique_u64(buf, mica_tbl))
-        break;
+      // if (mica_tbl->db()->create_btree_index_nonunique_u64(buf, mica_tbl))
+      if (mica_tbl->db()->create_btree_index_unique_u64(buf, mica_tbl)) break;
       i++;
     }
-    auto p = mica_tbl->db()->get_btree_index_nonunique_u64(buf);
+    // auto p = mica_tbl->db()->get_btree_index_nonunique_u64(buf);
+    auto p = mica_tbl->db()->get_btree_index_unique_u64(buf);
     assert(p != nullptr);
 
     MICATransaction tx(db->context(thread_id));
@@ -233,7 +234,8 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_insert(idx_key_t key,
     // printf("idx=%p part_id=%d key=%lu row_id=%lu\n", this, part_id, key,
     // row_id);
     if (!tx.begin()) assert(false);
-    if (mica_idx[part_id]->insert(&tx, make_pair(key, row_id), 0) != 1) {
+    // if (mica_idx[part_id]->insert(&tx, make_pair(key, row_id), 0) != 1) {
+    if (mica_idx[part_id]->insert(&tx, key, row_id) != 1) {
       if (!tx.abort()) assert(false);
       continue;
     }
@@ -257,14 +259,19 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read(idx_key_t key,
 
   auto tx = item->mica_tx;
   uint64_t row_id = (uint64_t)-1;
-  auto ret =
-      mica_idx[part_id]
-          ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kOpen, false>(
-              tx, std::make_pair(key, 0), std::make_pair(key, 0),
-              skip_validation, [&key, &row_id](auto& k, auto v) {
-                if (k.first == key) row_id = k.second;
-                return false;
-              });
+  // auto ret =
+  //     mica_idx[part_id]
+  //         ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kOpen, false>(
+  //             tx, std::make_pair(key, 0), std::make_pair(key, 0),
+  //             skip_validation, [&key, &row_id](auto& k, auto v) {
+  //               if (k.first == key) row_id = k.second;
+  //               return false;
+  //             });
+  auto ret = mica_idx[part_id]->lookup(tx, key, skip_validation,
+                                       [&key, &row_id](auto& k, auto v) {
+                                         row_id = v;
+                                         return false;
+                                       });
   if (row_id == (uint64_t)-1) return ERROR;
   if (ret == MICAOrderedIndex::kHaveToAbort) return Abort;
   // printf("%lu %lu\n", key, row_id);
@@ -284,17 +291,22 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(
   // bool skip_validation = false;
 
   uint64_t i = 0;
-  uint64_t ret =
-      mica_idx[part_id]
-          ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kOpen, false>(
-              tx, std::make_pair(key, 0), std::make_pair(key, 0),
-              skip_validation, [&key, &i, row_ids, count](auto& k, auto v) {
-                if (k.first == key) {
-                  row_ids[i++] = k.second;
-                  return i < count;
-                } else
-                  return false;
-              });
+  // uint64_t ret =
+  //     mica_idx[part_id]
+  //         ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kOpen, false>(
+  //             tx, std::make_pair(key, 0), std::make_pair(key, 0),
+  //             skip_validation, [&key, &i, row_ids, count](auto& k, auto v) {
+  //               if (k.first == key) {
+  //                 row_ids[i++] = k.second;
+  //                 return i < count;
+  //               } else
+  //                 return false;
+  //             });
+  uint64_t ret = mica_idx[part_id]->lookup(
+      tx, key, skip_validation, [&key, &i, row_ids, count](auto& k, auto v) {
+        row_ids[i++] = v;
+        return i < count;
+      });
   if (ret == MICAOrderedIndex::kHaveToAbort) return Abort;
   count = i;
   // printf("%lu %lu\n", key, row_id);
@@ -313,15 +325,23 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
   // bool skip_validation = false;
 
   uint64_t i = 0;
-  uint64_t ret = mica_idx[part_id]
-                     ->lookup<BTreeRangeType::kInclusive,
-                              BTreeRangeType::kInclusive, false>(
-                         tx, std::make_pair(min_key, 0),
-                         std::make_pair(max_key, uint64_t(-1)), skip_validation,
-                         [&i, row_ids, count](auto& k, auto v) {
-                           row_ids[i++] = k.second;
-                           return i < count;
-                         });
+  // uint64_t ret = mica_idx[part_id]
+  //                    ->lookup<BTreeRangeType::kInclusive,
+  //                             BTreeRangeType::kInclusive, false>(
+  //                        tx, std::make_pair(min_key, 0),
+  //                        std::make_pair(max_key, uint64_t(-1)), skip_validation,
+  //                        [&i, row_ids, count](auto& k, auto v) {
+  //                          row_ids[i++] = k.second;
+  //                          return i < count;
+  //                        });
+  uint64_t ret =
+      mica_idx[part_id]
+          ->lookup<BTreeRangeType::kInclusive, BTreeRangeType::kInclusive,
+                   false>(tx, min_key, max_key, skip_validation,
+                          [&i, row_ids, count](auto& k, auto v) {
+                            row_ids[i++] = v;
+                            return i < count;
+                          });
   if (ret == MICAOrderedIndex::kHaveToAbort) return Abort;
   count = i;
   // printf("%lu %lu\n", key, row_id);
