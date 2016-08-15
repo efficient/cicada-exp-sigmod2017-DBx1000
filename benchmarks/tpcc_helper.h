@@ -31,7 +31,7 @@ uint64_t orderCustKey(int64_t o_id, uint64_t o_c_id, uint64_t o_d_id,
 uint64_t neworderKey(int64_t o_id, uint64_t o_d_id, uint64_t o_w_id);
 
 // ORDERED_ORDERLINE_IDX
-uint64_t orderlineKey(int64_t ol_o_id, uint64_t ol_d_id, uint64_t ol_w_id);
+uint64_t orderlineKey(uint64_t ol_number, int64_t ol_o_id, uint64_t ol_d_id, uint64_t ol_w_id);
 
 uint64_t Lastname(uint64_t num, char* name);
 

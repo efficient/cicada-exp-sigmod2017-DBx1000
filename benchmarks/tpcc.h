@@ -78,8 +78,12 @@ class tpcc_txn_man : public txn_man {
 
   template <typename IndexT>
   row_t* search(IndexT* index, uint64_t key, uint64_t part, access_t type);
-  bool get_new_row(table_t* tbl, row_t* row, uint64_t part_id,
+  bool get_new_row(table_t* tbl, row_t*& row, uint64_t part_id,
                    uint64_t& out_row_id);
+  template <class IndexT>
+  bool index_insert(IndexT* index, uint64_t key, row_t* row, int64_t part_id);
+  template <class IndexT>
+  bool index_remove(IndexT* index, uint64_t key, int64_t part_id);
 
   row_t* payment_getWarehouse(uint64_t w_id);
   void payment_updateWarehouseBalance(row_t* row, double h_amount);

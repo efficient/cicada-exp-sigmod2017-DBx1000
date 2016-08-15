@@ -394,7 +394,7 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
       MakeAlphaString(24, 24, ol_dist_info, wid - 1);
       row->set_value(OL_DIST_INFO, ol_dist_info);
 #if TPCC_FULL
-      index_insert(i_orderline, orderlineKey(oid, did, wid), row,
+      index_insert(i_orderline, orderlineKey(ol, oid, did, wid), row,
                    wh_to_part(wid));
 #endif
     }

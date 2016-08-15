@@ -100,6 +100,8 @@ public:
 	itemid_t *		index_read(INDEX_T * index, idx_key_t key, int part_id);
 	template <typename INDEX_T>
 	void 			index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& item);
+	template <typename INDEX_T>
+	RC		index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
 #else
 	template <typename INDEX_T>
 	RC		index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id);
@@ -118,10 +120,24 @@ public:
 
 protected:
 	void 			insert_row(row_t * row, table_t * table);
+	void 			insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t part_id);
+	void 			remove_idx(ORDERED_INDEX* idx, idx_key_t key, uint64_t part_id);
 private:
 	// insert rows
 	uint64_t 		insert_cnt;
 	row_t * 		insert_rows[MAX_ROW_PER_TXN];
+
+	uint64_t 		   insert_idx_cnt;
+	ORDERED_INDEX* insert_idx_idx[MAX_ROW_PER_TXN];
+	idx_key_t	     insert_idx_key[MAX_ROW_PER_TXN];
+	row_t* 		     insert_idx_row[MAX_ROW_PER_TXN];
+	uint64_t		   insert_idx_part_id[MAX_ROW_PER_TXN];
+
+	uint64_t 		   remove_idx_cnt;
+	ORDERED_INDEX* remove_idx_idx[MAX_ROW_PER_TXN];
+	idx_key_t	     remove_idx_key[MAX_ROW_PER_TXN];
+	uint64_t		   remove_idx_part_id[MAX_ROW_PER_TXN];
+
 	txnid_t 		txn_id;
 	ts_t 			timestamp;
 

@@ -8,6 +8,7 @@ class IndexHash;
 class index_btree;
 class IndexMICA;
 class OrderedIndexMICA;
+class IndexMBTree;
 class Catalog;
 class lock_man;
 class txn_man;

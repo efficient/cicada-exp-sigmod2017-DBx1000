@@ -38,13 +38,14 @@ uint64_t orderCustKey(int64_t o_id, uint64_t o_c_id, uint64_t o_d_id,
 }
 
 uint64_t neworderKey(int64_t o_id, uint64_t o_d_id, uint64_t o_w_id) {
-  return orderlineKey(o_id, o_d_id, o_w_id);
+  return distKey(o_d_id, o_w_id) * g_max_orderline + (g_max_orderline - o_id);
 }
 
-uint64_t orderlineKey(int64_t ol_o_id, uint64_t ol_d_id, uint64_t ol_w_id) {
+uint64_t orderlineKey(uint64_t ol_number, int64_t ol_o_id, uint64_t ol_d_id,
+                      uint64_t ol_w_id) {
   // Use negative ol_o_id to allow reusing the current index interface.
-  return distKey(ol_d_id, ol_w_id) * g_max_orderline +
-         (g_max_orderline - ol_o_id);
+  return distKey(ol_d_id, ol_w_id) * g_max_orderline * 15 +
+         (g_max_orderline - ol_o_id) * 15 + ol_number;
 }
 
 uint64_t Lastname(uint64_t num, char* name) {

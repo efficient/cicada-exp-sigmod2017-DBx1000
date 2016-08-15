@@ -229,7 +229,8 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 #define ORDERED_INDEX		OrderedIndexMICA
 #else  // IDX_HASH
 #define INDEX		IndexHash
-#define ORDERED_INDEX		index_btree
+// #define ORDERED_INDEX		index_btree
+#define ORDERED_INDEX		IndexMBTree
 #endif
 
 /************************************************/

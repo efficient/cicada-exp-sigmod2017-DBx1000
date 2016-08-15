@@ -6,6 +6,7 @@
 #include "index_hash.h"
 #include "index_btree.h"
 #include "index_mica.h"
+#include "index_mbtree.h"
 #include "catalog.h"
 #include "mem_alloc.h"
 #include <thread>
@@ -233,6 +234,7 @@ void workload::index_insert(INDEX_T * index, uint64_t key, row_t * row, int64_t 
 
 template void workload::index_insert(index_btree * index, uint64_t key, row_t * row, int64_t part_id);
 template void workload::index_insert(IndexHash * index, uint64_t key, row_t * row, int64_t part_id);
+template void workload::index_insert(IndexMBTree * index, uint64_t key, row_t * row, int64_t part_id);
 
 #if INDEX_STRUCT == IDX_MICA
 template void workload::index_insert(IndexMICA * index, uint64_t key, row_t * row, int64_t part_id);

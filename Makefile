@@ -21,7 +21,16 @@ DEPS = $(CPPS:.cpp=.d)
 
 all:rundb
 
-rundb : $(OBJS) ./mica/build/libcommon.a
+rundb : $(OBJS) ./mica/build/libcommon.a \
+	./silo/out-perf.masstree/allocator.o \
+	./silo/out-perf.masstree/compiler.o \
+	./silo/out-perf.masstree/core.o \
+	./silo/out-perf.masstree/counter.o \
+	./silo/out-perf.masstree/json.o \
+	./silo/out-perf.masstree/straccum.o \
+	./silo/out-perf.masstree/string.o \
+	./silo/out-perf.masstree/ticker.o \
+	./silo/out-perf.masstree/rcu.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 -include $(OBJS:%.o=%.d)

@@ -10,6 +10,7 @@
 #include "index_btree.h"
 #include "index_hash.h"
 #include "index_mica.h"
+#include "index_mbtree.h"
 
 void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	this->h_thd = h_thd;
@@ -20,6 +21,8 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	insert_idx_cnt = 0;
+	remove_idx_cnt = 0;
 	accesses = (Access **) _mm_malloc(sizeof(Access *) * MAX_ROW_PER_TXN, 64);
 	for (int i = 0; i < MAX_ROW_PER_TXN; i++)
 		accesses[i] = NULL;
@@ -82,6 +85,8 @@ void txn_man::cleanup(RC rc) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	insert_idx_cnt = 0;
+	remove_idx_cnt = 0;
 	return;
 #endif
 	for (int rid = row_cnt - 1; rid >= 0; rid --) {
@@ -115,7 +120,7 @@ void txn_man::cleanup(RC rc) {
 		for (UInt32 i = 0; i < insert_cnt; i ++) {
 			row_t * row = insert_rows[i];
 			assert(g_part_alloc == false);
-#if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA
+#if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA && !defined(USE_INLINED_DATA)
 			mem_allocator.free(row->manager, 0);
 #endif
 			row->free_row();
@@ -125,6 +130,8 @@ void txn_man::cleanup(RC rc) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	insert_idx_cnt = 0;
+	remove_idx_cnt = 0;
 #if CC_ALG == DL_DETECT
 	dl_detector.clear_dep(get_txn_id());
 #endif
@@ -238,6 +245,7 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 
 template row_t * txn_man::get_row(index_btree* index, itemid_t * item, access_t type);
 template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, access_t type);
+template row_t * txn_man::get_row(IndexMBTree* index, itemid_t * item, access_t type);
 #if INDEX_STRUCT == IDX_MICA
 template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, access_t type);
 template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, access_t type);
@@ -255,6 +263,29 @@ void txn_man::insert_row(row_t * row, table_t * table) {
 	insert_rows[insert_cnt ++] = row;
 }
 
+void txn_man::insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t part_id) {
+	if (CC_ALG == MICA) {
+		assert(false);
+	}
+	assert(insert_idx_cnt < MAX_ROW_PER_TXN);
+	insert_idx_idx[insert_idx_cnt] = idx;
+	insert_idx_key[insert_idx_cnt] = key;
+	insert_idx_row[insert_idx_cnt] = row;
+	insert_idx_part_id[insert_idx_cnt] = part_id;
+	insert_idx_cnt++;
+}
+
+void txn_man::remove_idx(ORDERED_INDEX* idx, idx_key_t key, uint64_t part_id) {
+	if (CC_ALG == MICA) {
+		assert(false);
+	}
+	assert(remove_idx_cnt < MAX_ROW_PER_TXN);
+	remove_idx_idx[remove_idx_cnt] = idx;
+	remove_idx_key[remove_idx_cnt] = key;
+	remove_idx_part_id[remove_idx_cnt] = part_id;
+	remove_idx_cnt++;
+}
+
 #if INDEX_STRUCT != IDX_MICA
 template <typename INDEX_T>
 itemid_t *
@@ -268,6 +299,7 @@ txn_man::index_read(INDEX_T * index, idx_key_t key, int part_id) {
 
 template itemid_t * txn_man::index_read(index_btree * index, idx_key_t key, int part_id);
 template itemid_t * txn_man::index_read(IndexHash * index, idx_key_t key, int part_id);
+template itemid_t * txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id);
 
 template <typename INDEX_T>
 void
@@ -279,6 +311,15 @@ txn_man::index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& ite
 
 template void txn_man::index_read(index_btree * index, idx_key_t key, int part_id, itemid_t *& item);
 template void txn_man::index_read(IndexHash * index, idx_key_t key, int part_id, itemid_t *& itemd);
+template void txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id, itemid_t *& itemd);
+
+template <typename INDEX_T>
+RC
+txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
+	return index->index_read_range(min_key, max_key, items, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
 
 #else
 
@@ -358,6 +399,41 @@ RC txn_man::finish(RC rc) {
 #else
 	cleanup(rc);
 #endif
+
+	if (rc == RCOK) {
+		for (size_t i = 0; i < insert_idx_cnt; i++) {
+			auto idx = insert_idx_idx[i];
+			auto key = insert_idx_key[i];
+			auto row = insert_idx_row[i];
+			auto part_id = insert_idx_part_id[i];
+
+			assert(part_id != (uint64_t)-1);
+
+		  itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
+		  m_item->init();
+		  m_item->type = DT_row;
+		  m_item->location = row;
+		  m_item->valid = true;
+
+		  auto rc = idx->index_insert(key, m_item, part_id);
+			assert(rc == RCOK);
+		}
+		for (size_t i = 0; i < remove_idx_cnt; i++) {
+			auto idx = remove_idx_idx[i];
+			auto key = remove_idx_key[i];
+			auto part_id = remove_idx_part_id[i];
+
+			assert(part_id != (uint64_t)-1);
+
+			itemid_t* m_item;
+			auto rc = idx->index_remove(key, &m_item);
+			assert(rc == RCOK);
+
+			// Freeing the index item immediately is unsafe due to concurrency.
+			// mem_allocator.free(m_item, sizeof(itemid_t));
+		}
+	}
+
 	uint64_t timespan = get_sys_clock() - starttime;
 	INC_TMP_STATS(get_thd_id(), time_man,  timespan);
 	INC_STATS(get_thd_id(), time_cleanup,  timespan);
