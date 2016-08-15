@@ -279,7 +279,7 @@ def enum_exps(seq):
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
         #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
-        if True:
+        if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
           tx_count = 200000
           # tx_count = 100000   # half of the usual due to memory use
