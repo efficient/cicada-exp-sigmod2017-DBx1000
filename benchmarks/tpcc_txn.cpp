@@ -786,7 +786,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto item = items[i];
-    row_t* shared = (row_t*)item->location;
+    auto shared = (row_t*)item->location;
     // Use the shared copy because no one is modifying the row.
     // auto local = get_row(shared, RD);
     auto local = shared;
@@ -1010,7 +1010,7 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
   uint64_t cnt = 0;
   while (item != NULL) {
 #if CC_ALG != MICA
-    row_t* shared = (row_t*)item->location;
+    auto shared = (row_t*)item->location;
     auto local = get_row(shared, WR);
 #else
     auto local = get_row(index, item, WR);
@@ -1174,7 +1174,7 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
     auto orderline = orderline_shared;
 #else
     item->location = reinterpret_cast<void*>(row_ids[i]);
-    row_t* orderline = get_row(index, item, RD);
+    auto orderline = get_row(index, item, RD);
     assert(orderline != NULL);
 #endif
 
@@ -1206,7 +1206,7 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
   for (uint64_t i = 0; i < cnt; i++) {
     item->location = reinterpret_cast<void*>(row_ids[i]);
 
-    row_t* orderline = get_row(index, item, RD);
+    auto orderline = get_row(index, item, RD);
     assert(orderline != NULL);
 
     uint64_t ol_i_id, ol_supply_w_id;
