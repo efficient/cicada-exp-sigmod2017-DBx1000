@@ -278,7 +278,8 @@ def enum_exps(seq):
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        if True:
           tpcc = dict(common)
           tx_count = 200000
           # tx_count = 100000   # half of the usual due to memory use
@@ -676,6 +677,7 @@ def make_silo_cmd(exp):
   cmd += ' --parallel-loading'
   cmd += ' --pin-cpus'
   cmd += ' --retry-aborted-transactions'
+  cmd += ' --backoff-aborted-transactions'  # Without this, it gets < 1000 Tps under high contention
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
