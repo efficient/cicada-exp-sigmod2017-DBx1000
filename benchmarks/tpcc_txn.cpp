@@ -528,7 +528,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #endif
 
 #if TPCC_UPDATE_INDEX
-#if CC_ALG != MICA
+#if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_orderline;
     auto key = orderlineKey(ol_number, o_id, d_id, w_id);
@@ -731,7 +731,7 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   // auto local = get_row(shared, RD);
   auto local = shared;
 #else
-  auto local = get_row(index, item, RD);
+  auto local = get_row(index, items[0], RD);
 #endif
 
 #else
@@ -785,11 +785,6 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   assert(idx_rc == RCOK);
   assert(cnt != 100);
 
-#if CC_ALG == MICA
-  itemid_t idx_item;
-  auto item = &idx_item;
-#endif
-
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto item = items[i];
@@ -798,8 +793,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     // auto local = get_row(shared, RD);
     auto local = shared;
 #else
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-    auto local = get_row(index, item, RD);
+    auto local = get_row(index, items[i], RD);
 #endif
     assert(local != NULL);
 
@@ -1171,21 +1165,15 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
 
-#if CC_ALG == MICA
-  itemid_t idx_item;
-  auto item = &idx_item;
-#endif
-
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     // Use the shared copy because no one is modifying the row.
     auto orderline_shared = (row_t*)items[i]->location;
     auto orderline = orderline_shared;
 #else
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-    auto orderline = get_row(index, item, RD);
-    assert(orderline != NULL);
+    auto orderline = get_row(index, items[i], RD);
 #endif
+    assert(orderline != NULL);
 
     uint64_t ol_i_id, ol_supply_w_id;
     orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);

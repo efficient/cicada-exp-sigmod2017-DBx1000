@@ -264,7 +264,7 @@ void txn_man::insert_row(row_t * row, table_t * table) {
 }
 
 void txn_man::insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t part_id) {
-	if (CC_ALG == MICA) {
+	if (INDEX_STRUCT == IDX_MICA) {
 		assert(false);
 	}
 	assert(insert_idx_cnt < MAX_ROW_PER_TXN);
@@ -276,7 +276,7 @@ void txn_man::insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t
 }
 
 void txn_man::remove_idx(ORDERED_INDEX* idx, idx_key_t key, uint64_t part_id) {
-	if (CC_ALG == MICA) {
+	if (INDEX_STRUCT == IDX_MICA) {
 		assert(false);
 	}
 	assert(remove_idx_cnt < MAX_ROW_PER_TXN);

@@ -9,6 +9,8 @@
 #endif
 
 #include "index_mbtree.h"
+#include "helper.h"
+#include "storage/row.h"
 
 // #ifdef DEBUG
 // #undef NDEBUG
@@ -44,6 +46,10 @@ bool IndexMBTree::index_exist(idx_key_t key) {
 }
 
 RC IndexMBTree::index_insert(idx_key_t key, itemid_t* item, int part_id) {
+#if CC_ALG == MICA
+	item->location = reinterpret_cast<void*>(((row_t*)item->location)->get_row_id());
+#endif
+
   auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
 
   u64_varkey mbtree_key(key);
