@@ -801,6 +801,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     item->location = reinterpret_cast<void*>(row_ids[i]);
     auto local = get_row(index, item, RD);
 #endif
+    assert(local != NULL);
 
     // int64_t ol_i_id;
     // uint64_t ol_supply_w_id, ol_amount, ol_delivery_d;
@@ -831,6 +832,7 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   for (uint64_t i = 0; i < cnt; i++) {
     item->location = reinterpret_cast<void*>(row_ids[i]);
     auto local = get_row(index, item, RD);
+    assert(local != NULL);
     // int64_t ol_i_id;
     // uint64_t ol_supply_w_id, ol_amount, ol_delivery_d;
     // double ol_amount;
@@ -1138,11 +1140,10 @@ row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
   return search(index, key, part_id, RD);
 }
 
-uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
-                                                 uint64_t ol_d_id,
-                                                 int64_t ol_o_id,
-                                                 uint64_t s_w_id,
-                                                 uint64_t threshold) {
+bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
+                                             int64_t ol_o_id, uint64_t s_w_id,
+                                             uint64_t threshold,
+                                             uint64_t* out_distinct_count) {
   // SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK
   // WHERE OL_W_ID = ?
   //   AND OL_D_ID = ?
@@ -1215,7 +1216,11 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
     item->location = reinterpret_cast<void*>(row_ids[i]);
 
     auto orderline = get_row(index, item, RD);
+#if CC_ALG != MICA
+    if (orderline == NULL) return false;
+#else
     assert(orderline != NULL);
+#endif
 
     uint64_t ol_i_id, ol_supply_w_id;
     orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
@@ -1265,7 +1270,11 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
 #else
     auto local = get_row(index, item, RD);
 #endif
+#if CC_ALG != MICA
+    if (local == NULL) return false;
+#else
     assert(local != NULL);
+#endif
 
     uint64_t s_quantity;
     local->get_value(S_QUANTITY, s_quantity);
@@ -1277,7 +1286,8 @@ uint64_t tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id,
   //        " o_id=%" PRIu64 " s_w_id=%" PRIu64 " list_size=%" PRIu64
   //        " distinct_cnt=%" PRIu64 "\n",
   //        ol_w_id, ol_d_id, ol_o_id, s_w_id, list_size, distinct_count);
-  return distinct_count;
+  *out_distinct_count = distinct_count;
+  return true;
 }
 
 RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
@@ -1287,12 +1297,18 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
   auto& arg = query->args.stock_level;
 
   auto district = stock_level_getOId(arg.w_id, arg.d_id);
+#if CC_ALG != MICA
+  if (district == NULL) return finish(Abort);
+#else
   assert(district != NULL);
+#endif
   int64_t o_id;
   district->get_value(D_NEXT_O_ID, o_id);
 
-  auto distinct_count = stock_level_getStockCount(arg.w_id, arg.d_id, o_id,
-                                                  arg.w_id, arg.threshold);
+  uint64_t distinct_count;
+  if (!stock_level_getStockCount(arg.w_id, arg.d_id, o_id, arg.w_id,
+                                 arg.threshold, &distinct_count))
+    return finish(Abort);
   (void)distinct_count;
 #endif
 
