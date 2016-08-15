@@ -83,6 +83,12 @@ RC thread_t::run() {
   ts_t last_commit_time = 0;
 #endif
 
+	uint64_t exp_endtime;
+	if (!warmup_finish)
+	  exp_endtime = get_server_clock() + static_cast<uint64_t>(MAX_WARMUP_DURATION * 1000000000.);
+	else
+	  exp_endtime = get_server_clock() + static_cast<uint64_t>(MAX_TXN_DURATION * 1000000000.);
+
 	while (true) {
 		ts_t starttime = get_sys_clock();
 		if (WORKLOAD != TEST) {
@@ -250,7 +256,7 @@ RC thread_t::run() {
 			return rc;
     }
 		// if (!warmup_finish && txn_cnt >= WARMUP / g_thread_cnt)
-		if (!warmup_finish && txn_cnt >= WARMUP)
+		if (!warmup_finish && (txn_cnt >= WARMUP || static_cast<int64_t>(exp_endtime - get_server_clock()) <= 0))
 		{
 			stats.clear( get_thd_id() );
 #if CC_ALG == MICA
@@ -259,8 +265,8 @@ RC thread_t::run() {
 			return FINISH;
 		}
 
-		if (warmup_finish && txn_cnt >= MAX_TXN_PER_PART) {
-			assert(txn_cnt == MAX_TXN_PER_PART);
+		if (warmup_finish && (txn_cnt >= MAX_TXN_PER_PART || static_cast<int64_t>(exp_endtime - get_server_clock()) <= 0)) {
+			// assert(txn_cnt == MAX_TXN_PER_PART);
 	        if( !ATOM_CAS(_wl->sim_done, false, true) )
 				assert( _wl->sim_done);
 	    }
