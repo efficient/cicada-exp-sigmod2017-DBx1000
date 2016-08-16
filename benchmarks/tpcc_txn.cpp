@@ -1017,10 +1017,10 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
 
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
-    auto shared = (row_t*)item->location;
+    auto shared = (row_t*)items[i]->location;
     auto local = get_row(shared, WR);
 #else
-    auto local = get_row(index, item, WR);
+    auto local = get_row(index, items[i], WR);
 #endif
     if (local == NULL) return false;
     double ol_amount;
