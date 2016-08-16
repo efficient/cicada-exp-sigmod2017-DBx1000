@@ -24,8 +24,9 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
   // We ignore the given row_id argument to init() because it contains an
   // uninitialized value and is not used by the workload.
 
+	assert(part_id >= 0 && part_id < table->mica_tbl.size());
   auto db = table->mica_db;
-  auto tbl = table->mica_tbl;
+  auto tbl = table->mica_tbl[part_id];
 
   auto thread_id = ::mica::util::lcore.lcore_id();
   // printf("thread_id = %lu\n", thread_id);
@@ -344,11 +345,12 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	return rc;
 #elif CC_ALG == MICA
 	MICARowAccessHandle rah(txn->mica_tx);
+	assert(_part_id >= 0 && _part_id < table->mica_tbl.size());
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl, _row_id, false, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl, _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);
@@ -366,18 +368,18 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 }
 
 #if CC_ALG == MICA
-RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item) {
+RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item, uint64_t part_id) {
   auto row_id = reinterpret_cast<uint64_t>(item->location);
 
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
-  //        table->mica_tbl->row_count());
+  //        table->mica_tbl[this->get_part_id()]->row_count());
 
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl, row_id, false, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl, row_id, false, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);

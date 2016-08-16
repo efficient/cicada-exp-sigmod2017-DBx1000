@@ -29,7 +29,7 @@ RC TestTxnMan::testReadwrite(int access_num) {
 	itemid_t idx_item;
 	m_item = &idx_item;
 	index_read(_wl->the_index, 0, m_item, 0);
-	row_t * row_local = get_row(_wl->the_index, m_item, WR);
+	row_t * row_local = get_row(_wl->the_index, m_item, 0, WR);
 #endif
 	if (access_num == 0) {
 		char str[] = "hello";
@@ -77,7 +77,7 @@ TestTxnMan::testConflict(int access_num)
 		itemid_t idx_item;
 		m_item = &idx_item;
 		index_read(_wl->the_index, 0, m_item, 0);
-		row_t * row_local = get_row(_wl->the_index, m_item, WR);
+		row_t * row_local = get_row(_wl->the_index, m_item, 0, WR);
 #endif
 		if (row_local) {
 			char str[] = "hello";

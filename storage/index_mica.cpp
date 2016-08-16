@@ -26,7 +26,6 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
   item_cnt = 0;
   overload_warning = false;
 
-  auto mica_tbl = table->mica_tbl;
   auto db = table->mica_db;
   // auto thread_id = ::mica::util::lcore.lcore_id();
 
@@ -37,6 +36,9 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
     uint64_t thread_id = part_id % g_thread_cnt;
+    ::mica::util::lcore.pin_thread(thread_id);
+
+    auto mica_tbl = table->mica_tbl[part_id];
 
     char buf[1024];
     int i = 0;
@@ -56,8 +58,9 @@ RC IndexMICAGeneric<MICAIndex>::init(uint64_t part_cnt, table_t* table,
       return ERROR;
     }
 
-    printf("idx_name=%s part_cnt=%" PRIu64 " bucket_cnt=%" PRIu64 "\n", buf,
-           part_cnt, bucket_cnt);
+    printf("idx_name=%s part_id=%" PRIu64 " part_cnt=%" PRIu64
+           " bucket_cnt=%" PRIu64 "\n",
+           buf, part_id, part_cnt, bucket_cnt);
 
     mica_idx.push_back(p);
   }
@@ -84,6 +87,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
     uint64_t thread_id = part_id % g_thread_cnt;
+    ::mica::util::lcore.pin_thread(thread_id);
+
+    auto mica_tbl = table->mica_tbl[part_id];
 
     char buf[1024];
     int i = 0;
@@ -103,8 +109,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
       return ERROR;
     }
 
-    printf("idx_name=%s part_cnt=%" PRIu64 " bucket_cnt=%" PRIu64 "\n", buf,
-           part_cnt, bucket_cnt);
+    printf("idx_name=%s part_id=%" PRIu64 " part_cnt=%" PRIu64
+           " bucket_cnt=%" PRIu64 "\n",
+           buf, part_id, part_cnt, bucket_cnt);
 
     mica_idx.push_back(p);
   }

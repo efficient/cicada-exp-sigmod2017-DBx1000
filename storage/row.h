@@ -95,7 +95,7 @@ public:
 	void return_row(access_t type, txn_man * txn, row_t * row);
 
 #if CC_ALG == MICA
-	static RC get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item);
+	static RC get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item, uint64_t part_id);
 #endif
 
 

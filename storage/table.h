@@ -10,7 +10,7 @@ class row_t;
 class table_t
 {
 public:
-	void init(Catalog * schema);
+	void init(Catalog * schema, uint64_t part_cnt);
 	// row lookup should be done with index. But index does not have
 	// records for new rows. get_new_row returns the pointer to a
 	// new row.
@@ -27,11 +27,12 @@ public:
 
 #if CC_ALG == MICA
 	MICADB* mica_db;
-	MICATable* mica_tbl;
+	std::vector<MICATable*> mica_tbl;
 #endif
 
 private:
 	const char * 	table_name;
 	uint64_t  		cur_tab_size;
+	uint64_t part_cnt;
 	char 			pad[CL_SIZE - sizeof(void *)*3];
 };

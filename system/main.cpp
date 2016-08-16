@@ -67,15 +67,20 @@ int main(int argc, char* argv[]) {
 
         for (auto it : m_wl->tables) {
           auto table = it.second;
-          if (thread_id != 0) continue;
+          uint64_t part_id = 0;
+          for (auto mica_tbl : table->mica_tbl) {
+            if ((part_id++) % g_thread_cnt != thread_id) continue;
 
-          uint64_t i = 0;
-          table->mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
-                                      static_cast<uint64_t>(-1), false);
+            uint64_t i = 0;
+            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
+                                 static_cast<uint64_t>(-1), false);
 
-          printf("thread %2" PRIu64 ": table %s:\n", thread_id,
-                 it.first.c_str());
-          table->mica_tbl->print_table_status();
+            if (thread_id == 0) {
+              printf("thread %2" PRIu64 ": table %s part%2" PRIu64 ":\n",
+                     thread_id, it.first.c_str(), part_id - 1);
+              mica_tbl->print_table_status();
+            }
+          }
         }
 
 #if INDEX_STRUCT == IDX_MICA
@@ -232,9 +237,14 @@ int main(int argc, char* argv[]) {
 
   for (auto it : m_wl->tables) {
     auto table = it.second;
-    printf("table %s:\n", it.first.c_str());
-    table->mica_tbl->print_table_status();
-    // printf("\n");
+    uint64_t part_id = 0;
+    for (auto mica_tbl : table->mica_tbl) {
+      printf("table %s part%2" PRIu64 ":\n", it.first.c_str(), part_id);
+      mica_tbl->print_table_status();
+      // mica_tbl->print_pool_status();
+      // printf("\n");
+      part_id++;
+    }
   }
 
   ::mica::util::Latency inter_commit_latency;

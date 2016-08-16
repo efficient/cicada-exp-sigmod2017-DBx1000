@@ -208,7 +208,7 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 #if CC_ALG == MICA
 template <typename INDEX_T>
 row_t *
-txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
+txn_man::get_row(INDEX_T* index, itemid_t * item, uint64_t part_id, access_t type)
 {
 	// printf("1 row_id=%lu\n", item->row_id);
 	if (row_cnt == 0 && !mica_tx->has_began())
@@ -224,7 +224,7 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 	}
 
 	// printf("2 row_id=%lu\n", item->row_id);
-	rc = row_t::get_row(type, this, index->table, accesses[ row_cnt ]->data, item);
+	rc = row_t::get_row(type, this, index->table, accesses[ row_cnt ]->data, item, part_id);
 	// assert(rc == RCOK);
 
 	if (rc == Abort) {
@@ -243,12 +243,12 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 	return accesses[row_cnt - 1]->data;
 }
 
-template row_t * txn_man::get_row(index_btree* index, itemid_t * item, access_t type);
-template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, access_t type);
-template row_t * txn_man::get_row(IndexMBTree* index, itemid_t * item, access_t type);
+template row_t * txn_man::get_row(index_btree* index, itemid_t * item, uint64_t part_id, access_t type);
+template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, uint64_t part_id, access_t type);
+template row_t * txn_man::get_row(IndexMBTree* index, itemid_t * item, uint64_t part_id, access_t type);
 #if INDEX_STRUCT == IDX_MICA
-template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, access_t type);
-template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, access_t type);
+template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, uint64_t part_id, access_t type);
+template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, uint64_t part_id, access_t type);
 #endif
 #endif
 

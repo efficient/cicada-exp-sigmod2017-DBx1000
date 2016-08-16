@@ -11,6 +11,14 @@ RC IndexHash::init(uint64_t part_cnt, uint64_t bucket_cnt) {
 	_bucket_cnt_per_part = bucket_cnt / part_cnt;
 	_buckets = new BucketHeader * [part_cnt];
 	for (uint64_t i = 0; i < part_cnt; i++) {
+
+#if CC_ALG == MICA
+	  ::mica::util::lcore.pin_thread(i % g_thread_cnt);
+#else
+		set_affinity(i % g_thread_cnt);
+#endif
+		mem_allocator.register_thread(i % g_thread_cnt);
+
 		_buckets[i] = (BucketHeader *) mem_allocator.alloc(sizeof(BucketHeader) * _bucket_cnt_per_part, i);
 		for (uint32_t n = 0; n < _bucket_cnt_per_part; n ++)
 			_buckets[i][n].init();

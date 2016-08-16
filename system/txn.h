@@ -115,7 +115,7 @@ public:
 
 #if CC_ALG == MICA
 	template <typename INDEX_T>
-	row_t * 		get_row(INDEX_T* index, itemid_t * item, access_t type);
+	row_t * 		get_row(INDEX_T* index, itemid_t * item, uint64_t part_id, access_t type);
 #endif
 
 protected:
