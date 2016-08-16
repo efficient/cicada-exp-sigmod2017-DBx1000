@@ -702,11 +702,10 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   // SELECT O_ID, O_CARRIER_ID, O_ENTRY_D FROM ORDERS WHERE O_W_ID = ? AND O_D_ID = ? AND O_C_ID = ? ORDER BY O_ID DESC LIMIT 1
   auto index = _wl->i_order_cust;
   auto key = orderCustKey(g_max_orderline, c_id, d_id, w_id);
-  auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
-
   auto max_key = orderCustKey(1, c_id, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
 
+#if INDEX_STRUCT != IDX_MICA
   uint64_t cnt = 1;
   itemid_t* items[1];
 
@@ -734,9 +733,7 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   auto local = get_row(index, items[0], RD);
 #endif
 
-#else
-
-  auto max_key = orderCustKey(1, c_id, d_id, w_id);
+#else  // INDEX_STRUCT == IDX_MICA
 
   uint64_t cnt = 1;
   uint64_t row_ids[1];
@@ -773,17 +770,18 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   // SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?
   auto index = _wl->i_orderline;
   auto key = orderlineKey(1, o_id, d_id, w_id);
-  auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
   auto max_key = orderlineKey(15, o_id, d_id, w_id);
+  auto part_id = wh_to_part(w_id);
 
-  uint64_t cnt = 100;
-  itemid_t* items[100];
+#if INDEX_STRUCT != IDX_MICA
+
+  uint64_t cnt = 16;
+  itemid_t* items[16];
 
   auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
-  assert(cnt != 100);
+  assert(cnt != 16);
 
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
@@ -808,17 +806,15 @@ void tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     (void)local;
   }
 
-#else
+#else  // INDEX_STRUCT == IDX_MICA
 
-  auto max_key = orderlineKey(15, o_id, d_id, w_id);
-
-  uint64_t cnt = 100;
-  uint64_t row_ids[100];
+  uint64_t cnt = 16;
+  uint64_t row_ids[16];
 
   auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
-  assert(cnt != 100);
+  assert(cnt != 16);
 
   itemid_t idx_item;
   auto item = &idx_item;
@@ -887,9 +883,10 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   auto index = _wl->i_neworder;
   // TODO: This may cause a match with other district with a negative order ID.  It is safe for now because the lowest order ID is 1, but we should give more gap (or use tuple keys) to avoid accidental matches.
   auto key = neworderKey(g_max_orderline, d_id, w_id);
-  auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
   auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
+  auto part_id = wh_to_part(w_id);
+
+#if INDEX_STRUCT != IDX_MICA
   uint64_t cnt = 1;
   itemid_t* items[1];
 
@@ -906,9 +903,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
   auto item = items[0];
 
-#else
+#else  // INDEX_STRUCT == IDX_MICA
 
-  auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
   uint64_t cnt = 1;
   uint64_t row_ids[1];
 
@@ -1007,12 +1003,19 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
 
   auto index = _wl->i_orderline;
   auto key = orderlineKey(1, no_o_id, d_id, w_id);
+  auto max_key = orderlineKey(15, no_o_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
+
 #if INDEX_STRUCT != IDX_MICA
-  auto item = index_read(index, key, part_id);
-  if (item == NULL) return false;
-  uint64_t cnt = 0;
-  while (item != NULL) {
+
+  uint64_t cnt = 16;
+  itemid_t* items[16];
+
+  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  if (idx_rc != RCOK) return false;
+  assert(cnt != 16);
+
+  for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto shared = (row_t*)item->location;
     auto local = get_row(shared, WR);
@@ -1024,18 +1027,16 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
     local->get_value(OL_AMOUNT, ol_amount);
     local->set_value(OL_DELIVERY_D, o_entry_d);
     ol_total += ol_amount;
-    item = item->next;
-    cnt++;
   }
-#else
-  auto max_key = orderlineKey(15, no_o_id, d_id, w_id);
 
-  uint64_t cnt = 100;
-  uint64_t row_ids[100];
+#else  // INDEX_STRUCT == IDX_MICA
+
+  uint64_t cnt = 16;
+  uint64_t row_ids[16];
 
   auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
   if (idx_rc != RCOK) return false;
-  assert(cnt != 100);
+  assert(cnt != 16);
 
   itemid_t idx_item;
   auto item = &idx_item;
@@ -1149,15 +1150,14 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
 
   // 20 orders * 15 items = 300; use 301 to check any errors.
   uint64_t ol_i_id_list[301];
-  uint64_t ol_supply_w_id_list[301];
   size_t list_size = 0;
 
   auto index = _wl->i_orderline;
   auto key = orderlineKey(1, ol_o_id - 1, ol_d_id, ol_w_id);
+  auto max_key = orderlineKey(15, ol_o_id - 20, ol_d_id, ol_w_id);
   auto part_id = wh_to_part(ol_w_id);
 
 #if INDEX_STRUCT != IDX_MICA
-  auto max_key = orderlineKey(15, ol_o_id - 20, ol_d_id, ol_w_id);
   uint64_t cnt = 301;
   itemid_t* items[301];
 
@@ -1183,13 +1183,11 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
 
     assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
-    ol_supply_w_id_list[list_size] = ol_supply_w_id;
     list_size++;
   }
 
-#else
+#else  // INDEX_STRUCT == IDX_MICA
 
-  auto max_key = orderlineKey(15, ol_o_id - 20, ol_d_id, ol_w_id);
   uint64_t cnt = 301;
   uint64_t row_ids[301];
 
@@ -1218,30 +1216,31 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
 
     assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
     ol_i_id_list[list_size] = ol_i_id;
-    ol_supply_w_id_list[list_size] = ol_supply_w_id;
     list_size++;
   }
 #endif
   assert(list_size <= 300);
 
   uint64_t distinct_ol_i_id_list[300];
-  uint64_t distinct_count = 0;
+  uint64_t distinct_ol_i_id_count = 0;
+  uint64_t result = 0;
 
   for (uint64_t i = 0; i < list_size; i++) {
     uint64_t ol_i_id = ol_i_id_list[i];
-    uint64_t ol_supply_w_id = ol_supply_w_id_list[i];
 
     bool duplicate = false;
-    for (uint64_t j = 0; j < distinct_count; j++)
+    for (uint64_t j = 0; j < distinct_ol_i_id_count; j++)
       if (distinct_ol_i_id_list[j] == ol_i_id) {
         duplicate = true;
         break;
       }
     if (duplicate) continue;
 
-    auto key = stockKey(ol_i_id, ol_supply_w_id);
+    distinct_ol_i_id_list[distinct_ol_i_id_count++] = ol_i_id;
+
+    auto key = stockKey(ol_i_id, s_w_id);
     auto index = _wl->i_stock;
-    auto part_id = wh_to_part(ol_supply_w_id);
+    auto part_id = wh_to_part(s_w_id);
 
 #if INDEX_STRUCT != IDX_MICA
     auto item = index_read(index, key, part_id);
@@ -1266,15 +1265,15 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
 
     uint64_t s_quantity;
     local->get_value(S_QUANTITY, s_quantity);
-    if (s_quantity < threshold)
-      distinct_ol_i_id_list[distinct_count++] = ol_i_id;
+    if (s_quantity < threshold) result++;
   }
 
   // printf("stock_level_getStockCount: w_id=%" PRIu64 " d_id=%" PRIu64
   //        " o_id=%" PRIu64 " s_w_id=%" PRIu64 " list_size=%" PRIu64
-  //        " distinct_cnt=%" PRIu64 "\n",
-  //        ol_w_id, ol_d_id, ol_o_id, s_w_id, list_size, distinct_count);
-  *out_distinct_count = distinct_count;
+  //        " distinct_cnt=%" PRIu64 " result=%" PRIu64 "\n",
+  //        ol_w_id, ol_d_id, ol_o_id, s_w_id, list_size, distinct_ol_i_id_count,
+  //        result);
+  *out_distinct_count = result;
   return true;
 }
 
