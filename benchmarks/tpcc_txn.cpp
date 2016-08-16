@@ -29,28 +29,53 @@ RC tpcc_txn_man::run_txn(base_query* query) {
   scoped_rcu_region guard;
 #endif
 
+  RC rc;
+
   tpcc_query* m_query = (tpcc_query*)query;
   switch (m_query->type) {
     case TPCC_PAYMENT:
-      return run_payment(m_query);
+      rc = run_payment(m_query);
+      if (rc == RCOK)
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_payment_commit, 1);
+      else
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_payment_abort, 1);
       break;
     case TPCC_NEW_ORDER:
-      return run_new_order(m_query);
+      rc = run_new_order(m_query);
+      if (rc == RCOK)
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_new_order_commit, 1);
+      else
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_new_order_abort, 1);
       break;
 #if TPCC_FULL
     case TPCC_ORDER_STATUS:
-      return run_order_status(m_query);
+      rc = run_order_status(m_query);
+      if (rc == RCOK)
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_order_status_commit, 1);
+      else
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_order_status_abort, 1);
       break;
     case TPCC_DELIVERY:
-      return run_delivery(m_query);
+      rc = run_delivery(m_query);
+      if (rc == RCOK)
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_delivery_commit, 1);
+      else
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_delivery_abort, 1);
       break;
     case TPCC_STOCK_LEVEL:
-      return run_stock_level(m_query);
+      rc = run_stock_level(m_query);
+      if (rc == RCOK)
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_stock_level_commit, 1);
+      else
+        INC_STATS_ALWAYS(get_thd_id(), tpcc_stock_level_abort, 1);
       break;
 #endif
     default:
+      rc = ERROR;
       assert(false);
   }
+
+  return rc;
 }
 
 // void FAIL_ON_ABORT() { assert(false); }

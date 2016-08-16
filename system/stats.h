@@ -26,6 +26,18 @@ public:
 	uint64_t latency;
 	uint64_t * all_debug1;
 	uint64_t * all_debug2;
+
+	uint64_t tpcc_payment_commit;
+	uint64_t tpcc_payment_abort;
+	uint64_t tpcc_new_order_commit;
+	uint64_t tpcc_new_order_abort;
+	uint64_t tpcc_order_status_commit;
+	uint64_t tpcc_order_status_abort;
+	uint64_t tpcc_delivery_commit;
+	uint64_t tpcc_delivery_abort;
+	uint64_t tpcc_stock_level_commit;
+	uint64_t tpcc_stock_level_abort;
+
 	char _pad[CL_SIZE];
 };
 

@@ -14,6 +14,7 @@ void Stats_thd::init(uint64_t thd_id) {
 }
 
 void Stats_thd::clear() {
+	/*
 	txn_cnt = 0;
 	abort_cnt = 0;
 	run_time = 0;
@@ -30,6 +31,8 @@ void Stats_thd::clear() {
 	time_ts_alloc = 0;
 	latency = 0;
 	time_query = 0;
+	*/
+	memset(this, 0, sizeof(Stats_thd));
 }
 
 void Stats_tmp::init() {
@@ -121,6 +124,16 @@ void Stats::print(double sim_time) {
 	double total_time_ts_alloc = 0;
 	double total_latency = 0;
 	double total_time_query = 0;
+	uint64_t total_tpcc_payment_commit = 0;
+	uint64_t total_tpcc_payment_abort = 0;
+	uint64_t total_tpcc_new_order_commit = 0;
+	uint64_t total_tpcc_new_order_abort = 0;
+	uint64_t total_tpcc_order_status_commit = 0;
+	uint64_t total_tpcc_order_status_abort = 0;
+	uint64_t total_tpcc_delivery_commit = 0;
+	uint64_t total_tpcc_delivery_abort = 0;
+	uint64_t total_tpcc_stock_level_commit = 0;
+	uint64_t total_tpcc_stock_level_abort = 0;
 	for (uint64_t tid = 0; tid < g_thread_cnt; tid ++) {
 		total_txn_cnt += _stats[tid]->txn_cnt;
 		total_abort_cnt += _stats[tid]->abort_cnt;
@@ -138,6 +151,16 @@ void Stats::print(double sim_time) {
 		total_time_ts_alloc += _stats[tid]->time_ts_alloc;
 		total_latency += _stats[tid]->latency;
 		total_time_query += _stats[tid]->time_query;
+		total_tpcc_payment_commit += _stats[tid]->tpcc_payment_commit;
+		total_tpcc_payment_abort += _stats[tid]->tpcc_payment_abort;
+		total_tpcc_new_order_commit += _stats[tid]->tpcc_new_order_commit;
+		total_tpcc_new_order_abort += _stats[tid]->tpcc_new_order_abort;
+		total_tpcc_order_status_commit += _stats[tid]->tpcc_order_status_commit;
+		total_tpcc_order_status_abort += _stats[tid]->tpcc_order_status_abort;
+		total_tpcc_delivery_commit += _stats[tid]->tpcc_delivery_commit;
+		total_tpcc_delivery_abort += _stats[tid]->tpcc_delivery_abort;
+		total_tpcc_stock_level_commit += _stats[tid]->tpcc_stock_level_commit;
+		total_tpcc_stock_level_abort += _stats[tid]->tpcc_stock_level_abort;
 
 		printf("[tid=%ld] txn_cnt=%ld,abort_cnt=%ld\n",
 			tid,
@@ -202,6 +225,18 @@ void Stats::print(double sim_time) {
 		total_debug4, // / BILLION,
 		total_debug5  // / BILLION
 	);
+	if (WORKLOAD == TPCC) {
+		printf("[summary] payment      (%7ld, %7ld)\n",
+			total_tpcc_payment_commit, total_tpcc_payment_abort);
+		printf("[summary] new_order    (%7ld, %7ld)\n",
+			total_tpcc_new_order_commit, total_tpcc_new_order_abort);
+		printf("[summary] order_status (%7ld, %7ld)\n",
+		  total_tpcc_order_status_commit, total_tpcc_order_status_abort);
+		printf("[summary] delivery     (%7ld, %7ld)\n",
+			total_tpcc_delivery_commit, total_tpcc_delivery_abort);
+		printf("[summary] stock_level  (%7ld, %7ld)\n",
+			total_tpcc_stock_level_commit, total_tpcc_stock_level_abort);
+	}
 	printf("[summary] tput=%.0lf\n", total_txn_cnt / sim_time);
 	if (g_prt_lat_distr)
 		print_lat_distr();

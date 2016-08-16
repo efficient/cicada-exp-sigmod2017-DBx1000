@@ -86,6 +86,9 @@
 	if (STATS_ENABLE) \
 		stats._stats[tid]->name += value;
 
+#define INC_STATS_ALWAYS(tid, name, value) \
+	do { stats._stats[tid]->name += value; } while (0)
+
 #define INC_TMP_STATS(tid, name, value) \
 	if (STATS_ENABLE) \
 		stats.tmp_stats[tid]->name += value;
