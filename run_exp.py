@@ -84,11 +84,15 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
 
   if bench == 'TPCC':
     conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'false')
-    conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'false')
+    conf = replace_def(conf, 'TPCC_DELETE_ROWS', 'false')
+    conf = replace_def(conf, 'TPCC_INSERT_INDEX', 'false')
+    conf = replace_def(conf, 'TPCC_DELETE_INDEX', 'false')
     conf = replace_def(conf, 'TPCC_FULL', 'false')
   elif bench == 'TPCC-FULL':
     conf = replace_def(conf, 'TPCC_INSERT_ROWS', 'true')
-    conf = replace_def(conf, 'TPCC_UPDATE_INDEX', 'true')
+    conf = replace_def(conf, 'TPCC_DELETE_ROWS', 'true')
+    conf = replace_def(conf, 'TPCC_INSERT_INDEX', 'true')
+    conf = replace_def(conf, 'TPCC_DELETE_INDEX', 'true')
     conf = replace_def(conf, 'TPCC_FULL', 'true')
   else:
     assert False

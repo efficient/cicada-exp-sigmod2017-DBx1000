@@ -321,6 +321,14 @@ txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key,
 
 template RC txn_man::index_read_range(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
 
+template <typename INDEX_T>
+RC
+txn_man::index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
+	return index->index_read_range_rev(min_key, max_key, items, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range_rev(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+
 #else
 
 template <typename INDEX_T>
@@ -360,6 +368,18 @@ txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key,
 
 template RC txn_man::index_read_range(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 template RC txn_man::index_read_range(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+
+template <typename INDEX_T>
+RC
+txn_man::index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
+	return index->index_read_range_rev(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range_rev(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+template RC txn_man::index_read_range_rev(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
 RC txn_man::finish(RC rc) {

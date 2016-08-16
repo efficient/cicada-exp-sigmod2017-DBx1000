@@ -102,6 +102,8 @@ public:
 	void 			index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& item);
 	template <typename INDEX_T>
 	RC		index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+	template <typename INDEX_T>
+	RC		index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
 #else
 	template <typename INDEX_T>
 	RC		index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id);
@@ -109,6 +111,8 @@ public:
 	RC		index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
 	template <typename INDEX_T>
 	RC		index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+	template <typename INDEX_T>
+	RC		index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
 	row_t * 		get_row(row_t * row, access_t type);

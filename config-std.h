@@ -140,7 +140,9 @@
 #define NUM_WH 						1
 //
 #define TPCC_INSERT_ROWS  false
-#define TPCC_UPDATE_INDEX false
+#define TPCC_DELETE_ROWS  false
+#define TPCC_INSERT_INDEX false
+#define TPCC_DELETE_INDEX false
 // TPCC_FULL requires TPCC_INSERT_ROWS and TPCC_UPDATE_INDEX to fully function
 #define TPCC_FULL         false
 //

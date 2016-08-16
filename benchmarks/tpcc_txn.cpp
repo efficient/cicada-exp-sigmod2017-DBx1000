@@ -22,6 +22,9 @@
 void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
   txn_man::init(h_thd, h_wl, thd_id);
   _wl = (tpcc_wl*)h_wl;
+
+  memset(last_no_o_ids, 0, sizeof(last_no_o_ids));
+  // memset(active_delivery, 0, sizeof(active_delivery));
 }
 
 RC tpcc_txn_man::run_txn(base_query* query) {
@@ -430,7 +433,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   row->set_value(O_OL_CNT, ol_cnt);
   row->set_value(O_ALL_LOCAL, all_local);
 
-#if TPCC_UPDATE_INDEX
+#if TPCC_INSERT_INDEX
 #if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_order;
@@ -476,7 +479,7 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   row->set_value(NO_D_ID, d_id);
   row->set_value(NO_W_ID, w_id);
 
-#if TPCC_UPDATE_INDEX
+#if TPCC_INSERT_INDEX
 #if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_neworder;
@@ -564,7 +567,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
   row->set_value(OL_DIST_INFO, const_cast<char*>(ol_dist_info));
 #endif
 
-#if TPCC_UPDATE_INDEX
+#if TPCC_INSERT_INDEX
 #if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_orderline;
@@ -926,14 +929,17 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   auto index = _wl->i_neworder;
   // TODO: This may cause a match with other district with a negative order ID.  It is safe for now because the lowest order ID is 1, but we should give more gap (or use tuple keys) to avoid accidental matches.
   auto key = neworderKey(g_max_orderline, d_id, w_id);
-  auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
+  // auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
+  // Use Silo's last seen o_id history.
+  auto max_key = neworderKey(
+      last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1], d_id, w_id);
   auto part_id = wh_to_part(w_id);
 
 #if INDEX_STRUCT != IDX_MICA
   uint64_t cnt = 1;
   itemid_t* items[1];
 
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range_rev(index, key, max_key, items, cnt, part_id);
   if (idx_rc == Abort) return false;
   assert(idx_rc == RCOK);
 
@@ -944,14 +950,18 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     return true;
   }
 
-  auto item = items[0];
+  // Pick an order randomly to reduce future contention.
+  // uint64_t i = RAND(cnt, h_thd->get_thd_id());
+  uint64_t i = 0;
+
+  auto item = items[i];
 
 #else  // INDEX_STRUCT == IDX_MICA
 
   uint64_t cnt = 1;
   uint64_t row_ids[1];
 
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
+  auto idx_rc = index_read_range_rv(index, key, max_key, row_ids, cnt, part_id);
   if (idx_rc == Abort) return false;
   assert(idx_rc == RCOK);
 
@@ -962,9 +972,13 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     return true;
   }
 
+  // Pick an order randomly to reduce future contention.
+  // uint64_t i = RAND(cnt, h_thd->get_thd_id());
+  uint64_t i = 0;
+
   itemid_t idx_item;
   auto item = &idx_item;
-  item->location = reinterpret_cast<void*>(row_ids[0]);
+  item->location = reinterpret_cast<void*>(row_ids[i]);
 #endif
 
 #if CC_ALG != MICA
@@ -976,8 +990,12 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   local->get_value(NO_O_ID, o_id);
   *out_o_id = o_id;
 
-  // XXX: DBx1000 CC schemes do not implement removes
-  // assert(false);
+  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+
+#if TPCC_DELETE_ROWS
+// XXX: DBx1000 CC schemes do not implement removes
+// assert(false);
+#endif
   return true;
 #else
   // auto local = get_row(index, item, part_id, WR);
@@ -1001,9 +1019,14 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   row->get_value(NO_O_ID, o_id);
   *out_o_id = o_id;
 
+  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+
+#if TPCC_DELETE_ROWS
   if (!rah.delete_row()) return false;
 #endif
+#endif
 
+#if TPCC_DELETE_INDEX
 #if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_neworder;
@@ -1020,6 +1043,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     return mica_idx[part_id]->remove(mica_tx, key, row_id) == 1;
   }
 #endif
+#endif
+  return true;
 }
 
 row_t* tpcc_txn_man::delivery_getCId(int64_t no_o_id, uint64_t d_id,
@@ -1120,11 +1145,16 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #if TPCC_FULL
   auto& arg = query->args.delivery;
 
+  // DBx1000's active delivery transaction checking.
+  // if (__sync_lock_test_and_set(&active_delivery[arg.w_id - 1], 1) == 1)
+  //   return finish(RCOK);
+
   for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
     int64_t o_id;
     if (!delivery_getNewOrder_deleteNewOrder(d_id, arg.w_id, &o_id)) {
       FAIL_ON_ABORT();
       // printf("oops0\n");
+      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
       return finish(Abort);
     }
     // No new order for this district.
@@ -1152,17 +1182,20 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
                                               arg.w_id, &ol_total)) {
       FAIL_ON_ABORT();
       // printf("oops2\n");
+      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
       return finish(Abort);
     }
 
     if (!delivery_updateCustomer(ol_total, c_id, d_id, arg.w_id)) {
       FAIL_ON_ABORT();
       // printf("oops3\n");
+      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
       return finish(Abort);
     }
   }
 #endif
 
+  // __sync_lock_release(&active_delivery[arg.w_id - 1]);
   return finish(RCOK);
 }
 

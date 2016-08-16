@@ -47,7 +47,8 @@ bool IndexMBTree::index_exist(idx_key_t key) {
 
 RC IndexMBTree::index_insert(idx_key_t key, itemid_t* item, int part_id) {
 #if CC_ALG == MICA
-	item->location = reinterpret_cast<void*>(((row_t*)item->location)->get_row_id());
+  item->location =
+      reinterpret_cast<void*>(((row_t*)item->location)->get_row_id());
 #endif
 
   auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
@@ -106,6 +107,35 @@ RC IndexMBTree::index_read_range(idx_key_t min_key, idx_key_t max_key,
   };
 
   idx->search_range(mbtree_key_min, &mbtree_key_max, f);
+
+  count = i;
+
+  return RCOK;
+}
+
+RC IndexMBTree::index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
+                                     itemid_t** items, uint64_t& count,
+                                     int part_id, int thd_id) {
+  (void)thd_id;
+
+  if (count == 0) return RCOK;
+
+  auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
+
+  // mbtree's range is left-open.
+  assert(min_key != 0);
+  min_key--;
+  u64_varkey mbtree_key_min(min_key);
+
+  u64_varkey mbtree_key_max(max_key);
+
+  uint64_t i = 0;
+  auto f = [&i, items, count](auto& k, auto& v) {
+    items[i++] = v;
+    return i < count;
+  };
+
+  idx->rsearch_range(mbtree_key_max, &mbtree_key_min, f);
 
   count = i;
 

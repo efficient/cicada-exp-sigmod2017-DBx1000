@@ -25,6 +25,9 @@ class IndexMICAGeneric : public index_base {
   RC index_read_range(MICATransaction* tx, idx_key_t min_key, idx_key_t max_key,
                       uint64_t* row_ids, size_t& count, int part_id = -1,
                       int thd_id = 0);
+  RC index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
+                          idx_key_t max_key, uint64_t* row_ids, size_t& count,
+                          int part_id = -1, int thd_id = 0);
 
   table_t* table;
   std::vector<MICAIndexT*> mica_idx;

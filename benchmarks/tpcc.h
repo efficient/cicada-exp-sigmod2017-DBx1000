@@ -76,6 +76,10 @@ class tpcc_txn_man : public txn_man {
   RC run_delivery(tpcc_query* query);
   RC run_stock_level(tpcc_query* query);
 
+  uint64_t last_no_o_ids[NUM_WH * DIST_PER_WARE]
+      __attribute__((aligned(CL_SIZE)));
+  // bool active_delivery[NUM_WH] __attribute__((aligned(CL_SIZE)));
+
   template <typename IndexT>
   row_t* search(IndexT* index, uint64_t key, uint64_t part, access_t type);
   bool get_new_row(table_t* tbl, row_t*& row, uint64_t part_id,

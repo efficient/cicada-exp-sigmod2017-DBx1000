@@ -24,6 +24,9 @@ class IndexMBTree : public index_base {
   //                        int part_id = -1, int thd_id = 0);
   RC index_read_range(idx_key_t min_key, idx_key_t max_key, itemid_t** items,
                       size_t& count, int part_id = -1, int thd_id = 0);
+  RC index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
+                          itemid_t** items, size_t& count, int part_id = -1,
+                          int thd_id = 0);
 
   RC index_remove(idx_key_t key, itemid_t** out_item, int part_id = -1);
 
