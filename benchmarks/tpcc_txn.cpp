@@ -1325,7 +1325,10 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
 
   auto district = stock_level_getOId(arg.w_id, arg.d_id);
 #if CC_ALG != MICA
-  if (district == NULL) return finish(Abort);
+  if (district == NULL) {
+    FAIL_ON_ABORT();
+    return finish(Abort);
+  }
 #else
   assert(district != NULL);
 #endif
@@ -1334,8 +1337,10 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
 
   uint64_t distinct_count;
   if (!stock_level_getStockCount(arg.w_id, arg.d_id, o_id, arg.w_id,
-                                 arg.threshold, &distinct_count))
+                                 arg.threshold, &distinct_count)) {
+    FAIL_ON_ABORT();
     return finish(Abort);
+  }
   (void)distinct_count;
 #endif
 
