@@ -961,7 +961,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   uint64_t cnt = 1;
   uint64_t row_ids[1];
 
-  auto idx_rc = index_read_range_rv(index, key, max_key, row_ids, cnt, part_id);
+  auto idx_rc =
+      index_read_range_rev(index, key, max_key, row_ids, cnt, part_id);
   if (idx_rc == Abort) return false;
   assert(idx_rc == RCOK);
 
