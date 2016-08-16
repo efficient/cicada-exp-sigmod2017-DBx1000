@@ -219,6 +219,9 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	printf("deprecated\n");
 	assert(false);
 	return ERROR;
+#else
+	// Not supported in other algorithms.
+	assert(type != PEEK);
 #endif
 
 	RC rc = RCOK;
@@ -344,8 +347,17 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	row = this;
 	return rc;
 #elif CC_ALG == MICA
-	MICARowAccessHandle rah(txn->mica_tx);
 	assert(_part_id >= 0 && _part_id < table->mica_tbl.size());
+	if (type == PEEK) {
+		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
+		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, false, false))
+			return Abort;
+		row->table = table;
+		row->data = const_cast<char*>(rah.cdata());
+		return RCOK;
+	}
+
+	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
 		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, true, false) || !rah.read_row())
 			return Abort;
@@ -369,10 +381,20 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 
 #if CC_ALG == MICA
 RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item, uint64_t part_id) {
+	assert(part_id >= 0 && part_id < table->mica_tbl.size());
   auto row_id = reinterpret_cast<uint64_t>(item->location);
 
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl[this->get_part_id()]->row_count());
+
+	if (type == PEEK) {
+		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
+		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, false, false))
+			return Abort;
+		row->table = table;
+		row->data = const_cast<char*>(rah.cdata());
+		return RCOK;
+	}
 
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {

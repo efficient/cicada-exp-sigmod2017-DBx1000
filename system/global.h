@@ -96,6 +96,7 @@ typedef MICADB::HashIndexNonuniqueU64 MICAIndex;
 typedef MICADB::BTreeIndexUniqueU64 MICAOrderedIndex;
 typedef ::mica::transaction::RowVersion<DBConfig> MICARowVersion;
 typedef ::mica::transaction::RowAccessHandle<DBConfig> MICARowAccessHandle;
+typedef ::mica::transaction::RowAccessHandlePeekOnly<DBConfig> MICARowAccessHandlePeekOnly;
 typedef ::mica::transaction::Transaction<DBConfig> MICATransaction;
 typedef ::mica::transaction::Result MICAResult;
 #else
@@ -208,7 +209,7 @@ typedef uint64_t idx_key_t; // key id for index
 typedef uint64_t (*func_ptr)(idx_key_t);	// part_id func_ptr(index_key);
 
 /* general concurrency control */
-enum access_t {RD, WR, XP, SCAN};
+enum access_t {RD, WR, XP, SCAN, PEEK};
 /* LOCK */
 enum lock_t {LOCK_EX, LOCK_SH, LOCK_NONE };
 /* TIMESTAMP */
