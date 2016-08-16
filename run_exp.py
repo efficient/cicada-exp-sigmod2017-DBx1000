@@ -697,7 +697,9 @@ def make_silo_cmd(exp):
 def make_ermia_cmd(exp):
   tmpfs_dir = '/tmp'
   log_dir = '/tmp/ermia-log'
-  if not os.path.exists(log_dir): os.mkdir(log_dir)
+  if os.path.exists(log_dir):
+    shutil.rmtree(log_dir)
+  os.mkdir(log_dir)
 
    # --parallel-loading seems to be broken
    # --ops-per-worker is somehow very slow
@@ -710,14 +712,16 @@ def make_ermia_cmd(exp):
   cmd += ' --verbose'
   # cmd += ' --parallel-loading'  # Broken in the current code
   cmd += ' --retry-aborted-transactions'
+  cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 5'
   # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
-  cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count)
-  # cmd += ' --enable-gc'   # Broken in the current code
+  # specifying --node-memory-gb tends to break it
+  cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
+  # cmd += ' --enable-gc' # Unstable/do not finish
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
   cmd += ' --log-buffer-mb 512'
