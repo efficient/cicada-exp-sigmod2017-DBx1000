@@ -740,7 +740,12 @@ def run(exp, prepare_only):
     conf = open('config-std.h').read()
     conf = update_conf(conf, exp)
     open('config.h', 'w').write(conf)
+
+    shutil.copy('../src/mica/test/test_tx_conf_org.h',
+                '../src/mica/test/test_tx_conf.h')
   else:
+    shutil.copy('config-std.h', 'config.h')
+
     conf = open('../src/mica/test/test_tx_conf_org.h').read()
     conf = update_conf(conf, exp)
     open('../src/mica/test/test_tx_conf.h', 'w').write(conf)
