@@ -1091,7 +1091,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 
   for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
     int64_t o_id;
-    if (!delivery_getNewOrder_deleteNewOrder(arg.w_id, d_id, &o_id)) {
+    if (!delivery_getNewOrder_deleteNewOrder(d_id, arg.w_id, &o_id)) {
       FAIL_ON_ABORT();
       // printf("oops0\n");
       return finish(Abort);
