@@ -123,7 +123,7 @@ class tpcc_txn_man : public txn_man {
                                             const char* c_last,
                                             uint64_t* out_c_id);
   row_t* order_status_getLastOrder(uint64_t w_id, uint64_t d_id, uint64_t c_id);
-  void order_status_getOrderLines(uint64_t w_id, uint64_t d_id, int64_t o_id);
+  bool order_status_getOrderLines(uint64_t w_id, uint64_t d_id, int64_t o_id);
 
   bool delivery_getNewOrder_deleteNewOrder(uint64_t d_id, uint64_t w_id,
                                            int64_t* out_o_id);
