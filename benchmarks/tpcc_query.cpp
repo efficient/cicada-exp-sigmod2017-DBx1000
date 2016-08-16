@@ -107,7 +107,7 @@ void tpcc_query::gen_new_order(uint64_t thd_id) {
   arg.c_id = NURand(1023, 1, g_cust_per_dist, thd_id);
   arg.ol_cnt = URand(5, 15, thd_id);
   arg.o_entry_d = 2013;
-  arg.items = (Item_no*)_mm_malloc(sizeof(Item_no) * arg.ol_cnt, 64);
+  arg.items = (Item_no*)mem_allocator.alloc(sizeof(Item_no) * arg.ol_cnt, thd_id);
   arg.all_local = true;
   part_to_access[0] = wh_to_part(arg.w_id);
   part_num = 1;

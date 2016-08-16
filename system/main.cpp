@@ -30,8 +30,10 @@ int main(int argc, char* argv[]) {
 #endif
 
   mem_allocator.init(g_part_cnt, MEM_SIZE / g_part_cnt);
+  mem_allocator.register_thread(0);
+
   stats.init();
-  glob_manager = (Manager*)_mm_malloc(sizeof(Manager), 64);
+  glob_manager = (Manager*)mem_allocator.alloc(sizeof(Manager), 0);
   glob_manager->init();
   if (g_cc_alg == DL_DETECT) dl_detector.init();
   printf("mem_allocator initialized!\n");
@@ -59,6 +61,7 @@ int main(int argc, char* argv[]) {
     for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
       threads.emplace_back([&, thread_id] {
         ::mica::util::lcore.pin_thread(thread_id);
+        mem_allocator.register_thread(thread_id);
 
         m_wl->mica_db->activate(thread_id);
 
@@ -132,10 +135,10 @@ int main(int argc, char* argv[]) {
   pthread_t p_thds[thd_cnt - 1];
   m_thds = new thread_t*[thd_cnt];
   for (uint32_t i = 0; i < thd_cnt; i++)
-    m_thds[i] = (thread_t*)_mm_malloc(sizeof(thread_t), 64);
+    m_thds[i] = (thread_t*)mem_allocator.alloc(sizeof(thread_t), 0);
   // query_queue should be the last one to be initialized!!!
   // because it collects txn latency
-  query_queue = (Query_queue*)_mm_malloc(sizeof(Query_queue), 64);
+  query_queue = (Query_queue*)mem_allocator.alloc(sizeof(Query_queue), 0);
   if (WORKLOAD != TEST) query_queue->init(m_wl);
   pthread_barrier_init(&warmup_bar, NULL, g_thread_cnt);
   printf("query_queue initialized!\n");
@@ -190,7 +193,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   // spawn and run txns again.
-  // int ret = system("perf record -a sleep 1 &");
+  // int ret = system("perf record -a -g sleep 1 &");
   // int ret = system("perf record -C 1 sleep 1 &");
   // int ret = system("perf record -C 2 sleep 1 &");
   // int ret = system("perf stat -C 1 sleep 1 &");
@@ -252,6 +255,8 @@ int main(int argc, char* argv[]) {
          inter_commit_latency.perc(0.95), inter_commit_latency.perc(0.99),
          inter_commit_latency.perc(0.999));
 #endif
+
+  mem_allocator.dump_stats();
 
 #if PRINT_LAT_DIST
   printf("LatencyStart\n");

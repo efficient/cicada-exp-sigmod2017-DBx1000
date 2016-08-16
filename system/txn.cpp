@@ -23,7 +23,7 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	insert_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
-	accesses = (Access **) _mm_malloc(sizeof(Access *) * MAX_ROW_PER_TXN, 64);
+	accesses = (Access **) mem_allocator.alloc(sizeof(Access *) * MAX_ROW_PER_TXN, thd_id);
 	for (int i = 0; i < MAX_ROW_PER_TXN; i++)
 		accesses[i] = NULL;
 	num_accesses_alloc = 0;
@@ -151,18 +151,18 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
 	if (accesses[row_cnt] == NULL) {
-		Access * access = (Access *) _mm_malloc(sizeof(Access), 64);
+		Access * access = (Access *) mem_allocator.alloc(sizeof(Access), -1);
 		accesses[row_cnt] = access;
 #if (CC_ALG == SILO || CC_ALG == TICTOC)
-		access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
 		access->data->init(MAX_TUPLE_SIZE);
-		access->orig_data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		access->orig_data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
 		access->orig_data->init(MAX_TUPLE_SIZE);
 #elif (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE)
-		access->orig_data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		access->orig_data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
 		access->orig_data->init(MAX_TUPLE_SIZE);
 #elif (CC_ALG == MICA)
-		access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
 #endif
 		num_accesses_alloc ++;
 	}
@@ -217,9 +217,9 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, access_t type)
 	RC rc = RCOK;
 	assert(row_cnt < MAX_ROW_PER_TXN);
 	if (accesses[row_cnt] == NULL) {
-		Access * access = (Access *) _mm_malloc(sizeof(Access), 64);
+		Access * access = (Access *) mem_allocator.alloc(sizeof(Access), -1);
 		accesses[row_cnt] = access;
-		access->data = (row_t *) _mm_malloc(sizeof(row_t), 64);
+		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
 		num_accesses_alloc ++;
 	}
 
@@ -434,7 +434,9 @@ RC txn_man::finish(RC rc) {
 			assert(rc == RCOK);
 
 			// XXX: Freeing the index item immediately is unsafe due to concurrency.
-			// mem_allocator.free(m_item, sizeof(itemid_t));
+			// We do this only when using RCU.
+			if (RCU_ALLOC)
+				mem_allocator.free(m_item, sizeof(itemid_t));
 		}
 	}
 #endif

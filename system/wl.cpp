@@ -48,6 +48,7 @@ RC workload::init_schema(string schema_file) {
   for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
     threads.emplace_back([&, thread_id] {
       ::mica::util::lcore.pin_thread(thread_id);
+			mem_allocator.register_thread(thread_id);
       mica_db->activate(thread_id);
     });
   }
@@ -66,7 +67,7 @@ RC workload::init_schema(string schema_file) {
 		if (line.compare(0, 6, "TABLE=") == 0) {
 			string tname;
 			tname = &line[6];
-			schema = (Catalog *) _mm_malloc(sizeof(Catalog), CL_SIZE);
+			schema = (Catalog *) mem_allocator.alloc(sizeof(Catalog), -1);
 			getline(fin, line);
 			int col_count = 0;
 			// Read all fields for this table.
@@ -110,7 +111,7 @@ RC workload::init_schema(string schema_file) {
 			assert(schema->get_tuple_size() == MAX_TUPLE_SIZE);
 #endif
 
-			table_t * cur_tab = (table_t *) _mm_malloc(sizeof(table_t), CL_SIZE);
+			table_t * cur_tab = (table_t *) mem_allocator.alloc(sizeof(table_t), -1);
 			cur_tab->init(schema);
 #if CC_ALG == MICA
 			printf("creating table %s\n", tname.c_str());
@@ -160,7 +161,7 @@ RC workload::init_schema(string schema_file) {
 #endif
 
 			if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
-				INDEX * index = (INDEX *) _mm_malloc(sizeof(INDEX), 64);
+				INDEX * index = (INDEX *) mem_allocator.alloc(sizeof(INDEX), -1);
 				new(index) INDEX();
 
 #if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
@@ -171,7 +172,7 @@ RC workload::init_schema(string schema_file) {
 				indexes[iname] = index;
 			}
 			else {
-				ORDERED_INDEX * index = (ORDERED_INDEX *) _mm_malloc(sizeof(ORDERED_INDEX), 64);
+				ORDERED_INDEX * index = (ORDERED_INDEX *) mem_allocator.alloc(sizeof(ORDERED_INDEX), -1);
 				new(index) ORDERED_INDEX();
 
 				index->init(part_cnt, tables[tname]);
@@ -186,6 +187,7 @@ RC workload::init_schema(string schema_file) {
   for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
     threads.emplace_back([&, thread_id] {
       ::mica::util::lcore.pin_thread(thread_id);
+			mem_allocator.register_thread(thread_id);
       mica_db->deactivate(thread_id);
     });
   }

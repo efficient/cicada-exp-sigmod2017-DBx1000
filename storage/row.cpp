@@ -60,7 +60,7 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 	}
 	data = inlined_data;
 #else
-	data = (char *) _mm_malloc(sizeof(char) * tuple_size, 64);
+	data = (char *) mem_allocator.alloc(sizeof(char) * tuple_size, part_id);
 #endif
 #endif
 	return RCOK;
@@ -76,7 +76,7 @@ row_t::init(int size)
 	}
 	data = inlined_data;
 #else
-	data = (char *) _mm_malloc(size, 64);
+	data = (char *) mem_allocator.alloc(size, 64);
 #endif
 #else
 	assert(false);
@@ -103,22 +103,22 @@ void row_t::init_manager(row_t * row) {
 #elif CC_ALG == TIMESTAMP
     manager = (Row_ts *) mem_allocator.alloc(sizeof(Row_ts), _part_id);
 #elif CC_ALG == MVCC
-    manager = (Row_mvcc *) _mm_malloc(sizeof(Row_mvcc), 64);
+    manager = (Row_mvcc *) mem_allocator.alloc(sizeof(Row_mvcc), _part_id);
 #elif CC_ALG == HEKATON
-    manager = (Row_hekaton *) _mm_malloc(sizeof(Row_hekaton), 64);
+    manager = (Row_hekaton *) mem_allocator.alloc(sizeof(Row_hekaton), _part_id);
 #elif CC_ALG == OCC
     manager = (Row_occ *) mem_allocator.alloc(sizeof(Row_occ), _part_id);
 #elif CC_ALG == TICTOC
 #ifdef USE_INLINED_DATA
 	manager = &inlined_manager;
 #else
-	manager = (Row_tictoc *) _mm_malloc(sizeof(Row_tictoc), 64);
+	manager = (Row_tictoc *) mem_allocator.alloc(sizeof(Row_tictoc), _part_id);
 #endif
 #elif CC_ALG == SILO
 #ifdef USE_INLINED_DATA
 	manager = &inlined_manager;
 #else
-	manager = (Row_silo *) _mm_malloc(sizeof(Row_silo), 64);
+	manager = (Row_silo *) mem_allocator.alloc(sizeof(Row_silo), _part_id);
 #endif
 #elif CC_ALG == VLL
     manager = (Row_vll *) mem_allocator.alloc(sizeof(Row_vll), _part_id);

@@ -1,3 +1,9 @@
+#define CONFIG_H "silo/config/config-perf.h"
+#include "silo/rcu.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include "tpcc.h"
 #include "tpcc_query.h"
 #include "tpcc_helper.h"
@@ -19,6 +25,10 @@ void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
 }
 
 RC tpcc_txn_man::run_txn(base_query* query) {
+#if RCU_ALLOC
+  scoped_rcu_region guard;
+#endif
+
   tpcc_query* m_query = (tpcc_query*)query;
   switch (m_query->type) {
     case TPCC_PAYMENT:

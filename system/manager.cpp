@@ -2,19 +2,20 @@
 #include "row.h"
 #include "txn.h"
 #include "pthread.h"
+#include "mem_alloc.h"
 
 void Manager::init() {
-	timestamp = (uint64_t *) _mm_malloc(sizeof(uint64_t), 64);
+	timestamp = (uint64_t *) mem_allocator.alloc(sizeof(uint64_t), 0);
 	*timestamp = 1;
 	_last_min_ts_time = 0;
 	_min_ts = 0;
-	_epoch = (uint64_t *) _mm_malloc(sizeof(uint64_t), 64);
-	_last_epoch_update_time = (ts_t *) _mm_malloc(sizeof(uint64_t), 64);
+	_epoch = (uint64_t *) mem_allocator.alloc(sizeof(uint64_t), 0);
+	_last_epoch_update_time = (ts_t *) mem_allocator.alloc(sizeof(uint64_t), 0);
 	_epoch = 0;
 	_last_epoch_update_time = 0;
-	all_ts = (ts_t volatile **) _mm_malloc(sizeof(ts_t *) * g_thread_cnt, 64);
+	all_ts = (ts_t volatile **) mem_allocator.alloc(sizeof(ts_t *) * g_thread_cnt, 0);
 	for (uint32_t i = 0; i < g_thread_cnt; i++)
-		all_ts[i] = (ts_t *) _mm_malloc(sizeof(ts_t), 64);
+		all_ts[i] = (ts_t *) mem_allocator.alloc(sizeof(ts_t), i);
 
 	_all_txns = new txn_man * [g_thread_cnt];
 	for (UInt32 i = 0; i < g_thread_cnt; i++) {

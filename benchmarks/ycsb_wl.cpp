@@ -134,6 +134,7 @@ void* ycsb_wl::init_table_slice() {
 #endif
 
   mem_allocator.register_thread(tid);
+
   RC rc;
   assert(g_synth_table_size % g_init_parallelism == 0);
   assert(tid < g_init_parallelism);
@@ -194,7 +195,7 @@ void* ycsb_wl::init_table_slice() {
 }
 
 RC ycsb_wl::get_txn_man(txn_man*& txn_manager, thread_t* h_thd) {
-  txn_manager = (ycsb_txn_man*)_mm_malloc(sizeof(ycsb_txn_man), 64);
+  txn_manager = (ycsb_txn_man*)mem_allocator.alloc(sizeof(ycsb_txn_man), h_thd->get_thd_id());
   new (txn_manager) ycsb_txn_man();
   txn_manager->init(h_thd, this, h_thd->get_thd_id());
   return RCOK;

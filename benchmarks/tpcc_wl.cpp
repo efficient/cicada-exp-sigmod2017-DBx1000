@@ -75,7 +75,7 @@ RC tpcc_wl::init_table() {
   tpcc_buffer = new drand48_data*[wh_thd_max];
 
   for (int i = 0; i < wh_thd_max; i++) {
-    tpcc_buffer[i] = (drand48_data*)_mm_malloc(sizeof(drand48_data), 64);
+    tpcc_buffer[i] = (drand48_data*)mem_allocator.alloc(sizeof(drand48_data), -1);
     srand48_r(i + 1, tpcc_buffer[i]);
   }
   InitNURand(0);
@@ -96,7 +96,7 @@ RC tpcc_wl::init_table() {
 }
 
 RC tpcc_wl::get_txn_man(txn_man*& txn_manager, thread_t* h_thd) {
-  txn_manager = (tpcc_txn_man*)_mm_malloc(sizeof(tpcc_txn_man), 64);
+  txn_manager = (tpcc_txn_man*)mem_allocator.alloc(sizeof(tpcc_txn_man), h_thd->get_thd_id());
   new (txn_manager) tpcc_txn_man();
   txn_manager->init(h_thd, this, h_thd->get_thd_id());
   return RCOK;
@@ -450,6 +450,8 @@ void* tpcc_wl::threadInitWarehouse(void* This) {
   set_affinity(tid % g_thread_cnt);
 #endif
   uint32_t wid = tid + 1;
+
+  mem_allocator.register_thread(tid % g_thread_cnt);
 
   if (tid == 0) wl->init_tab_item();
   wl->init_tab_wh(wid);

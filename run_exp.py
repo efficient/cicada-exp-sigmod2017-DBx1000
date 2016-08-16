@@ -41,6 +41,12 @@ def set_alg(conf, alg, **kwargs):
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
     conf = replace_def(conf, 'MICA_FULLINDEX', 'false')
 
+  # if alg.startswith('MICA'):
+  #   conf = replace_def(conf, 'RCU_ALLOC', 'false')
+  # else:
+  #   conf = replace_def(conf, 'RCU_ALLOC', 'true')
+  conf = replace_def(conf, 'RCU_ALLOC', 'false')
+
   return conf
 
 

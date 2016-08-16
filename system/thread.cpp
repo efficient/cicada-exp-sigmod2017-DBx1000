@@ -26,7 +26,7 @@ void thread_t::init(uint64_t thd_id, workload * workload) {
 	_wl = workload;
 	srand48_r((_thd_id + 1) * get_sys_clock(), &buffer);
 	_abort_buffer_size = ABORT_BUFFER_SIZE;
-	_abort_buffer = (AbortBufferEntry *) _mm_malloc(sizeof(AbortBufferEntry) * _abort_buffer_size, 64);
+	_abort_buffer = (AbortBufferEntry *) mem_allocator.alloc(sizeof(AbortBufferEntry) * _abort_buffer_size, thd_id);
 	for (int i = 0; i < _abort_buffer_size; i++)
 		_abort_buffer[i].query = NULL;
 	_abort_buffer_empty_slots = _abort_buffer_size;
@@ -43,9 +43,6 @@ RC thread_t::run() {
 #if !NOGRAPHITE
 	_thd_id = CarbonGetTileId();
 #endif
-	if (warmup_finish) {
-		mem_allocator.register_thread(_thd_id);
-	}
 	pthread_barrier_wait( &warmup_bar );
 	stats.init(get_thd_id());
 	pthread_barrier_wait( &warmup_bar );
@@ -64,6 +61,10 @@ RC thread_t::run() {
 #else
 	set_affinity(get_thd_id());
 #endif
+
+	// if (warmup_finish) {
+		mem_allocator.register_thread(get_thd_id());
+	// }
 
 	pthread_barrier_wait( &start_bar );
 

@@ -32,6 +32,10 @@
 #define MEM_SIZE					(1UL << 30)
 #define NO_FREE						false
 
+// [RCU_ALLOC]
+#define RCU_ALLOC 					false
+#define RCU_ALLOC_SIZE     (20 * 1073741824UL)	// 20 GB
+
 /***********************************************/
 // Concurrency Control
 /***********************************************/
