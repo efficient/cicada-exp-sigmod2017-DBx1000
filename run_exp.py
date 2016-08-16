@@ -751,7 +751,7 @@ def run(exp, prepare_only):
     open('../src/mica/test/test_tx_conf.h', 'w').write(conf)
 
   # clean up
-  os.system('make clean > /dev/null')
+  os.system('make clean -j > /dev/null')
   os.system('rm -f ./rundb')
 
   if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
