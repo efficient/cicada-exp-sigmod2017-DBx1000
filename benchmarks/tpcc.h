@@ -126,7 +126,8 @@ class tpcc_txn_man : public txn_man {
   void new_order_updateStock(row_t* row, uint64_t ol_quantity, bool remote);
   bool new_order_createOrderLine(int64_t o_id, uint64_t d_id, uint64_t w_id,
                                  uint64_t ol_number, uint64_t ol_i_id,
-                                 uint64_t ol_supply_w_id, uint64_t ol_quantity,
+                                 uint64_t ol_supply_w_id,
+                                 uint64_t ol_delivery_d, uint64_t ol_quantity,
                                  double ol_amount, const char* ol_dist_info);
 
   row_t* order_status_getCustomerByCustomerId(uint64_t w_id, uint64_t d_id,

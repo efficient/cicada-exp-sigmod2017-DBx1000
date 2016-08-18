@@ -436,7 +436,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   row->set_value(O_ENTRY_D, o_entry_d);
   row->set_value(O_CARRIER_ID, o_carrier_id);
   row->set_value(O_OL_CNT, ol_cnt);
-  row->set_value(O_ALL_LOCAL, all_local);
+  row->set_value(O_ALL_LOCAL, all_local ? uint64_t(1) : uint64_t(0));
 
 #if TPCC_INSERT_INDEX
 #if INDEX_STRUCT != IDX_MICA
@@ -548,8 +548,8 @@ void tpcc_txn_man::new_order_updateStock(row_t* row, uint64_t ol_quantity,
 
 bool tpcc_txn_man::new_order_createOrderLine(
     int64_t o_id, uint64_t d_id, uint64_t w_id, uint64_t ol_number,
-    uint64_t ol_i_id, uint64_t ol_supply_w_id, uint64_t ol_quantity,
-    double ol_amount, const char* ol_dist_info) {
+    uint64_t ol_i_id, uint64_t ol_supply_w_id, uint64_t ol_delivery_d,
+    uint64_t ol_quantity, double ol_amount, const char* ol_dist_info) {
 // INSERT INTO ORDER_LINE (OL_O_ID, OL_D_ID, OL_W_ID, OL_NUMBER, OL_I_ID, OL_SUPPLY_W_ID, OL_DELIVERY_D, OL_QUANTITY, OL_AMOUNT, OL_DIST_INFO) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 #if CC_ALG != MICA
   row_t* row = NULL;
@@ -567,6 +567,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
   row->set_value(OL_I_ID, ol_i_id);
 #if !TPCC_SMALL
   row->set_value(OL_SUPPLY_W_ID, ol_supply_w_id);
+  row->set_value(OL_DELIVERY_D, ol_delivery_d);
   row->set_value(OL_QUANTITY, ol_quantity);
   row->set_value(OL_AMOUNT, ol_amount);
   row->set_value(OL_DIST_INFO, const_cast<char*>(ol_dist_info));
@@ -671,8 +672,8 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
     assert(arg.d_id >= 1 && arg.d_id <= DIST_PER_WARE);
     const char* ol_dist_info = stock->get_value(S_DIST_01 + arg.d_id - 1);
     if (!new_order_createOrderLine(o_id, arg.d_id, arg.w_id, ol_number, ol_i_id,
-                                   ol_supply_w_id, ol_quantity, ol_amount,
-                                   ol_dist_info)) {
+                                   ol_supply_w_id, arg.o_entry_d, ol_quantity,
+                                   ol_amount, ol_dist_info)) {
       FAIL_ON_ABORT();
       return finish(Abort);
     };
