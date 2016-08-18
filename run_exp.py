@@ -144,7 +144,8 @@ prefix = ''
 suffix = ''
 total_seqs = 5
 node_count = 2
-max_thread_count = 28
+max_thread_count = 20
+# max_thread_count = 28
 # max_thread_count = 32
 # hugepage_count = 32768  # 64 GiB
 hugepage_count = 40960  # 80 GiB
@@ -234,7 +235,7 @@ def enum_exps(seq):
       if tag == 'native-macrobench' and alg not in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
         continue
 
-      for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
+      for thread_count in [1, 2] + list(range(4, max_thread_count + 1, 4):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -280,7 +281,7 @@ def enum_exps(seq):
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
-          for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
+          for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
             tpcc.update({ 'warehouse_count': warehouse_count })
@@ -305,7 +306,7 @@ def enum_exps(seq):
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
-          for warehouse_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
+          for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
             if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
@@ -370,7 +371,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX']:
   for alg in []:
-    for thread_count in [1, 2, 4, 8, 12, 16, 20, 24, 28, max_thread_count]:
+    for thread_count in [1, 2] + list(range(4, max_thread_count + 1, 4):
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
       # YCSB
