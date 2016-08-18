@@ -8,6 +8,9 @@ class table_t;
 class INDEX;
 class tpcc_query;
 
+// #define TPCC_SILO_REF_LAST_NO_O_IDS
+// #define TPCC_DBX1000_SERIAL_DELIVERY
+
 class tpcc_wl : public workload {
  public:
   RC init();
@@ -76,9 +79,14 @@ class tpcc_txn_man : public txn_man {
   RC run_delivery(tpcc_query* query);
   RC run_stock_level(tpcc_query* query);
 
+#ifdef TPCC_SILO_REF_LAST_NO_O_IDS
   uint64_t last_no_o_ids[NUM_WH * DIST_PER_WARE]
       __attribute__((aligned(CL_SIZE)));
-  // bool active_delivery[NUM_WH] __attribute__((aligned(CL_SIZE)));
+#endif
+
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+  bool active_delivery[NUM_WH] __attribute__((aligned(CL_SIZE)));
+#endif
 
   template <typename IndexT>
   row_t* search(IndexT* index, uint64_t key, uint64_t part, access_t type);

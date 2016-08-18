@@ -23,8 +23,13 @@ void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
   txn_man::init(h_thd, h_wl, thd_id);
   _wl = (tpcc_wl*)h_wl;
 
+#ifdef TPCC_SILO_REF_LAST_NO_O_IDS
   memset(last_no_o_ids, 0, sizeof(last_no_o_ids));
-  // memset(active_delivery, 0, sizeof(active_delivery));
+#endif
+
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+  memset(active_delivery, 0, sizeof(active_delivery));
+#endif
 }
 
 RC tpcc_txn_man::run_txn(base_query* query) {
@@ -929,10 +934,13 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   auto index = _wl->i_neworder;
   // TODO: This may cause a match with other district with a negative order ID.  It is safe for now because the lowest order ID is 1, but we should give more gap (or use tuple keys) to avoid accidental matches.
   auto key = neworderKey(g_max_orderline, d_id, w_id);
-  // auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
-  // Use Silo's last seen o_id history.
+#ifndef TPCC_SILO_REF_LAST_NO_O_IDS
+  auto max_key = neworderKey(0, d_id, w_id);  // Use key ">= 0" for "> -1"
+#else
+  // Use reference Silo's last seen o_id history.
   auto max_key = neworderKey(
       last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1], d_id, w_id);
+#endif
   auto part_id = wh_to_part(w_id);
 
 #if INDEX_STRUCT != IDX_MICA
@@ -991,7 +999,9 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   local->get_value(NO_O_ID, o_id);
   *out_o_id = o_id;
 
+#ifdef TPCC_SILO_REF_LAST_NO_O_IDS
   last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+#endif
 
 #if TPCC_DELETE_ROWS
 // XXX: DBx1000 CC schemes do not implement removes
@@ -1020,7 +1030,9 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   row->get_value(NO_O_ID, o_id);
   *out_o_id = o_id;
 
+#ifdef TPCC_SILO_REF_LAST_NO_O_IDS
   last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+#endif
 
 #if TPCC_DELETE_ROWS
   if (!rah.delete_row()) return false;
@@ -1146,16 +1158,21 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #if TPCC_FULL
   auto& arg = query->args.delivery;
 
-  // DBx1000's active delivery transaction checking.
-  // if (__sync_lock_test_and_set(&active_delivery[arg.w_id - 1], 1) == 1)
-  //   return finish(RCOK);
+// DBx1000's active delivery transaction checking.
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+  if (__sync_lock_test_and_set(&active_delivery[arg.w_id - 1], 1) == 1)
+    return finish(RCOK);
+#endif
 
   for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
     int64_t o_id;
     if (!delivery_getNewOrder_deleteNewOrder(d_id, arg.w_id, &o_id)) {
       FAIL_ON_ABORT();
-      // printf("oops0\n");
-      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
+// printf("oops0\n");
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+#endif
+      // INC_STATS_ALWAYS(get_thd_id(), debug1, 1);
       return finish(Abort);
     }
     // No new order for this district.
@@ -1182,21 +1199,30 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
     if (!delivery_updateOrderLine_sumOLAmount(arg.ol_delivery_d, o_id, d_id,
                                               arg.w_id, &ol_total)) {
       FAIL_ON_ABORT();
-      // printf("oops2\n");
-      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
+// printf("oops2\n");
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+#endif
+      // INC_STATS_ALWAYS(get_thd_id(), debug2, 1);
       return finish(Abort);
     }
 
     if (!delivery_updateCustomer(ol_total, c_id, d_id, arg.w_id)) {
       FAIL_ON_ABORT();
-      // printf("oops3\n");
-      // __sync_lock_release(&active_delivery[arg.w_id - 1]);
+// printf("oops3\n");
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+#endif
+      // INC_STATS_ALWAYS(get_thd_id(), debug3, 1);
       return finish(Abort);
     }
   }
 #endif
 
-  // __sync_lock_release(&active_delivery[arg.w_id - 1]);
+#ifdef TPCC_DBX1000_SERIAL_DELIVERY
+  __sync_lock_release(&active_delivery[arg.w_id - 1]);
+#endif
+  // INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
   return finish(RCOK);
 }
 
