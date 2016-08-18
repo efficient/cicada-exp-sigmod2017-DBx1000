@@ -81,6 +81,47 @@ void txn_man::set_readonly() {
 }
 
 void txn_man::cleanup(RC rc) {
+#if INDEX_STRUCT != IDX_MICA
+	if (rc == RCOK) {
+		// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
+
+		// XXX: Because this code is after the commit, two duplicate keys might be inserted to the index, causing assertion failure.
+		for (size_t i = 0; i < insert_idx_cnt; i++) {
+			auto idx = insert_idx_idx[i];
+			auto key = insert_idx_key[i];
+			auto row = insert_idx_row[i];
+			auto part_id = insert_idx_part_id[i];
+
+			assert(part_id != (uint64_t)-1);
+
+		  itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
+		  m_item->init();
+		  m_item->type = DT_row;
+		  m_item->location = row;
+		  m_item->valid = true;
+
+		  auto rc = idx->index_insert(key, m_item, part_id);
+			assert(rc == RCOK);
+		}
+		for (size_t i = 0; i < remove_idx_cnt; i++) {
+			auto idx = remove_idx_idx[i];
+			auto key = remove_idx_key[i];
+			auto part_id = remove_idx_part_id[i];
+
+			assert(part_id != (uint64_t)-1);
+
+			itemid_t* m_item;
+			auto rc = idx->index_remove(key, &m_item);
+			assert(rc == RCOK);
+
+			// XXX: Freeing the index item immediately is unsafe due to concurrency.
+			// We do this only when using RCU.
+			if (RCU_ALLOC)
+				mem_allocator.free(m_item, sizeof(itemid_t));
+		}
+	}
+#endif
+
 #if CC_ALG == HEKATON
 	row_cnt = 0;
 	wr_cnt = 0;
@@ -418,47 +459,6 @@ RC txn_man::finish(RC rc) {
 	cleanup(rc);
 #else
 	cleanup(rc);
-#endif
-
-#if INDEX_STRUCT != IDX_MICA
-	if (rc == RCOK) {
-		// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
-
-		// XXX: Because this code is after the commit, two duplicate keys might be inserted to the index, causing assertion failure.
-		for (size_t i = 0; i < insert_idx_cnt; i++) {
-			auto idx = insert_idx_idx[i];
-			auto key = insert_idx_key[i];
-			auto row = insert_idx_row[i];
-			auto part_id = insert_idx_part_id[i];
-
-			assert(part_id != (uint64_t)-1);
-
-		  itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-		  m_item->init();
-		  m_item->type = DT_row;
-		  m_item->location = row;
-		  m_item->valid = true;
-
-		  auto rc = idx->index_insert(key, m_item, part_id);
-			assert(rc == RCOK);
-		}
-		for (size_t i = 0; i < remove_idx_cnt; i++) {
-			auto idx = remove_idx_idx[i];
-			auto key = remove_idx_key[i];
-			auto part_id = remove_idx_part_id[i];
-
-			assert(part_id != (uint64_t)-1);
-
-			itemid_t* m_item;
-			auto rc = idx->index_remove(key, &m_item);
-			assert(rc == RCOK);
-
-			// XXX: Freeing the index item immediately is unsafe due to concurrency.
-			// We do this only when using RCU.
-			if (RCU_ALLOC)
-				mem_allocator.free(m_item, sizeof(itemid_t));
-		}
-	}
 #endif
 
 	uint64_t timespan = get_sys_clock() - starttime;
