@@ -294,7 +294,6 @@ def enum_exps(seq):
         if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
           tx_count = 200000
-          # tx_count = 100000   # half of the usual due to memory use
           tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count })
 
           # for warehouse_count in [1, 4, 16, max_thread_count]:
