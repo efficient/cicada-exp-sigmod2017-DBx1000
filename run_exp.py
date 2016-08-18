@@ -723,9 +723,8 @@ def make_ermia_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 5'
   # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
-  # specifying --node-memory-gb tends to break it
   cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
-  # cmd += ' --enable-gc' # Unstable/do not finish
+  cmd += ' --enable-gc'
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
   cmd += ' --log-buffer-mb 512'
