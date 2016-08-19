@@ -145,6 +145,7 @@ void txn_man::cleanup(RC rc) {
 		// Free deleted rows
 		for (size_t i = 0; i < remove_cnt; i++) {
 			auto row = remove_rows[i];
+			row->is_deleted = 1;
 		  if (RCU_ALLOC) mem_allocator.free(row, sizeof(row_t));
 		}
 		remove_cnt = 0;

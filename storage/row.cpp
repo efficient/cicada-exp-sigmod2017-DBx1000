@@ -20,6 +20,7 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 	_row_id = row_id;
 	_part_id = part_id;
 	this->table = host_table;
+	is_deleted = 0;
 #if CC_ALG == MICA
   // We ignore the given row_id argument to init() because it contains an
   // uninitialized value and is not used by the workload.
@@ -82,6 +83,7 @@ row_t::init(int size)
 #else
 	assert(false);
 #endif
+  is_deleted = 0;
 }
 
 RC
@@ -231,6 +233,9 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	// Not supported in other algorithms.
 	assert(type != PEEK);
 #endif
+
+if (is_deleted)
+	return Abort;
 
 	RC rc = RCOK;
 #if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
