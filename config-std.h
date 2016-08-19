@@ -34,7 +34,7 @@
 
 // [RCU_ALLOC]
 #define RCU_ALLOC 					false
-#define RCU_ALLOC_SIZE     (20 * 1073741824UL)	// 20 GB
+#define RCU_ALLOC_SIZE     (40 * 1073741824UL)	// 40 GB
 
 /***********************************************/
 // Concurrency Control
