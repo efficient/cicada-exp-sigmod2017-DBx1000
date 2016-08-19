@@ -74,3 +74,6 @@ UInt32 g_max_items = 100000;
 UInt32 g_cust_per_dist = 3000;
 #endif
 uint64_t g_max_orderline = uint64_t(1) << 32;
+
+uint64_t g_sub_size = TATP_SUB_SIZE;
+

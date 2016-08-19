@@ -115,6 +115,10 @@ class Plock;
 class OptCC;
 class VLLMan;
 
+typedef uint8_t UInt8;
+typedef int8_t SInt8;
+typedef uint16_t UInt16;
+typedef int16_t SInt16;
 typedef uint32_t UInt32;
 typedef int32_t SInt32;
 typedef uint64_t UInt64;
@@ -186,6 +190,9 @@ extern char * output_file;
 extern UInt32 g_max_items;
 extern UInt32 g_cust_per_dist;
 extern uint64_t g_max_orderline;
+
+// TATP
+extern uint64_t g_sub_size;
 
 enum RC { RCOK, Commit, Abort, WAIT, ERROR, FINISH};
 

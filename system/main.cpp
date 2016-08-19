@@ -1,6 +1,7 @@
 #include "global.h"
 #include "ycsb.h"
 #include "tpcc.h"
+#include "tatp.h"
 #include "test.h"
 #include "thread.h"
 #include "manager.h"
@@ -44,6 +45,9 @@ int main(int argc, char* argv[]) {
       break;
     case TPCC:
       m_wl = new tpcc_wl;
+      break;
+    case TATP:
+      m_wl = new tatp_wl;
       break;
     case TEST:
       m_wl = new TestWorkload;

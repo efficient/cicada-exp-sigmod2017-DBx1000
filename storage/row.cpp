@@ -170,12 +170,20 @@ SET_VALUE(int64_t);
 SET_VALUE(double);
 SET_VALUE(UInt32);
 SET_VALUE(SInt32);
+SET_VALUE(UInt16);
+SET_VALUE(SInt16);
+SET_VALUE(UInt8);
+SET_VALUE(SInt8);
 
 GET_VALUE(uint64_t);
 GET_VALUE(int64_t);
 GET_VALUE(double);
 GET_VALUE(UInt32);
 GET_VALUE(SInt32);
+GET_VALUE(UInt16);
+GET_VALUE(SInt16);
+GET_VALUE(UInt8);
+GET_VALUE(SInt8);
 
 char * row_t::get_value(int id) {
 	int pos = get_schema()->get_field_index(id);

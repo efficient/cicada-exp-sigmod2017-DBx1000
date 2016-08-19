@@ -162,6 +162,19 @@ extern TPCCTxnType 					g_tpcc_txn_type;
 
 #define DIST_PER_WARE				10
 
+// ==== [TATP] ====
+#define TATP_DEFAULT_NUM_SUBSCRIBERS 100000l
+#define TATP_SUB_NBR_PADDING_SIZE 15
+#define TATP_FREQUENCY_DELETE_CALL_FORWARDING    2
+#define TATP_FREQUENCY_GET_ACCESS_DATA           35
+#define TATP_FREQUENCY_GET_NEW_DESTINATION       10
+#define TATP_FREQUENCY_GET_SUBSCRIBER_DATA       35
+#define TATP_FREQUENCY_INSERT_CALL_FORWARDING    2
+#define TATP_FREQUENCY_UPDATE_LOCATION           14
+#define TATP_FREQUENCY_UPDATE_SUBSCRIBER_DATA    2
+
+#define TATP_SUB_SIZE (TATP_DEFAULT_NUM_SUBSCRIBERS * 1)
+
 /***********************************************/
 // TODO centralized CC management.
 /***********************************************/
@@ -204,7 +217,8 @@ extern TestCases					g_test_case;
 // WORKLOAD
 #define YCSB						1
 #define TPCC						2
-#define TEST						3
+#define TATP						3
+#define TEST						4
 // Concurrency Control Algorithm
 #define NO_WAIT						1
 #define WAIT_DIE					2
