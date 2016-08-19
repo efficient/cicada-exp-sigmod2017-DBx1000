@@ -47,6 +47,13 @@ class tatp_txn_man : public txn_man {
 
  private:
   tatp_wl* _wl;
+  RC run_delete_call_forwarding(tatp_query* query);
+  RC run_get_access_data(tatp_query* query);
+  RC run_get_new_destination(tatp_query* query);
+  RC run_get_subscriber_data(tatp_query* query);
+  RC run_insert_call_forwarding(tatp_query* query);
+  RC run_update_location(tatp_query* query);
+  RC run_update_subscriber_data(tatp_query* query);
 };
 
 #endif

@@ -25,8 +25,77 @@ void tatp_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
 }
 
 RC tatp_txn_man::run_txn(base_query* query) {
-#if RCU_ALLOC
-  scoped_rcu_region guard;
-#endif
+  RC rc;
+
+  auto m_query = (tatp_query*)query;
+  switch (m_query->type) {
+    case TATPTxnType::DeleteCallForwarding:
+      rc = run_delete_call_forwarding(m_query);
+      break;
+    case TATPTxnType::GetAccessData:
+      rc = run_get_access_data(m_query);
+      break;
+    case TATPTxnType::GetNewDestination:
+      rc = run_get_new_destination(m_query);
+      break;
+    case TATPTxnType::GetSubscriberData:
+      rc = run_get_subscriber_data(m_query);
+      break;
+    case TATPTxnType::InsertCallForwarding:
+      rc = run_insert_call_forwarding(m_query);
+      break;
+    case TATPTxnType::UpdateLocation:
+      rc = run_update_location(m_query);
+      break;
+    case TATPTxnType::UpdateSubscriberData:
+      rc = run_update_subscriber_data(m_query);
+      break;
+    default:
+      rc = ERROR;
+      assert(false);
+  }
+
+  return rc;
+}
+
+RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
+  auto& arg = query->args.delete_call_forwarding;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_get_access_data(tatp_query* query) {
+  auto& arg = query->args.get_access_data;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_get_new_destination(tatp_query* query) {
+  auto& arg = query->args.get_new_destination;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_get_subscriber_data(tatp_query* query) {
+  auto& arg = query->args.get_subscriber_data;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_insert_call_forwarding(tatp_query* query) {
+  auto& arg = query->args.insert_call_forwarding;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_update_location(tatp_query* query) {
+  auto& arg = query->args.update_location;
+  (void)arg;
+  return RCOK;
+}
+
+RC tatp_txn_man::run_update_subscriber_data(tatp_query* query) {
+  auto& arg = query->args.update_subscriber_data;
+  (void)arg;
   return RCOK;
 }
