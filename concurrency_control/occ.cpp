@@ -32,7 +32,7 @@ RC OptCC::validate(txn_man * txn) {
 	return rc;
 }
 
-RC 
+RC
 OptCC::per_row_validate(txn_man * txn) {
 	RC rc = RCOK;
 #if CC_ALG == OCC
@@ -40,10 +40,10 @@ OptCC::per_row_validate(txn_man * txn) {
 	// TODO for migration, should first sort by partition id
 	for (int i = txn->row_cnt - 1; i > 0; i--) {
 		for (int j = 0; j < i; j ++) {
-			int tabcmp = strcmp(txn->accesses[j]->orig_row->get_table_name(), 
+			int tabcmp = strcmp(txn->accesses[j]->orig_row->get_table_name(),
 			txn->accesses[j+1]->orig_row->get_table_name());
 			if (tabcmp > 0 || (tabcmp == 0 && txn->accesses[j]->orig_row->get_primary_key() > txn->accesses[j+1]->orig_row->get_primary_key())) {
-				Access * tmp = txn->accesses[j]; 
+				Access * tmp = txn->accesses[j];
 				txn->accesses[j] = txn->accesses[j+1];
 				txn->accesses[j+1] = tmp;
 			}
@@ -51,9 +51,9 @@ OptCC::per_row_validate(txn_man * txn) {
 	}
 #if DEBUG_ASSERT
 	for (int i = txn->row_cnt - 1; i > 0; i--) {
-		int tabcmp = strcmp(txn->accesses[i-1]->orig_row->get_table_name(), 
+		int tabcmp = strcmp(txn->accesses[i-1]->orig_row->get_table_name(),
 		txn->accesses[i]->orig_row->get_table_name());
-		assert(tabcmp < 0 || tabcmp == 0 && txn->accesses[i]->orig_row->get_primary_key() > 
+		assert(tabcmp < 0 || tabcmp == 0 && txn->accesses[i]->orig_row->get_primary_key() >
 		txn->accesses[i-1]->orig_row->get_primary_key());
 	}
 #endif
@@ -78,7 +78,10 @@ OptCC::per_row_validate(txn_man * txn) {
 		rc = Abort;
 	}
 
-	for (int i = 0; i < lock_cnt; i++) 
+	if (rc == RCOK)
+		txn->apply_index_changes();
+
+	for (int i = 0; i < lock_cnt; i++)
 		txn->accesses[i]->orig_row->manager->release();
 #endif
 	return rc;
@@ -116,11 +119,11 @@ RC OptCC::central_validate(txn_man * txn) {
 	his = history;
 	pthread_mutex_unlock( &latch );
 	if (finish_tn > start_tn) {
-		while (his && his->tn > finish_tn) 
+		while (his && his->tn > finish_tn)
 			his = his->next;
 		while (his && his->tn > start_tn) {
 			valid = test_valid(his, rset);
-			if (!valid) 
+			if (!valid)
 				goto final;
 			his = his->next;
 		}
@@ -135,8 +138,10 @@ RC OptCC::central_validate(txn_man * txn) {
 			goto final;
 	}
 final:
-	if (valid) 
+	if (valid) {
+		txn->apply_index_changes();
 		txn->cleanup(RCOK);
+	}
 	mem_allocator.free(rset, sizeof(set_ent));
 
 	if (!readonly) {
@@ -187,7 +192,7 @@ RC OptCC::get_rw_set(txn_man * txn, set_ent * &rset, set_ent *& wset) {
 	for (int i = 0; i < txn->row_cnt; i++) {
 		if (txn->accesses[i]->type == WR)
 			wset->rows[n ++] = txn->accesses[i]->orig_row;
-		else 
+		else
 			rset->rows[m ++] = txn->accesses[i]->orig_row;
 	}
 
