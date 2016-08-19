@@ -95,52 +95,66 @@ public:
 	// For VLL
 	TxnType 		vll_txn_type;
 
+	// index_read methods
 #if INDEX_STRUCT != IDX_MICA
-	template <typename INDEX_T>
-	itemid_t *		index_read(INDEX_T * index, idx_key_t key, int part_id);
-	template <typename INDEX_T>
-	void 			index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& item);
-	template <typename INDEX_T>
-	RC		index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
-	template <typename INDEX_T>
-	RC		index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+	template <typename IndexT>
+	itemid_t *		index_read(IndexT * index, idx_key_t key, int part_id);
+	template <typename IndexT>
+	void 			index_read(IndexT * index, idx_key_t key, int part_id, itemid_t *& item);
+	template <typename IndexT>
+	RC		index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+	template <typename IndexT>
+	RC		index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
 #else
-	template <typename INDEX_T>
-	RC		index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id);
-	template <typename INDEX_T>
-	RC		index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
-	template <typename INDEX_T>
-	RC		index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-	template <typename INDEX_T>
-	RC		index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+	template <typename IndexT>
+	RC		index_read(IndexT * index, idx_key_t key, itemid_t* item, int part_id);
+	template <typename IndexT>
+	RC		index_read_multiple(IndexT * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
+	template <typename IndexT>
+	RC		index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+	template <typename IndexT>
+	RC		index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
 
+	// get_row methods
 	row_t * 		get_row(row_t * row, access_t type);
-
 #if CC_ALG == MICA
-	template <typename INDEX_T>
-	row_t * 		get_row(INDEX_T* index, itemid_t * item, uint64_t part_id, access_t type);
+	template <typename IndexT>
+	row_t * 		get_row(IndexT* index, itemid_t * item, int part_id, access_t type);
 #endif
 
-protected:
-	void 			insert_row(row_t * row, table_t * table);
-	void 			insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t part_id);
-	void 			remove_idx(ORDERED_INDEX* idx, idx_key_t key, uint64_t part_id);
+	// search (index_read + get_row)
+  template <typename IndexT>
+  row_t* search(IndexT* index, uint64_t key, int part_id, access_t type);
+
+	// insert_row/remove_row
+  bool insert_row(table_t* tbl, row_t*& row, int part_id, uint64_t& out_row_id);
+	bool remove_row(row_t* row);
+
+	// index_insert/index_remove
+  template <typename IndexT>
+	bool insert_idx(IndexT* idx, idx_key_t key, row_t* row, int part_id);
+  template <typename IndexT>
+	bool remove_idx(IndexT* idx, idx_key_t key, uint64_t row_id, int part_id);
+
 private:
-	// insert rows
+	// insert/remove rows
 	uint64_t 		insert_cnt;
 	row_t * 		insert_rows[MAX_ROW_PER_TXN];
+	uint64_t 		remove_cnt;
+	row_t * 		remove_rows[MAX_ROW_PER_TXN];
 
+	// insert/remove indexes
 	uint64_t 		   insert_idx_cnt;
 	ORDERED_INDEX* insert_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     insert_idx_key[MAX_ROW_PER_TXN];
 	row_t* 		     insert_idx_row[MAX_ROW_PER_TXN];
-	uint64_t		   insert_idx_part_id[MAX_ROW_PER_TXN];
+	int	       	   insert_idx_part_id[MAX_ROW_PER_TXN];
 
 	uint64_t 		   remove_idx_cnt;
 	ORDERED_INDEX* remove_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     remove_idx_key[MAX_ROW_PER_TXN];
-	uint64_t		   remove_idx_part_id[MAX_ROW_PER_TXN];
+	int	      	   remove_idx_part_id[MAX_ROW_PER_TXN];
 
 	txnid_t 		txn_id;
 	ts_t 			timestamp;

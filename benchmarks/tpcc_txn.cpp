@@ -81,76 +81,6 @@ RC tpcc_txn_man::run_txn(base_query* query) {
 void FAIL_ON_ABORT() {}
 
 //////////////////////////////////////////////////////
-// Helper
-//////////////////////////////////////////////////////
-
-template <typename IndexT>
-row_t* tpcc_txn_man::search(IndexT* index, uint64_t key, uint64_t part_id,
-                            access_t type) {
-#if INDEX_STRUCT != IDX_MICA
-  auto item = index_read(index, key, part_id);
-  if (item == NULL) return NULL;
-#else
-  itemid_t idx_item;
-  auto item = &idx_item;
-  auto idx_rc = index_read(index, key, item, part_id);
-  if (idx_rc != RCOK) return NULL;
-#endif
-#if CC_ALG != MICA
-  auto shared = (row_t*)item->location;
-  auto local = get_row(shared, type);
-#else
-  auto local = get_row(index, item, part_id, type);
-#endif
-  return local;
-}
-
-bool tpcc_txn_man::get_new_row(table_t* tbl, row_t*& row, uint64_t part_id,
-                               uint64_t& out_row_id) {
-#if CC_ALG != MICA
-  if (tbl->get_new_row(row, part_id, out_row_id) != RCOK) return false;
-  insert_row(row, tbl);
-  return true;
-#else
-  assert(row != NULL);
-  assert(part_id >= 0 && part_id < tbl->mica_tbl.size());
-  MICARowAccessHandle rah(mica_tx);
-  if (!rah.new_row(tbl->mica_tbl[part_id])) return false;
-  out_row_id = rah.row_id();
-  row->set_row_id(out_row_id);
-  row->set_part_id(part_id);
-  row->table = tbl;
-  row->data = rah.data();
-  return true;
-#endif
-}
-
-template <class IndexT>
-bool tpcc_txn_man::index_insert(IndexT* index, uint64_t key, row_t* row,
-                                int64_t part_id) {
-#if INDEX_STRUCT == IDX_MICA
-  // We directly insert it into a MICA index.
-  assert(false);
-  return false;
-#else
-  insert_idx(index, key, row, part_id);
-  return true;
-#endif
-}
-
-template <class IndexT>
-bool tpcc_txn_man::index_remove(IndexT* index, uint64_t key, int64_t part_id) {
-#if INDEX_STRUCT == IDX_MICA
-  // We directly insert it into a MICA index.
-  assert(false);
-  return false;
-#else
-  remove_idx(index, key, part_id);
-  return true;
-#endif
-}
-
-//////////////////////////////////////////////////////
 // Payment
 //////////////////////////////////////////////////////
 
@@ -287,7 +217,7 @@ bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
 #endif
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
-  if (!get_new_row(_wl->t_history, row, part_id, row_id)) return false;
+  if (!insert_row(_wl->t_history, row, part_id, row_id)) return false;
   row->set_value(H_C_ID, c_id);
   row->set_value(H_C_D_ID, c_d_id);
   row->set_value(H_C_W_ID, c_w_id);
@@ -418,7 +348,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
 #endif
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
-  if (!get_new_row(_wl->t_order, row, part_id, row_id)) return false;
+  if (!insert_row(_wl->t_order, row, part_id, row_id)) return false;
   row->set_value(O_ID, o_id);
   row->set_value(O_D_ID, d_id);
   row->set_value(O_W_ID, w_id);
@@ -429,31 +359,16 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   row->set_value(O_ALL_LOCAL, all_local ? uint64_t(1) : uint64_t(0));
 
 #if TPCC_INSERT_INDEX
-#if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_order;
     auto key = orderKey(o_id, d_id, w_id);
-    if (!index_insert(idx, key, row, part_id)) return false;
+    if (!insert_idx(idx, key, row, part_id)) return false;
   }
   {
     auto idx = _wl->i_order_cust;
     auto key = orderCustKey(o_id, c_id, d_id, w_id);
-    if (!index_insert(idx, key, row, part_id)) return false;
+    if (!insert_idx(idx, key, row, part_id)) return false;
   }
-#else
-  {
-    auto mica_idx = _wl->i_order->mica_idx;
-    auto key = orderKey(o_id, d_id, w_id);
-    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
-  }
-  {
-    auto mica_idx = _wl->i_order_cust->mica_idx;
-    auto key = orderCustKey(o_id, c_id, d_id, w_id);
-    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
-  }
-#endif
 #endif
   return true;
 }
@@ -469,26 +384,17 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
 #endif
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
-  if (!get_new_row(_wl->t_neworder, row, part_id, row_id)) return false;
+  if (!insert_row(_wl->t_neworder, row, part_id, row_id)) return false;
   row->set_value(NO_O_ID, o_id);
   row->set_value(NO_D_ID, d_id);
   row->set_value(NO_W_ID, w_id);
 
 #if TPCC_INSERT_INDEX
-#if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
-    if (!index_insert(idx, key, row, part_id)) return false;
+    if (!insert_idx(idx, key, row, part_id)) return false;
   }
-#else
-  {
-    auto mica_idx = _wl->i_neworder->mica_idx;
-    auto key = neworderKey(o_id, d_id, w_id);
-    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) return false;
-  }
-#endif
 #endif
   return true;
 }
@@ -549,7 +455,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #endif
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
-  if (!get_new_row(_wl->t_orderline, row, part_id, row_id)) return false;
+  if (!insert_row(_wl->t_orderline, row, part_id, row_id)) return false;
   row->set_value(OL_O_ID, o_id);
   row->set_value(OL_D_ID, d_id);
   row->set_value(OL_W_ID, w_id);
@@ -564,24 +470,15 @@ bool tpcc_txn_man::new_order_createOrderLine(
 #endif
 
 #if TPCC_INSERT_INDEX
-#if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_orderline;
     auto key = orderlineKey(ol_number, o_id, d_id, w_id);
-    if (!index_insert(idx, key, row, part_id)) return false;
-  }
-#else
-  {
-    auto mica_idx = _wl->i_orderline->mica_idx;
-    auto key = orderlineKey(ol_number, o_id, d_id, w_id);
-    // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row_id), 0) != 1)
-    if (mica_idx[part_id]->insert(mica_tx, key, row_id) != 1) {
+    if (!insert_idx(idx, key, row, part_id)) {
       // printf("ol_i_id=%d o_id=%d d_id=%d w_id=%d\n", (int)ol_i_id, (int)o_id,
       //        (int)d_id, (int)w_id);
       return false;
     }
   }
-#endif
 #endif
   return true;
 }
@@ -995,11 +892,11 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 #endif
 
 #if TPCC_DELETE_ROWS
-// XXX: DBx1000 CC schemes do not implement removes
-// assert(false);
+  if (!remove_row(shared)) return false;
 #endif
-  return true;
-#else
+
+#else  // CC_ALG == MICA
+
   // auto local = get_row(index, item, part_id, WR);
   // Use the raw interface directly for deletion.
   auto table = _wl->t_neworder;
@@ -1026,27 +923,21 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 #endif
 
 #if TPCC_DELETE_ROWS
+  // MICA handles row deletion directly without using remove_row().
   if (!rah.delete_row()) return false;
 #endif
 #endif
 
 #if TPCC_DELETE_INDEX
-#if INDEX_STRUCT != IDX_MICA
   {
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
-    index_remove(idx, key, part_id);
-    return true;
-  }
+#if INDEX_STRUCT != IDX_MICA
+    if (!remove_idx(idx, key, (uint64_t)-1, part_id)) return false;
 #else
-  {
-    // printf("w_id=%" PRIu64 " d_id=%" PRIu64 " o_id=%" PRIu64 "\n", w_id, d_id, o_id);
-    auto mica_idx = _wl->i_neworder->mica_idx;
-    auto key = neworderKey(o_id, d_id, w_id);
-    // return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
-    return mica_idx[part_id]->remove(mica_tx, key, row_id) == 1;
-  }
+    if (!remove_idx(idx, key, row_id, part_id)) return false;
 #endif
+  }
 #endif
   return true;
 }

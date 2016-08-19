@@ -21,6 +21,7 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
 	accesses = (Access **) mem_allocator.alloc(sizeof(Access *) * MAX_ROW_PER_TXN, thd_id);
@@ -92,7 +93,7 @@ void txn_man::cleanup(RC rc) {
 			auto row = insert_idx_row[i];
 			auto part_id = insert_idx_part_id[i];
 
-			assert(part_id != (uint64_t)-1);
+			assert(part_id != -1);
 
 		  itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
 		  m_item->init();
@@ -108,7 +109,7 @@ void txn_man::cleanup(RC rc) {
 			auto key = remove_idx_key[i];
 			auto part_id = remove_idx_part_id[i];
 
-			assert(part_id != (uint64_t)-1);
+			assert(part_id != -1);
 
 			itemid_t* m_item;
 			auto rc = idx->index_remove(key, &m_item);
@@ -119,6 +120,10 @@ void txn_man::cleanup(RC rc) {
 			if (RCU_ALLOC)
 				mem_allocator.free(m_item, sizeof(itemid_t));
 		}
+		for (size_t i = 0; i < remove_cnt; i++) {
+			auto row = remove_rows[i];
+		  if (RCU_ALLOC) mem_allocator.free(row, sizeof(row_t));
+		}
 	}
 #endif
 
@@ -126,6 +131,7 @@ void txn_man::cleanup(RC rc) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
 	return;
@@ -171,6 +177,7 @@ void txn_man::cleanup(RC rc) {
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
+	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
 #if CC_ALG == DL_DETECT
@@ -181,6 +188,105 @@ void txn_man::cleanup(RC rc) {
 #endif
 }
 
+// index_read methods
+#if INDEX_STRUCT != IDX_MICA
+template <typename IndexT>
+itemid_t *
+txn_man::index_read(IndexT * index, idx_key_t key, int part_id) {
+	uint64_t starttime = get_sys_clock();
+	itemid_t * item;
+	index->index_read(key, item, part_id, get_thd_id());
+	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
+	return item;
+}
+
+template itemid_t * txn_man::index_read(index_btree * index, idx_key_t key, int part_id);
+template itemid_t * txn_man::index_read(IndexHash * index, idx_key_t key, int part_id);
+template itemid_t * txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id);
+
+template <typename IndexT>
+void
+txn_man::index_read(IndexT * index, idx_key_t key, int part_id, itemid_t *& item) {
+	uint64_t starttime = get_sys_clock();
+	index->index_read(key, item, part_id, get_thd_id());
+	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
+}
+
+template void txn_man::index_read(index_btree * index, idx_key_t key, int part_id, itemid_t *& item);
+template void txn_man::index_read(IndexHash * index, idx_key_t key, int part_id, itemid_t *& itemd);
+template void txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id, itemid_t *& itemd);
+
+template <typename IndexT>
+RC
+txn_man::index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
+	return index->index_read_range(min_key, max_key, items, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+
+template <typename IndexT>
+RC
+txn_man::index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
+	return index->index_read_range_rev(min_key, max_key, items, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range_rev(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+
+#else
+
+template <typename IndexT>
+RC
+txn_man::index_read(IndexT * index, idx_key_t key, itemid_t* item, int part_id)
+{
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
+	item->mica_tx = mica_tx;
+	return index->index_read(key, item, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read(IndexMICA * index, idx_key_t key, itemid_t* item, int part_id);
+template RC txn_man::index_read(OrderedIndexMICA * index, idx_key_t key, itemid_t* item, int part_id);
+
+template <typename IndexT>
+RC
+txn_man::index_read_multiple(IndexT * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
+	return index->index_read_multiple(mica_tx, key, row_ids, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_multiple(IndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
+template RC txn_man::index_read_multiple(OrderedIndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
+
+template <typename IndexT>
+RC
+txn_man::index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
+	return index->index_read_range(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+template RC txn_man::index_read_range(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+
+template <typename IndexT>
+RC
+txn_man::index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
+	if (row_cnt == 0 && !mica_tx->has_began())
+		mica_tx->begin(readonly);
+
+	return index->index_read_range_rev(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
+}
+
+template RC txn_man::index_read_range_rev(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+template RC txn_man::index_read_range_rev(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
+#endif
+
+
+// get_row methods
 row_t * txn_man::get_row(row_t * row, access_t type) {
 	if (CC_ALG == HSTORE)
 		return row;
@@ -247,9 +353,9 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 }
 
 #if CC_ALG == MICA
-template <typename INDEX_T>
+template <typename IndexT>
 row_t *
-txn_man::get_row(INDEX_T* index, itemid_t * item, uint64_t part_id, access_t type)
+txn_man::get_row(IndexT* index, itemid_t * item, int part_id, access_t type)
 {
 	// printf("1 row_id=%lu\n", item->row_id);
 	if (row_cnt == 0 && !mica_tx->has_began())
@@ -284,144 +390,128 @@ txn_man::get_row(INDEX_T* index, itemid_t * item, uint64_t part_id, access_t typ
 	return accesses[row_cnt - 1]->data;
 }
 
-template row_t * txn_man::get_row(index_btree* index, itemid_t * item, uint64_t part_id, access_t type);
-template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, uint64_t part_id, access_t type);
-template row_t * txn_man::get_row(IndexMBTree* index, itemid_t * item, uint64_t part_id, access_t type);
+template row_t * txn_man::get_row(index_btree* index, itemid_t * item, int part_id, access_t type);
+template row_t * txn_man::get_row(IndexHash* index, itemid_t * item, int part_id, access_t type);
+template row_t * txn_man::get_row(IndexMBTree* index, itemid_t * item, int part_id, access_t type);
 #if INDEX_STRUCT == IDX_MICA
-template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, uint64_t part_id, access_t type);
-template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, uint64_t part_id, access_t type);
+template row_t * txn_man::get_row(IndexMICA* index, itemid_t * item, int part_id, access_t type);
+template row_t * txn_man::get_row(OrderedIndexMICA* index, itemid_t * item, int part_id, access_t type);
 #endif
 #endif
 
-
-void txn_man::insert_row(row_t * row, table_t * table) {
-	if (CC_ALG == HSTORE)
-		return;
-	if (CC_ALG == MICA) {
-		assert(false);
-	}
-	assert(insert_cnt < MAX_ROW_PER_TXN);
-	insert_rows[insert_cnt ++] = row;
+// search
+template <typename IndexT>
+row_t* txn_man::search(IndexT* index, uint64_t key, int part_id,
+                        access_t type) {
+#if INDEX_STRUCT != IDX_MICA
+  auto item = index_read(index, key, part_id);
+  if (item == NULL) return NULL;
+#else
+  itemid_t idx_item;
+  auto item = &idx_item;
+  auto idx_rc = index_read(index, key, item, part_id);
+  if (idx_rc != RCOK) return NULL;
+#endif
+#if CC_ALG != MICA
+  auto shared = (row_t*)item->location;
+  auto local = get_row(shared, type);
+#else
+  auto local = get_row(index, item, part_id, type);
+#endif
+  return local;
 }
 
-void txn_man::insert_idx(ORDERED_INDEX* idx, idx_key_t key, row_t* row, uint64_t part_id) {
-	if (INDEX_STRUCT == IDX_MICA) {
-		assert(false);
-	}
+template
+row_t* txn_man::search(index_btree* index, uint64_t key, int part_id, access_t type);
+template
+row_t* txn_man::search(IndexHash* index, uint64_t key, int part_id, access_t type);
+template
+row_t* txn_man::search(IndexMBTree* index, uint64_t key, int part_id, access_t type);
+#if INDEX_STRUCT == IDX_MICA
+template
+row_t* txn_man::search(IndexMICA* index, uint64_t key, int part_id, access_t type);
+template
+row_t* txn_man::search(OrderedIndexMICA* index, uint64_t key, int part_id, access_t type);
+#endif
+
+// insert_row/remove_row
+bool txn_man::insert_row(table_t* tbl, row_t*& row, int part_id,
+                          uint64_t& out_row_id) {
+#if CC_ALG != MICA
+  if (tbl->get_new_row(row, part_id, out_row_id) != RCOK) return false;
+	assert(insert_cnt < MAX_ROW_PER_TXN);
+	insert_rows[insert_cnt ++] = row;
+  return true;
+#else
+  assert(row != NULL);
+  assert(part_id >= 0 && part_id < (int)tbl->mica_tbl.size());
+  MICARowAccessHandle rah(mica_tx);
+  if (!rah.new_row(tbl->mica_tbl[part_id])) return false;
+  out_row_id = rah.row_id();
+  row->set_row_id(out_row_id);
+  row->set_part_id(part_id);
+  row->table = tbl;
+  row->data = rah.data();
+  return true;
+#endif
+}
+
+bool txn_man::remove_row(row_t* row) {
+#if CC_ALG != MICA
+	remove_rows[remove_cnt++] = row;
+  return true;
+#else
+  // MICA tables are directly managed.
+	assert(false);
+  return false;
+#endif
+}
+
+
+	// index_insert/index_remove
+#if INDEX_STRUCT != IDX_MICA
+template <>
+bool txn_man::insert_idx(IndexMBTree* index, uint64_t key, row_t* row,
+                            int part_id) {
 	assert(insert_idx_cnt < MAX_ROW_PER_TXN);
-	insert_idx_idx[insert_idx_cnt] = idx;
+	insert_idx_idx[insert_idx_cnt] = index;
 	insert_idx_key[insert_idx_cnt] = key;
 	insert_idx_row[insert_idx_cnt] = row;
 	insert_idx_part_id[insert_idx_cnt] = part_id;
 	insert_idx_cnt++;
+  return true;
 }
+#else
+template <>
+bool txn_man::insert_idx(OrderedIndexMICA* index, uint64_t key, row_t* row,
+                            int part_id) {
+  auto mica_idx = index->mica_idx;
+  // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row->row_id), 0) != 1)
+  return mica_idx[part_id]->insert(mica_tx, key, row->get_row_id()) == 1;
+}
+#endif
 
-void txn_man::remove_idx(ORDERED_INDEX* idx, idx_key_t key, uint64_t part_id) {
-	if (INDEX_STRUCT == IDX_MICA) {
-		assert(false);
-	}
+#if INDEX_STRUCT != IDX_MICA
+template <>
+bool txn_man::remove_idx(IndexMBTree* index, uint64_t key, uint64_t row_id,
+                            int part_id) {
+  (void)row_id;
 	assert(remove_idx_cnt < MAX_ROW_PER_TXN);
-	remove_idx_idx[remove_idx_cnt] = idx;
+	remove_idx_idx[remove_idx_cnt] = index;
 	remove_idx_key[remove_idx_cnt] = key;
 	remove_idx_part_id[remove_idx_cnt] = part_id;
 	remove_idx_cnt++;
+  return true;
 }
-
-#if INDEX_STRUCT != IDX_MICA
-template <typename INDEX_T>
-itemid_t *
-txn_man::index_read(INDEX_T * index, idx_key_t key, int part_id) {
-	uint64_t starttime = get_sys_clock();
-	itemid_t * item;
-	index->index_read(key, item, part_id, get_thd_id());
-	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
-	return item;
-}
-
-template itemid_t * txn_man::index_read(index_btree * index, idx_key_t key, int part_id);
-template itemid_t * txn_man::index_read(IndexHash * index, idx_key_t key, int part_id);
-template itemid_t * txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id);
-
-template <typename INDEX_T>
-void
-txn_man::index_read(INDEX_T * index, idx_key_t key, int part_id, itemid_t *& item) {
-	uint64_t starttime = get_sys_clock();
-	index->index_read(key, item, part_id, get_thd_id());
-	INC_TMP_STATS(get_thd_id(), time_index, get_sys_clock() - starttime);
-}
-
-template void txn_man::index_read(index_btree * index, idx_key_t key, int part_id, itemid_t *& item);
-template void txn_man::index_read(IndexHash * index, idx_key_t key, int part_id, itemid_t *& itemd);
-template void txn_man::index_read(IndexMBTree * index, idx_key_t key, int part_id, itemid_t *& itemd);
-
-template <typename INDEX_T>
-RC
-txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
-	return index->index_read_range(min_key, max_key, items, count, part_id, get_thd_id());
-}
-
-template RC txn_man::index_read_range(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
-
-template <typename INDEX_T>
-RC
-txn_man::index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id) {
-	return index->index_read_range_rev(min_key, max_key, items, count, part_id, get_thd_id());
-}
-
-template RC txn_man::index_read_range_rev(IndexMBTree * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
-
 #else
-
-template <typename INDEX_T>
-RC
-txn_man::index_read(INDEX_T * index, idx_key_t key, itemid_t* item, int part_id)
-{
-	if (row_cnt == 0 && !mica_tx->has_began())
-		mica_tx->begin(readonly);
-
-	item->mica_tx = mica_tx;
-	return index->index_read(key, item, part_id, get_thd_id());
+template <>
+bool txn_man::remove_idx(OrderedIndexMICA* index, uint64_t key, uint64_t row_id, int part_id) {
+  auto mica_idx = index->mica_idx;
+  // return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
+  return mica_idx[part_id]->remove(mica_tx, key, row_id) == 1;
 }
-
-template RC txn_man::index_read(IndexMICA * index, idx_key_t key, itemid_t* item, int part_id);
-template RC txn_man::index_read(OrderedIndexMICA * index, idx_key_t key, itemid_t* item, int part_id);
-
-template <typename INDEX_T>
-RC
-txn_man::index_read_multiple(INDEX_T * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id) {
-	if (row_cnt == 0 && !mica_tx->has_began())
-		mica_tx->begin(readonly);
-
-	return index->index_read_multiple(mica_tx, key, row_ids, count, part_id, get_thd_id());
-}
-
-template RC txn_man::index_read_multiple(IndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
-template RC txn_man::index_read_multiple(OrderedIndexMICA * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
-
-template <typename INDEX_T>
-RC
-txn_man::index_read_range(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
-	if (row_cnt == 0 && !mica_tx->has_began())
-		mica_tx->begin(readonly);
-
-	return index->index_read_range(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
-}
-
-template RC txn_man::index_read_range(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-template RC txn_man::index_read_range(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-
-template <typename INDEX_T>
-RC
-txn_man::index_read_range_rev(INDEX_T * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id) {
-	if (row_cnt == 0 && !mica_tx->has_began())
-		mica_tx->begin(readonly);
-
-	return index->index_read_range_rev(mica_tx, min_key, max_key, row_ids, count, part_id, get_thd_id());
-}
-
-template RC txn_man::index_read_range_rev(IndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-template RC txn_man::index_read_range_rev(OrderedIndexMICA * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
 #endif
+
 
 RC txn_man::finish(RC rc) {
 #if CC_ALG == HSTORE
