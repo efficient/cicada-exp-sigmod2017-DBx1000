@@ -11,6 +11,7 @@
 #include "index_mbtree.h"
 #include "helper.h"
 #include "storage/row.h"
+#include "system/mem_alloc.h"
 
 // #ifdef DEBUG
 // #undef NDEBUG
@@ -34,8 +35,14 @@ RC IndexMBTree::init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt) {
 
   this->table = table;
 
-  for (uint64_t part_id = 0; part_id < part_cnt; part_id++)
-    btree_idx.push_back(new concurrent_mbtree());
+  for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
+		mem_allocator.register_thread(part_id % g_thread_cnt);
+
+    auto t = (concurrent_mbtree*)mem_allocator.alloc(sizeof(concurrent_mbtree), part_id);
+    new (t) concurrent_mbtree;
+
+    btree_idx.push_back(t);
+  }
 
   return RCOK;
 }
