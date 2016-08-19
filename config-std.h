@@ -13,7 +13,7 @@
 
 // # of transactions to run for warmup
 #define WARMUP						0
-// YCSB or TPCC
+// YCSB or TPCC or TATP
 #define WORKLOAD 					YCSB
 // print the transaction latency distribution
 #define PRT_LAT_DISTR				false
