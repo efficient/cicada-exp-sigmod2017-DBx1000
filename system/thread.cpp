@@ -1,3 +1,9 @@
+#define CONFIG_H "silo/config/config-perf.h"
+#include "silo/rcu.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <sched.h>
 #include "global.h"
 #include "manager.h"
@@ -165,6 +171,10 @@ RC thread_t::run() {
 #endif
 		if (rc == RCOK)
 		{
+#if RCU_ALLOC
+		  scoped_rcu_region guard;
+#endif
+
 #if CC_ALG != VLL
 			if (WORKLOAD == TEST)
 				rc = runTest(m_txn);
