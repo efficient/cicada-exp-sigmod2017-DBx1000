@@ -7,6 +7,7 @@
 #include "index_hash.h"
 #include "index_btree.h"
 #include "index_mica.h"
+#include "index_mbtree.h"
 #include "tatp_helper.h"
 #include "row.h"
 #include "query.h"
