@@ -53,6 +53,11 @@ class tatp_txn_man : public txn_man {
   RC run_insert_call_forwarding(tatp_query* query);
   RC run_update_location(tatp_query* query);
   RC run_update_subscriber_data(tatp_query* query);
+
+  bool get_sub_id(const char* sub_nbr, uint32_t* out_s_id);
+  row_t* get_special_facility(uint32_t s_id, uint8_t sf_type);
+  template <typename Func>
+  bool enum_call_forwarding(uint32_t s_id, uint8_t sf_type, const Func& func);
 };
 
 #endif
