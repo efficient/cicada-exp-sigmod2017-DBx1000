@@ -128,6 +128,15 @@ public:
 	table_t * table;
 	volatile uint8_t			is_deleted;
 
+	void set_part_id(uint64_t part_id) { _part_id = part_id; }
+	void set_row_id(uint64_t row_id) { _row_id = row_id; }
+
+private:
+	// primary key should be calculated from the data stored in the row.
+	uint64_t 		_primary_key;
+	uint64_t		_part_id;
+	uint64_t 		_row_id;
+
 #ifdef USE_INLINED_DATA
   #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
     Row_lock inlined_manager;
@@ -140,13 +149,4 @@ public:
 		char inlined_data[MAX_TUPLE_SIZE];
 	#endif
 #endif
-
-	void set_part_id(uint64_t part_id) { _part_id = part_id; }
-	void set_row_id(uint64_t row_id) { _row_id = row_id; }
-
-private:
-	// primary key should be calculated from the data stored in the row.
-	uint64_t 		_primary_key;
-	uint64_t		_part_id;
-	uint64_t 		_row_id;
 };
