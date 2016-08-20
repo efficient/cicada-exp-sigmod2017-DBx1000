@@ -18,11 +18,8 @@ uint64_t accessInfoKey(uint64_t s_id, uint64_t ai_type);
 uint64_t specialFacilityKey(uint64_t s_id, uint64_t sf_type);
 
 // CALL_FORWARDING_IDX
-uint64_t callForwardingIndex(uint64_t s_id, uint64_t sf_type,
-                             uint64_t start_time);
-
-// CALL_FORWARDING_S_ID_IDX
-uint64_t callForwardingSIDIndex(uint64_t s_id);
+uint64_t callForwardingKey(uint64_t s_id, uint64_t sf_type,
+                           uint64_t start_time);
 
 bool tatp_isActive(uint64_t thd_id);
 uint64_t tatp_getSubscriberId(uint64_t thd_id);

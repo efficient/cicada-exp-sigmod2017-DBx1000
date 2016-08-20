@@ -26,7 +26,6 @@ class tatp_wl : public workload {
   INDEX* i_access_info;
   INDEX* i_special_facility;
   ORDERED_INDEX* i_call_forwarding;
-  INDEX* i_call_forwarding_s_id;
 
  private:
   static void* threadInitTable(void* This);

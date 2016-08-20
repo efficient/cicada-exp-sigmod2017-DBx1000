@@ -71,22 +71,16 @@ INDEX=SUBSCRIBER_SUB_NBR_IDX
 SUBSCRIBER,100000l
 
 // indexed by (s_id, ai_type); unique
-// E([1...4]) * NUM_SUBSCRIBERS
+// NUM_SUBSCRIBERS * E([1...4])
 INDEX=ACCESS_INFO_IDX
 ACCESS_INFO,2500003
 
 // indexed by (s_id, sf_type); unique
-// E([1...4]) * NUM_SUBSCRIBERS
+// NUM_SUBSCRIBERS * E([1...4])
 INDEX=SPECIAL_FACILITY_IDX
 SPECIAL_FACILITY,2500003
 
-// indexed by (s_id, sf_type, start_time); unique
-// E([1...4]) * E([0...3]) * NUM_SUBSCRIBERS
-INDEX=ORDERED_CALL_FORWARDING_IDX
+// indexed by (s_id, sf_type); non-unique (up to 4 duplicates); mutable
+// NUM_SUBSCRIBERS * E([1...4]) * E([0...3])
+INDEX=ORDERD_CALL_FORWARDING_IDX
 CALL_FORWARDING,3750004
-
-// indexed by s_id; non-unique (up to 12 duplicates)
-// E([1...4]) * E([0...3]) * NUM_SUBSCRIBERS
-INDEX=CALL_FORWARDING_S_ID_IDX
-CALL_FORWARDING,3750004
-

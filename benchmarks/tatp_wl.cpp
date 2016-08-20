@@ -45,7 +45,6 @@ RC tatp_wl::init_schema(string schema_file) {
   i_access_info = indexes["ACCESS_INFO_IDX"];
   i_special_facility = indexes["SPECIAL_FACILITY_IDX"];
   i_call_forwarding = ordered_indexes["ORDERED_CALL_FORWARDING_IDX"];
-  i_call_forwarding_s_id = indexes["CALL_FORWARDING_S_ID_IDX"];
 
   return RCOK;
 }
@@ -128,6 +127,8 @@ void tatp_wl::gen_subscriber(uint64_t s_id, uint64_t thd_id) {
     m_item->location = new_row;
     m_item->valid = true;
     uint64_t idx_key = subscriberSubNbrKey(sub_nbr);
+    auto part_id = key_to_part(
+        idx_key);  // The only index that does not use s_id for partionioning
 
     auto rc = i_subscriber_sub_nbr->index_insert(idx_key, m_item, part_id);
     assert(rc == RCOK);
@@ -255,22 +256,9 @@ void tatp_wl::gen_spe_and_cal(uint64_t s_id, uint64_t thd_id) {
         m_item->type = DT_row;
         m_item->location = new_row;
         m_item->valid = true;
-        uint64_t idx_key = callForwardingIndex(s_id, sf_type, start_time);
+        uint64_t idx_key = callForwardingKey(s_id, sf_type, start_time);
 
         auto rc = i_call_forwarding->index_insert(idx_key, m_item, part_id);
-        assert(rc == RCOK);
-      }
-      {
-        itemid_t* m_item =
-            (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-        assert(m_item != NULL);
-        m_item->type = DT_row;
-        m_item->location = new_row;
-        m_item->valid = true;
-        uint64_t idx_key = callForwardingSIDIndex(s_id);
-
-        auto rc =
-            i_call_forwarding_s_id->index_insert(idx_key, m_item, part_id);
         assert(rc == RCOK);
       }
     }

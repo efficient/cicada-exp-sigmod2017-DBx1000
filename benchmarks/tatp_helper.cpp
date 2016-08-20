@@ -15,8 +15,8 @@ uint64_t specialFacilityKey(uint64_t s_id, uint64_t sf_type) {
   return s_id * 4 + sf_type;
 }
 
-uint64_t callForwardingIndex(uint64_t s_id, uint64_t sf_type,
-                             uint64_t start_time) {
+uint64_t callForwardingKey(uint64_t s_id, uint64_t sf_type,
+                           uint64_t start_time) {
   return s_id * 4 * 24 + sf_type * 24 + start_time;
 }
 
