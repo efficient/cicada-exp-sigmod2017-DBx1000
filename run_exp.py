@@ -765,6 +765,8 @@ def run(exp, prepare_only):
     if hugepage_status != (0, ''):
       os.system('../script/setup.sh 0 0 > /dev/null')
       hugepage_status = (0, '')
+  os.system('echo never > /sys/kernel/mm/transparent_hugepage/enabled')
+  os.system('echo never > /sys/kernel/mm/transparent_hugepage/defrag')
 
   # cmd
   filename = dir_name + '/' + gen_filename(exp)
@@ -902,4 +904,3 @@ if __name__ == '__main__':
     run_all(sys.argv[2].split('__'), True)
   else:
     assert False
-
