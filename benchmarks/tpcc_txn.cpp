@@ -76,9 +76,9 @@ RC tpcc_txn_man::run_txn(base_query* query) {
   return rc;
 }
 
-// void FAIL_ON_ABORT() { assert(false); }
+// static void FAIL_ON_ABORT() { assert(false); }
 
-void FAIL_ON_ABORT() {}
+static void FAIL_ON_ABORT() {}
 
 //////////////////////////////////////////////////////
 // Payment
