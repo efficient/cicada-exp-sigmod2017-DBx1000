@@ -173,7 +173,8 @@ extern TPCCTxnType 					g_tpcc_txn_type;
 #define TATP_FREQUENCY_UPDATE_LOCATION           14
 #define TATP_FREQUENCY_UPDATE_SUBSCRIBER_DATA    2
 
-#define TATP_SUB_SIZE (TATP_DEFAULT_NUM_SUBSCRIBERS * 1)
+#define TATP_SCALE_FACTOR 1
+#define TATP_SUB_SIZE (TATP_DEFAULT_NUM_SUBSCRIBERS * TATP_SCALE_FACTOR)
 
 /***********************************************/
 // TODO centralized CC management.
