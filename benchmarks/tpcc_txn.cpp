@@ -218,6 +218,7 @@ bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!insert_row(_wl->t_history, row, part_id, row_id)) return false;
+  row->set_primary_key(0);
   row->set_value(H_C_ID, c_id);
   row->set_value(H_C_D_ID, c_d_id);
   row->set_value(H_C_W_ID, c_w_id);
@@ -349,6 +350,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!insert_row(_wl->t_order, row, part_id, row_id)) return false;
+  row->set_primary_key(orderKey(o_id, d_id, w_id));
   row->set_value(O_ID, o_id);
   row->set_value(O_D_ID, d_id);
   row->set_value(O_W_ID, w_id);
@@ -385,6 +387,7 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!insert_row(_wl->t_neworder, row, part_id, row_id)) return false;
+  row->set_primary_key(neworderKey(o_id, d_id, w_id));
   row->set_value(NO_O_ID, o_id);
   row->set_value(NO_D_ID, d_id);
   row->set_value(NO_W_ID, w_id);
@@ -456,6 +459,7 @@ bool tpcc_txn_man::new_order_createOrderLine(
   uint64_t row_id;
   auto part_id = wh_to_part(w_id);
   if (!insert_row(_wl->t_orderline, row, part_id, row_id)) return false;
+  row->set_primary_key(orderlineKey(ol_number, o_id, d_id, w_id));
   row->set_value(OL_O_ID, o_id);
   row->set_value(OL_D_ID, d_id);
   row->set_value(OL_W_ID, w_id);
