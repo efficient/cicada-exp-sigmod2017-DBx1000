@@ -154,6 +154,7 @@ void mem_alloc::unregister() {
 
 
 void mem_alloc::free(void * ptr, uint64_t size) {
+	size = (size + CL_SIZE - 1) & ~CL_SIZE;
 	if (RCU_ALLOC)
 		rcu::s_instance.dealloc_rcu(ptr, size);
 	else
@@ -177,6 +178,7 @@ void mem_alloc::free(void * ptr, uint64_t size) {
 // cause trouble)
 void * mem_alloc::alloc(uint64_t size, uint64_t part_id) {
 	void * ptr;
+	size = (size + CL_SIZE - 1) & ~CL_SIZE;
 	if (RCU_ALLOC)
 		ptr = rcu::s_instance.alloc(size);
 	else
