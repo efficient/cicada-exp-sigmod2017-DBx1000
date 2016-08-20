@@ -663,9 +663,7 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
 
 #if CC_ALG != MICA
   auto shared = (row_t*)items[0]->location;
-  // Use the shared copy because no one is modifying the row.
-  // auto local = get_row(shared, RD);
-  auto local = shared;
+  auto local = get_row(shared, RD);
 #else
   auto local = get_row(index, items[0], part_id, PEEK);
 #endif
