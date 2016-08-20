@@ -155,7 +155,7 @@ void mem_alloc::unregister() {
 
 void mem_alloc::free(void * ptr, uint64_t size) {
 	if (RCU_ALLOC)
-		rcu::s_instance.dealloc(ptr, size);
+		rcu::s_instance.dealloc_rcu(ptr, size);
 	else
 		_mm_free(ptr);
 
