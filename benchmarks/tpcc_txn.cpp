@@ -11,7 +11,7 @@
 #include "index_mica.h"
 #include "index_mbtree.h"
 #include "tpcc_const.h"
-#include "system/mem_alloc.h"
+#include "mem_alloc.h"
 
 void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
   txn_man::init(h_thd, h_wl, thd_id);
@@ -903,7 +903,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   auto row_id = reinterpret_cast<uint64_t>(item->location);
   // printf("%" PRIu64 "\n", row_id);
   MICARowAccessHandle rah(mica_tx);
-  assert(part_id >= 0 && part_id < table->mica_tbl.size());
+  // assert(part_id >= 0 && part_id < table->mica_tbl.size());
   if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) ||
       !rah.read_row() || !rah.write_row()) {
     return false;
