@@ -171,7 +171,7 @@ RC thread_t::run() {
 #endif
 		if (rc == RCOK)
 		{
-#if RCU_ALLOC
+#if RCU_ALLOC || INDEX_STRUCT != IDX_MICA
 		  scoped_rcu_region guard;
 #endif
 
