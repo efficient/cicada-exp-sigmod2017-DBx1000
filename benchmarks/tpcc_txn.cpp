@@ -933,8 +933,14 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
 #if INDEX_STRUCT != IDX_MICA
+    // printf("o_id=%" PRIi64 " d_id=%" PRIu64 " w_id=%" PRIu64 "\n", o_id, d_id,
+    //        w_id);
+    // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 "\n",
+    //        idx, key, (uint64_t)-1, part_id);
     if (!remove_idx(idx, key, (uint64_t)-1, part_id)) return false;
 #else
+    // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 " \n",
+    //        idx, key, row_id, part_id);
     if (!remove_idx(idx, key, row_id, part_id)) return false;
 #endif
   }
