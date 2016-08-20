@@ -126,7 +126,7 @@ public:
   #endif
 	char * data;
 	table_t * table;
-	uint8_t			is_deleted;
+	volatile uint8_t			is_deleted;
 
 #ifdef USE_INLINED_DATA
   #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE

@@ -118,40 +118,36 @@ void txn_man::apply_index_changes() {
 		auto idx = remove_idx_idx[i];
 		auto key = remove_idx_key[i];
 		auto part_id = remove_idx_part_id[i];
-		// printf("index_remove idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
-
-		assert(part_id != -1);
+		// printf("remove_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
 
 		itemid_t* m_item;
 		auto rc = idx->index_remove(key, &m_item, part_id);
 		assert(rc == RCOK);
 
-		// XXX: Freeing the index item immediately is unsafe due to concurrency.
+		// XXX: Freeing the index item immediately is unsafe due to concurrent access.
 		// We do this only when using RCU.
 		if (RCU_ALLOC)
 			mem_allocator.free(m_item, sizeof(itemid_t));
 	}
 	remove_idx_cnt = 0;
 #endif
+
+#if CC_ALG != MICA
+	// Free deleted rows
+	for (size_t i = 0; i < remove_cnt; i++) {
+		auto row = remove_rows[i];
+		assert(!row->is_deleted);
+		row->is_deleted = 1;
+		// printf("remove_row row_id=%" PRIu64 " part_id=%" PRIu64 "\n", row->get_row_id(), row->get_part_id());
+		// XXX: Freeing the row immediately is unsafe due to concurrent access.
+		// We do this only when using RCU.
+	  if (RCU_ALLOC) mem_allocator.free(row, sizeof(row_t));
+	}
+	remove_cnt = 0;
+#endif
 }
 
 void txn_man::cleanup(RC rc) {
-#if CC_ALG != MICA
-	if (rc == RCOK) {
-#if RCU_ALLOC
-		assert(rcu::s_instance.in_rcu_region());
-#endif
-
-		// Free deleted rows
-		for (size_t i = 0; i < remove_cnt; i++) {
-			auto row = remove_rows[i];
-			row->is_deleted = 1;
-		  if (RCU_ALLOC) mem_allocator.free(row, sizeof(row_t));
-		}
-		remove_cnt = 0;
-	}
-#endif
-
 #if CC_ALG == HEKATON
 	row_cnt = 0;
 	wr_cnt = 0;
@@ -320,6 +316,7 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 		if (!mica_tx->begin(readonly))
 			assert(false);
 #endif
+
 	uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
 	if (accesses[row_cnt] == NULL) {
@@ -339,12 +336,21 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 		num_accesses_alloc ++;
 	}
 
-	rc = row->get_row(type, this, accesses[ row_cnt ]->data);
+	// Initial deleted row detection to reduce creating a new local row.
+	if (row->is_deleted)
+		return NULL;
 
+	rc = row->get_row(type, this, accesses[ row_cnt ]->data);
 
 	if (rc == Abort) {
 		return NULL;
 	}
+
+	// Check if the original row is deleted after getting the local row.
+	// This avoids a race condition so that we can simply use the version check for Silo/TicToc to detect any deletion perfomed by another thread.
+	if (row->is_deleted)
+		return NULL;
+
 	accesses[row_cnt]->type = type;
 	accesses[row_cnt]->orig_row = row;
 #if CC_ALG == TICTOC

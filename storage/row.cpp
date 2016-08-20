@@ -234,9 +234,6 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	assert(type != PEEK);
 #endif
 
-if (is_deleted)
-	return Abort;
-
 	RC rc = RCOK;
 #if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
 	uint64_t thd_id = txn->get_thd_id();
@@ -479,4 +476,3 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
 	assert(false);
 #endif
 }
-

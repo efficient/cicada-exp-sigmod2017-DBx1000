@@ -43,6 +43,8 @@ RC table_t::get_new_row(row_t*& row) {
 // the row is not stored locally. the pointer must be maintained by index structure.
 RC table_t::get_new_row(row_t*& row, uint64_t part_id, uint64_t& row_id) {
   RC rc = RCOK;
+
+  // XXX: this has a race condition; should be used just for non-critical purposes
   cur_tab_size++;
 
 #if CC_ALG == MICA
