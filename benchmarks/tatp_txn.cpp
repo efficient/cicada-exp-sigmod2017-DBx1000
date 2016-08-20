@@ -172,7 +172,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
 #else  // CC_ALG == MICA
 
     // MICA handles row deletion directly without using remove_row().
-    auto table = _wl->t_neworder;
+    auto table = _wl->t_call_forwarding;
 #if INDEX_STRUCT != IDX_MICA
     auto row_id = reinterpret_cast<uint64_t>(items[i]->location);
 #else
