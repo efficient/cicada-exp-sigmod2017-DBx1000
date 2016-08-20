@@ -225,6 +225,7 @@ txn_man::validate_tictoc()
 */
 #endif
 final:
+	rc = apply_index_changes(rc);
 	if (rc == Abort) {
 #if WR_VALIDATION_SEPARATE
 		for (int i = 0; i < num_locks; i++)
@@ -235,9 +236,6 @@ final:
 #endif
 		cleanup(rc);
 	} else {
-		if (rc == RCOK)
-			apply_index_changes();
-
 		if (commit_wts > _max_wts)
 			_max_wts = commit_wts;
 

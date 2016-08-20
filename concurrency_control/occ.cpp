@@ -67,6 +67,10 @@ OptCC::per_row_validate(txn_man * txn) {
 		ok = txn->accesses[i]->orig_row->manager->validate( txn->start_ts );
 	}
 	if (ok) {
+		rc = txn->apply_index_changes(RCOK);
+		ok = ok && rc != RCOK;
+	}
+	if (ok) {
 		// Validation passed.
 		// advance the global timestamp and get the end_ts
 		txn->end_ts = glob_manager->get_ts( txn->get_thd_id() );
@@ -77,9 +81,6 @@ OptCC::per_row_validate(txn_man * txn) {
 		txn->cleanup(Abort);
 		rc = Abort;
 	}
-
-	if (rc == RCOK)
-		txn->apply_index_changes();
 
 	for (int i = 0; i < lock_cnt; i++)
 		txn->accesses[i]->orig_row->manager->release();
@@ -139,7 +140,10 @@ RC OptCC::central_validate(txn_man * txn) {
 	}
 final:
 	if (valid) {
-		txn->apply_index_changes();
+		rc = txn->apply_index_changes(RCOK);
+		valid = valid && rc != RCOK;
+	}
+	if (valid) {
 		txn->cleanup(RCOK);
 	}
 	mem_allocator.free(rset, sizeof(set_ent));

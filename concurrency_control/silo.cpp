@@ -144,14 +144,12 @@ txn_man::validate_silo()
 	else
 		_cur_tid ++;
 final:
+	rc = apply_index_changes(rc);
 	if (rc == Abort) {
 		for (int i = 0; i < num_locks; i++)
 			accesses[ write_set[i] ]->orig_row->manager->release();
 		cleanup(rc);
 	} else {
-		if (rc == RCOK)
-			apply_index_changes();
-
 		for (int i = 0; i < wr_cnt; i++) {
 			Access * access = accesses[ write_set[i] ];
 			access->orig_row->manager->write(

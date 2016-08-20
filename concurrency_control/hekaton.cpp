@@ -24,8 +24,7 @@ txn_man::validate_hekaton(RC rc)
 	}
 #endif
 
-	if (rc == RCOK)
-		apply_index_changes();
+	rc = apply_index_changes(rc);
 
 	// postprocess
 	for (int rid = 0; rid < row_cnt; rid ++) {
