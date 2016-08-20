@@ -581,7 +581,15 @@ row_t* tpcc_txn_man::order_status_getCustomerByCustomerId(uint64_t w_id,
   auto key = custKey(c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 #if INDEX_STRUCT != IDX_MICA
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
   return search(index, key, part_id, RD);
+#else
+  auto item = index_read(index, key, part_id);
+  if (item == NULL) return NULL;
+  auto shared = (row_t*)item->location;
+  auto local = shared;
+  return local;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   return search(index, key, part_id, PEEK);
 #endif
@@ -625,7 +633,11 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
 
 #if CC_ALG != MICA
   auto shared = (row_t*)mid->location;
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
   auto local = get_row(shared, RD);
+#else
+  auto local = shared;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   auto local = get_row(index, mid, part_id, PEEK);
 #endif
@@ -663,7 +675,11 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
 
 #if CC_ALG != MICA
   auto shared = (row_t*)items[0]->location;
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
   auto local = get_row(shared, RD);
+#else
+  auto local = shared;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   auto local = get_row(index, items[0], part_id, PEEK);
 #endif
@@ -720,7 +736,11 @@ bool tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto shared = (row_t*)items[i]->location;
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
     auto local = get_row(shared, RD);
+#else
+    auto local = shared;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
     if (local == NULL) return false;
 #else
     auto local = get_row(index, items[i], part_id, PEEK);
@@ -1121,7 +1141,15 @@ row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
   auto key = distKey(d_id, d_w_id);
   auto part_id = wh_to_part(d_w_id);
 #if CC_ALG != MICA
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
   return search(index, key, part_id, RD);
+#else
+  auto item = index_read(index, key, part_id);
+  if (item == NULL) return NULL;
+  auto shared = (row_t*)item->location;
+  auto local = shared;
+  return local;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   return search(index, key, part_id, PEEK);
 #endif
@@ -1160,7 +1188,11 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto orderline_shared = (row_t*)items[i]->location;
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
     auto orderline = get_row(orderline_shared, RD);
+#else
+    auto orderline = orderline_shared;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
     if (orderline == NULL) return false;
 #else
     auto orderline = get_row(index, items[i], part_id, PEEK);
@@ -1241,7 +1273,11 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
 
 #if CC_ALG != MICA
     auto shared = (row_t*)item->location;
+#ifndef EMULATE_SNAPSHOT_FOR_1VCC
     auto local = get_row(shared, RD);
+#else
+    auto local = shared;
+#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
     if (local == NULL) return false;
 #else
     auto local = get_row(index, item, part_id, PEEK);

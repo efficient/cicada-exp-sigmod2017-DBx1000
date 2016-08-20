@@ -10,6 +10,7 @@ class tpcc_query;
 
 // #define TPCC_SILO_REF_LAST_NO_O_IDS
 // #define TPCC_DBX1000_SERIAL_DELIVERY
+// #define EMULATE_SNAPSHOT_FOR_1VCC // Runs read-only TX in repeatable read mode
 
 class tpcc_wl : public workload {
  public:
