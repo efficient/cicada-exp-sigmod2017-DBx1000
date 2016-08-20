@@ -87,7 +87,10 @@ void txn_man::set_readonly() {
 #endif
 }
 
-void txn_man::apply_index_changes() {
+RC txn_man::apply_index_changes(RC rc) {
+	if (rc != RCOK)
+	return rc;
+
 #if INDEX_STRUCT != IDX_MICA
 	// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
 
@@ -109,8 +112,33 @@ void txn_man::apply_index_changes() {
 	  m_item->location = row;
 	  m_item->valid = true;
 
-	  auto rc = idx->index_insert(key, m_item, part_id);
-		assert(rc == RCOK);
+	  auto rc_insert = idx->index_insert(key, m_item, part_id);
+		if (rc_insert != RCOK) {
+			// Roll back previous inserts upon insert failure.
+			
+			if (RCU_ALLOC)
+				mem_allocator.free(m_item, sizeof(itemid_t));
+			
+			while (i > 0) {
+				i--;
+				auto idx = insert_idx_idx[i];
+				auto key = insert_idx_key[i];
+				// auto row = insert_idx_row[i];
+				auto part_id = insert_idx_part_id[i];
+				
+				itemid_t* m_item;
+				auto rc_remove = idx->index_remove(key, &m_item, part_id);
+				assert(rc_remove == RCOK);
+				
+				if (RCU_ALLOC)
+					mem_allocator.free(m_item, sizeof(itemid_t));
+					
+				// New rows that are not inserted will be freed in cleanup()
+			}
+			
+			insert_idx_cnt = 0;
+			return rc_insert;
+		}
 	}
 	insert_idx_cnt = 0;
 
@@ -121,8 +149,8 @@ void txn_man::apply_index_changes() {
 		// printf("remove_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
 
 		itemid_t* m_item;
-		auto rc = idx->index_remove(key, &m_item, part_id);
-		assert(rc == RCOK);
+		auto rc_remove = idx->index_remove(key, &m_item, part_id);
+		assert(rc_remove == RCOK);
 
 		// XXX: Freeing the index item immediately is unsafe due to concurrent access.
 		// We do this only when using RCU.
@@ -145,6 +173,8 @@ void txn_man::apply_index_changes() {
 	}
 	remove_cnt = 0;
 #endif
+
+	return rc;
 }
 
 void txn_man::cleanup(RC rc) {
@@ -546,9 +576,8 @@ bool txn_man::remove_idx(OrderedIndexMICA* index, uint64_t key, uint64_t row_id,
 
 RC txn_man::finish(RC rc) {
 #if CC_ALG == HSTORE
-	if (rc == RCOK)
-		apply_index_changes();
-	return RCOK;
+	rc = apply_index_changes(rc);
+	return rc;
 #endif
 	uint64_t starttime = get_sys_clock();
 #if CC_ALG == OCC
@@ -581,8 +610,7 @@ RC txn_man::finish(RC rc) {
 			assert(false);
 	cleanup(rc);
 #else
-	if (rc == RCOK)
-		apply_index_changes();
+	rc = apply_index_changes(rc);
 	cleanup(rc);
 #endif
 

@@ -137,7 +137,7 @@ public:
   template <typename IndexT>
 	bool remove_idx(IndexT* idx, idx_key_t key, uint64_t row_id, int part_id);
 
-	void apply_index_changes();
+	RC apply_index_changes(RC rc);
 
 private:
 	// insert/remove rows
