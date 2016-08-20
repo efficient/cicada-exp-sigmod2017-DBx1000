@@ -765,7 +765,8 @@ def run(exp, prepare_only):
     if hugepage_status != (0, ''):
       os.system('../script/setup.sh 0 0 > /dev/null')
       hugepage_status = (0, '')
-  os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"')
+  # os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"')
+  os.system('sudo bash -c "echo always > /sys/kernel/mm/transparent_hugepage/enabled"')
   os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"')
 
   # cmd
