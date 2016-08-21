@@ -5,6 +5,8 @@
 #include "row_mvcc.h"
 #include "mem_alloc.h"
 #include <mm_malloc.h>
+#include "table.h"
+#include "catalog.h"
 
 #if CC_ALG == MVCC
 
@@ -298,8 +300,8 @@ Row_mvcc::reserveRow(ts_t ts, txn_man * txn)
 	assert(idx != _his_len);
 	// some entries are not taken. But the row of that entry is NULL.
 	if (!_write_history[idx].row) {
-		_write_history[idx].row = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
-		_write_history[idx].row->init(MAX_TUPLE_SIZE);
+		_write_history[idx].row = (row_t *) mem_allocator.alloc(row_t::alloc_size(_write_history[0].row->get_table()), -1);
+		_write_history[idx].row->init(_write_history[0].row->get_table()->get_schema()->get_tuple_size());
 	}
 	_write_history[idx].valid = false;
 	_write_history[idx].reserved = true;

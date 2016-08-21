@@ -26,8 +26,9 @@ class row_t;
 #define GET_VALUE(type)\
 	void row_t::get_value(int col_id, type & value) {\
 		int pos = get_schema()->get_field_index(col_id);\
-		value = *(type *)&data[pos];\
+		memcpy(&value, data + pos, sizeof(type));\
 	}
+		// value = *(type *)&data[pos];
 
 class table_t;
 class Catalog;
@@ -97,6 +98,9 @@ public:
 	char * get_data();
 
 	void free_row();
+	
+	static size_t alloc_size(table_t* t);
+	static size_t max_alloc_size();
 
 	// for concurrency control. can be lock, timestamp etc.
 	RC get_row(access_t type, txn_man * txn, row_t *& row);
@@ -106,47 +110,53 @@ public:
 	static RC get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item, uint64_t part_id);
 #endif
 
-
-  #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
-    Row_lock * manager;
-  #elif CC_ALG == TIMESTAMP
-   	Row_ts * manager;
-  #elif CC_ALG == MVCC
-  	Row_mvcc * manager;
-  #elif CC_ALG == HEKATON
-  	Row_hekaton * manager;
-  #elif CC_ALG == OCC
-  	Row_occ * manager;
-  #elif CC_ALG == TICTOC
-  	Row_tictoc * manager;
-  #elif CC_ALG == SILO
-  	Row_silo * manager;
-  #elif CC_ALG == VLL
-  	Row_vll * manager;
-  #endif
-	char * data;
-	table_t * table;
-	volatile uint8_t			is_deleted;
-
-	void set_part_id(uint64_t part_id) { _part_id = part_id; }
-	void set_row_id(uint64_t row_id) { _row_id = row_id; }
-
 private:
 	// primary key should be calculated from the data stored in the row.
 	uint64_t 		_primary_key;
 	uint64_t		_part_id;
 	uint64_t 		_row_id;
-
-#ifdef USE_INLINED_DATA
+	
+public:
+	table_t * table;
+	volatile uint8_t			is_deleted;
+	
   #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
-    Row_lock inlined_manager;
-		char inlined_data[MAX_TUPLE_SIZE];
+		#if defined(USE_INLINED_DATA)	
+	    Row_lock manager[1];
+		#else
+	    Row_lock * manager;
+		#endif
+  #elif CC_ALG == TIMESTAMP
+	   	Row_ts * manager;
+  #elif CC_ALG == MVCC
+	  	Row_mvcc * manager;
+  #elif CC_ALG == HEKATON
+  	Row_hekaton * manager;
+  #elif CC_ALG == OCC
+  	Row_occ * manager;
   #elif CC_ALG == TICTOC
-  	Row_tictoc inlined_manager;
-		char inlined_data[MAX_TUPLE_SIZE];
+		#if defined(USE_INLINED_DATA)	
+	  	Row_tictoc manager[1];
+		#else
+	  	Row_tictoc * manager;
+		#endif
   #elif CC_ALG == SILO
-  	Row_silo inlined_manager;
-		char inlined_data[MAX_TUPLE_SIZE];
-	#endif
+		#if defined(USE_INLINED_DATA)	
+	  	Row_silo manager[1];
+		#else
+	  	Row_silo * manager;
+		#endif
+  #elif CC_ALG == VLL
+  	Row_vll * manager;
+  #endif
+
+	void set_part_id(uint64_t part_id) { _part_id = part_id; }
+	void set_row_id(uint64_t row_id) { _row_id = row_id; }
+
+
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
+	char data[0] __attribute__((aligned(8)));
+#else
+	char * data;
 #endif
 };

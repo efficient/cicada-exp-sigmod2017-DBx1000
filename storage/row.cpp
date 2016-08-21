@@ -15,6 +15,20 @@
 #include "mem_alloc.h"
 #include "manager.h"
 
+#ifdef USE_INLINED_DATA
+
+size_t row_t::alloc_size(table_t* t) { return sizeof(row_t) + t->get_schema()->get_tuple_size(); }
+
+size_t row_t::max_alloc_size() { return sizeof(row_t) + MAX_TUPLE_SIZE; }
+
+#else
+
+size_t row_t::alloc_size(table_t* t) { return sizeof(row_t); }
+
+size_t row_t::max_alloc_size() { return sizeof(row_t); }
+
+#endif
+
 RC
 row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 	_row_id = row_id;
@@ -52,16 +66,11 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 		break;
 	}
 #else
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
+	// We can just use &data[0].
+#else
 	Catalog * schema = host_table->get_schema();
 	int tuple_size = schema->get_tuple_size();
-#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
-	if (sizeof(inlined_data) < size_t(tuple_size)) {
-		printf("too small row_t::inlined_data for tuple size %d\n", tuple_size);
-		assert(false);
-		return ERROR;
-	}
-	data = inlined_data;
-#else
 	data = (char *) mem_allocator.alloc(sizeof(char) * tuple_size, part_id);
 #endif
 #endif
@@ -72,11 +81,7 @@ row_t::init(int size)
 {
 #if CC_ALG != MICA
 #if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
-	if (sizeof(inlined_data) < size_t(size)) {
-		printf("too small row_t::inlined_data for tuple size %d\n", size);
-		assert(false);
-	}
-	data = inlined_data;
+	// We can just use &data[0].
 #else
 	data = (char *) mem_allocator.alloc(size, 64);
 #endif
@@ -99,7 +104,7 @@ row_t::switch_schema(table_t * host_table) {
 void row_t::init_manager(row_t * row) {
 #if CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE
 #ifdef USE_INLINED_DATA
-		manager = &inlined_manager;
+	// We can just use &manager[0].
 #else
     manager = (Row_lock *) mem_allocator.alloc(sizeof(Row_lock), _part_id);
 #endif
@@ -113,13 +118,13 @@ void row_t::init_manager(row_t * row) {
     manager = (Row_occ *) mem_allocator.alloc(sizeof(Row_occ), _part_id);
 #elif CC_ALG == TICTOC
 #ifdef USE_INLINED_DATA
-	manager = &inlined_manager;
+	// We can just use &manager[0].
 #else
 	manager = (Row_tictoc *) mem_allocator.alloc(sizeof(Row_tictoc), _part_id);
 #endif
 #elif CC_ALG == SILO
 #ifdef USE_INLINED_DATA
-	manager = &inlined_manager;
+	// We can just use &manager[0].
 #else
 	manager = (Row_silo *) mem_allocator.alloc(sizeof(Row_silo), _part_id);
 #endif
@@ -186,6 +191,7 @@ GET_VALUE(UInt16);
 GET_VALUE(SInt16);
 GET_VALUE(UInt8);
 GET_VALUE(SInt8);
+
 
 char * row_t::get_value(int id) {
 	int pos = get_schema()->get_field_index(id);
@@ -318,7 +324,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
   #if CC_ALG == TIMESTAMP
 	// TODO. should not call malloc for each row read. Only need to call malloc once
 	// before simulation starts, like TicToc and Silo.
-	txn->cur_row = (row_t *) mem_allocator.alloc(sizeof(row_t), this->get_part_id());
+	txn->cur_row = (row_t *) mem_allocator.alloc(alloc_size(get_table()), this->get_part_id());
 	txn->cur_row->init(get_table(), this->get_part_id());
   #endif
 
@@ -342,7 +348,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	return rc;
 #elif CC_ALG == OCC
 	// OCC always make a local copy regardless of read or write
-	txn->cur_row = (row_t *) mem_allocator.alloc(sizeof(row_t), get_part_id());
+	txn->cur_row = (row_t *) mem_allocator.alloc(alloc_size(get_table()), get_part_id());
 	txn->cur_row->init(get_table(), get_part_id());
 	rc = this->manager->access(txn, R_REQ);
 	row = txn->cur_row;
@@ -447,7 +453,7 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
   #if CC_ALG == TIMESTAMP
 	if (type == RD || type == SCAN) {
 		row->free_row();
-		mem_allocator.free(row, sizeof(row_t));
+		mem_allocator.free(row, alloc_size(get_table()));
 	}
   #endif
 	if (type == XP) {
@@ -463,7 +469,7 @@ void row_t::return_row(access_t type, txn_man * txn, row_t * row) {
 	if (type == WR)
 		manager->write( row, txn->end_ts );
 	row->free_row();
-	mem_allocator.free(row, sizeof(row_t));
+	mem_allocator.free(row, alloc_size(get_table()));
 	return;
 #elif CC_ALG == TICTOC || CC_ALG == SILO
 	assert (row != NULL);

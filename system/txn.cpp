@@ -169,7 +169,7 @@ RC txn_man::apply_index_changes(RC rc) {
 		// printf("remove_row row_id=%" PRIu64 " part_id=%" PRIu64 "\n", row->get_row_id(), row->get_part_id());
 		// XXX: Freeing the row immediately is unsafe due to concurrent access.
 		// We do this only when using RCU.
-	  if (RCU_ALLOC) mem_allocator.free(row, sizeof(row_t));
+	  if (RCU_ALLOC) mem_allocator.free(row, row_t::alloc_size(row->get_table()));
 	}
 	remove_cnt = 0;
 #endif
@@ -353,15 +353,16 @@ row_t * txn_man::get_row(row_t * row, access_t type) {
 		Access * access = (Access *) mem_allocator.alloc(sizeof(Access), -1);
 		accesses[row_cnt] = access;
 #if (CC_ALG == SILO || CC_ALG == TICTOC)
-		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
+		access->data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
 		access->data->init(MAX_TUPLE_SIZE);
-		access->orig_data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
+		access->orig_data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
 		access->orig_data->init(MAX_TUPLE_SIZE);
 #elif (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE)
-		access->orig_data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
+		access->orig_data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
 		access->orig_data->init(MAX_TUPLE_SIZE);
 #elif (CC_ALG == MICA)
-		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
+		access->data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
+		access->data->init(MAX_TUPLE_SIZE);
 #endif
 		num_accesses_alloc ++;
 	}
@@ -427,7 +428,7 @@ txn_man::get_row(IndexT* index, itemid_t * item, int part_id, access_t type)
 	if (accesses[row_cnt] == NULL) {
 		Access * access = (Access *) mem_allocator.alloc(sizeof(Access), -1);
 		accesses[row_cnt] = access;
-		access->data = (row_t *) mem_allocator.alloc(sizeof(row_t), -1);
+		access->data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
 		num_accesses_alloc ++;
 	}
 
