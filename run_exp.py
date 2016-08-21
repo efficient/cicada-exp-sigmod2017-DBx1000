@@ -45,6 +45,7 @@ def set_alg(conf, alg, **kwargs):
     conf = replace_def(conf, 'RCU_ALLOC', 'false')
   else:
     conf = replace_def(conf, 'RCU_ALLOC', 'true')
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count * 0.95) * 2 * 1048576) + 'UL')
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
 
   return conf
@@ -148,9 +149,9 @@ max_thread_count = None
 # max_thread_count = 20
 # max_thread_count = 28
 # max_thread_count = 32
-hugepage_count = 32768  # 64 GiB
+# hugepage_count = 32768  # 64 GiB
 # hugepage_count = 40960  # 80 GiB
-# hugepage_count = 51200  # 100 GiB
+hugepage_count = 51200  # 100 GiB
 
 def gen_filename(exp):
   s = ''
@@ -300,18 +301,18 @@ def enum_exps(seq):
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
             if tag != 'macrobench': continue
-            if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
-              # Seem to be broken in ERMIA
-              continue;
+            # if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+            #   # Seem to be broken in ERMIA
+            #   continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
           for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
-            if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
-              # Seem to be broken in ERMIA
-              continue;
+            # if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+            #   # Seem to be broken in ERMIA
+            #   continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -694,9 +695,9 @@ def make_silo_cmd(exp):
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 5'
+  cmd += ' --runtime 30'
   cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
-  cmd += ' --numa-memory %dG' % int(hugepage_count * 2 / 1024)
+  cmd += ' --numa-memory %dG' % int(int(hugepage_count * 0.95) * 2 / 1024)
   return cmd
 
 def make_ermia_cmd(exp):
@@ -722,7 +723,7 @@ def make_ermia_cmd(exp):
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 5'
+  cmd += ' --runtime 30'
   # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
   cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
   cmd += ' --enable-gc'
@@ -758,14 +759,16 @@ def run(exp, prepare_only):
   os.system('make clean -j > /dev/null')
   os.system('rm -f ./rundb')
 
-  if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+  # if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+  if True:
     if hugepage_status != (hugepage_count, exp['alg']):
       os.system('../script/setup.sh %d %d > /dev/null' % (hugepage_count / 2, hugepage_count / 2))
       hugepage_status = (hugepage_count, exp['alg'])
-  else:
-    if hugepage_status != (0, ''):
-      os.system('../script/setup.sh 0 0 > /dev/null')
-      hugepage_status = (0, '')
+  # else:
+  #   if hugepage_status != (0, ''):
+  #     os.system('../script/setup.sh 0 0 > /dev/null')
+  #     hugepage_status = (0, '')
+
   # os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"')
   os.system('sudo bash -c "echo always > /sys/kernel/mm/transparent_hugepage/enabled"')
   os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"')
