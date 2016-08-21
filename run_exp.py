@@ -138,8 +138,8 @@ def set_mica_confs(conf, **kwargs):
   return conf
 
 
-dir_name = 'exp_data'
-old_dir_name = 'old_exp_data'
+dir_name = None
+old_dir_name = None
 prefix = ''
 suffix = ''
 total_seqs = 5
@@ -884,6 +884,16 @@ def update_filenames():
 
 
 if __name__ == '__main__':
+  global dir_name
+  global old_dir_name
+
+  if len(sys.argv) < 3:
+    print('%s dir_name [RUN | RUN patterns | PREPARE patterns]' % sys.argv[0])
+    sys.exit(1)
+
+  dir_name = sys.argv[2]
+  old_dir_name = 'old_' + dir_name
+
   if not os.path.exists(dir_name):
     os.mkdir(dir_name)
   if not os.path.exists(old_dir_name):
@@ -892,16 +902,12 @@ if __name__ == '__main__':
   remove_stale()
   # update_filenames()
 
-  if len(sys.argv) == 1:
-    print('%s [RUN | RUN patterns | PREPARE patterns]' % sys.argv[0])
-    sys.exit(1)
-
-  if sys.argv[1].upper() == 'RUN':
-    if len(sys.argv) == 2:
+  if sys.argv[2].upper() == 'RUN':
+    if len(sys.argv) == 3:
       run_all(None, False)
     else:
-      run_all(sys.argv[2].split('__'), False)
-  elif sys.argv[1].upper() == 'PREPARE':
-    run_all(sys.argv[2].split('__'), True)
+      run_all(sys.argv[3].split('__'), False)
+  elif sys.argv[2].upper() == 'PREPARE':
+    run_all(sys.argv[3].split('__'), True)
   else:
     assert False
