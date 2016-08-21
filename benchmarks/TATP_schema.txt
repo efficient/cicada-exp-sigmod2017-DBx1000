@@ -58,29 +58,29 @@ TABLE=CALL_FORWARDING
   1,int64_t,end_time
   15,string,numberx
 
-// The below is scaled by g_num_wh
+// The below is scaled by TATP_SCALE_FACTOR
 
 // indexed by s_id, unique
 // NUM_SUBSCRIBERS
 INDEX=SUBSCRIBER_IDX
-SUBSCRIBER,100000l
+SUBSCRIBER,100000
 
 // indexed by sub_nbr, unique
 // NUM_SUBSCRIBERS
 INDEX=SUBSCRIBER_SUB_NBR_IDX
-SUBSCRIBER,100000l
+SUBSCRIBER,100000
 
 // indexed by (s_id, ai_type); unique
 // NUM_SUBSCRIBERS * E([1...4])
 INDEX=ACCESS_INFO_IDX
-ACCESS_INFO,2500003
+ACCESS_INFO,250000
 
 // indexed by (s_id, sf_type); unique
 // NUM_SUBSCRIBERS * E([1...4])
 INDEX=SPECIAL_FACILITY_IDX
-SPECIAL_FACILITY,2500003
+SPECIAL_FACILITY,250000
 
 // indexed by (s_id, sf_type); non-unique (up to 4 duplicates); mutable
 // NUM_SUBSCRIBERS * E([1...4]) * E([0...3])
 INDEX=ORDERD_CALL_FORWARDING_IDX
-CALL_FORWARDING,3750004
+CALL_FORWARDING,375000

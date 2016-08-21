@@ -27,7 +27,16 @@ bool tatp_isActive(uint64_t thd_id) {
 }
 
 uint64_t tatp_getSubscriberId(uint64_t thd_id) {
-  return URand(1, g_sub_size * g_num_wh, thd_id);
+  //return URand(1, g_sub_size, thd_id);
+  if (g_sub_size <= 1000000)
+    return (URand(0, 65535, thd_id) | URand(0, g_sub_size - 1, thd_id)) %
+           g_sub_size;
+  else if (g_sub_size <= 10000000)
+    return (URand(0, 1048575, thd_id) | URand(0, g_sub_size - 1, thd_id)) %
+           g_sub_size;
+  else
+    return (URand(0, 2097151, thd_id) | URand(0, g_sub_size - 1, thd_id)) %
+           g_sub_size;
 }
 
 uint64_t tatp_astring(int min, int max, char* str, uint64_t thd_id) {
