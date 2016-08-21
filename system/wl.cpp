@@ -158,6 +158,8 @@ RC workload::init_schema(string schema_file) {
         table_size = stoi(items[1]);
       else
         table_size = stoi(items[1]) * g_num_wh;
+#elif WORKLOAD == TATP
+        table_size = stoi(items[1]) * TATP_SCALE_FACTOR;
 #endif
 
       if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
