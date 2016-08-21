@@ -147,8 +147,8 @@ node_count = 2
 max_thread_count = 20
 # max_thread_count = 28
 # max_thread_count = 32
-# hugepage_count = 32768  # 64 GiB
-hugepage_count = 40960  # 80 GiB
+hugepage_count = 32768  # 64 GiB
+# hugepage_count = 40960  # 80 GiB
 # hugepage_count = 51200  # 100 GiB
 
 def gen_filename(exp):
