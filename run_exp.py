@@ -144,7 +144,8 @@ prefix = ''
 suffix = ''
 total_seqs = 5
 node_count = 2
-max_thread_count = 20
+max_thread_count = None
+# max_thread_count = 20
 # max_thread_count = 28
 # max_thread_count = 32
 hugepage_count = 32768  # 64 GiB
@@ -884,12 +885,17 @@ def update_filenames():
 
 
 if __name__ == '__main__':
-  if len(sys.argv) < 3:
-    print('%s dir_name [RUN | RUN patterns | PREPARE patterns]' % sys.argv[0])
+  argv = list(sys.argv)
+  if len(argv) < 4:
+    print('%s dir_name max_thread_count [RUN | RUN patterns | PREPARE patterns]' % argv[0])
     sys.exit(1)
 
-  dir_name = sys.argv[2]
+  dir_name = argv[1]
   old_dir_name = 'old_' + dir_name
+
+  max_thread_count = int(argv[2])
+
+  argv = argv[3:]
 
   if not os.path.exists(dir_name):
     os.mkdir(dir_name)
@@ -899,12 +905,12 @@ if __name__ == '__main__':
   remove_stale()
   # update_filenames()
 
-  if sys.argv[2].upper() == 'RUN':
-    if len(sys.argv) == 3:
+  if argv[0].upper() == 'RUN':
+    if len(argv) == 1:
       run_all(None, False)
     else:
-      run_all(sys.argv[3].split('__'), False)
-  elif sys.argv[2].upper() == 'PREPARE':
-    run_all(sys.argv[3].split('__'), True)
+      run_all(argv[1].split('__'), False)
+  elif argv[0].upper() == 'PREPARE':
+    run_all(argv[1].split('__'), True)
   else:
     assert False
