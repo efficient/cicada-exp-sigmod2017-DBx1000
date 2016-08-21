@@ -8,39 +8,41 @@
 #include "mem_alloc.h"
 #include "helper.h"
 #include "global.h"
+#include <numa.h>
 
 // Assume the data is strided across the L2 slices, stride granularity
 // is the size of a page
 void mem_alloc::init(uint64_t part_cnt, uint64_t bytes_per_part) {
-	// if (g_thread_cnt < g_init_parallelism)
-	// 	_bucket_cnt = g_init_parallelism * 4 + 1;
-	// else
-	// 	_bucket_cnt = g_thread_cnt * 4 + 1;
-	// pid_arena = new std::pair<pthread_t, int>[_bucket_cnt];
-	// for (int i = 0; i < _bucket_cnt; i ++)
-	// 	pid_arena[i] = std::make_pair(0, 0);
-	//
-	// if (THREAD_ALLOC) {
-	// 	assert( !g_part_alloc );
-	// 	init_thread_arena();
-	// }
+  // if (g_thread_cnt < g_init_parallelism)
+  // 	_bucket_cnt = g_init_parallelism * 4 + 1;
+  // else
+  // 	_bucket_cnt = g_thread_cnt * 4 + 1;
+  // pid_arena = new std::pair<pthread_t, int>[_bucket_cnt];
+  // for (int i = 0; i < _bucket_cnt; i ++)
+  // 	pid_arena[i] = std::make_pair(0, 0);
+  //
+  // if (THREAD_ALLOC) {
+  // 	assert( !g_part_alloc );
+  // 	init_thread_arena();
+  // }
 
-	if (RCU_ALLOC) {
-		const size_t maxpercpu = util::iceil((RCU_ALLOC_SIZE) / THREAD_CNT, ::allocator::GetHugepageSize());
-		::allocator::Initialize(THREAD_CNT, maxpercpu);
+  if (RCU_ALLOC) {
+    const size_t maxpercpu = util::iceil((RCU_ALLOC_SIZE) / THREAD_CNT,
+                                         ::allocator::GetHugepageSize());
+    ::allocator::Initialize(THREAD_CNT, maxpercpu);
 
-	  std::vector<std::thread> threads;
-	  for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
-	    threads.emplace_back([&, thread_id] {
-				rcu::s_instance.pin_current_thread(thread_id);
-				rcu::s_instance.fault_region();
-			});
-		}
-	  while (threads.size() > 0) {
-	    threads.back().join();
-	    threads.pop_back();
-	  }
-	}
+    std::vector<std::thread> threads;
+    for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
+      threads.emplace_back([&, thread_id] {
+        rcu::s_instance.pin_current_thread(thread_id);
+        rcu::s_instance.fault_region();
+      });
+    }
+    while (threads.size() > 0) {
+      threads.back().join();
+      threads.pop_back();
+    }
+  }
 }
 
 // void
@@ -95,32 +97,31 @@ void mem_alloc::init(uint64_t part_cnt, uint64_t bytes_per_part) {
 // }
 
 void mem_alloc::register_thread(int thd_id) {
-	if (RCU_ALLOC)
-		rcu::s_instance.pin_current_thread(thd_id);
+  if (RCU_ALLOC) rcu::s_instance.pin_current_thread(thd_id);
 
-	// if (THREAD_ALLOC) {
-	// 	pthread_mutex_lock( &map_lock );
-	// 	pthread_t pid = pthread_self();
-	// 	int entry = pid % _bucket_cnt;
-	// 	while (pid_arena[ entry ].first != 0) {
-	// 		printf("conflict at entry %d (pid=%ld)\n", entry, pid);
-	// 		entry = (entry + 1) % _bucket_cnt;
-	// 	}
-	// 	pid_arena[ entry ].first = pid;
-	// 	pid_arena[ entry ].second = thd_id;
-	// 	pthread_mutex_unlock( &map_lock );
-	// }
+  // if (THREAD_ALLOC) {
+  // 	pthread_mutex_lock( &map_lock );
+  // 	pthread_t pid = pthread_self();
+  // 	int entry = pid % _bucket_cnt;
+  // 	while (pid_arena[ entry ].first != 0) {
+  // 		printf("conflict at entry %d (pid=%ld)\n", entry, pid);
+  // 		entry = (entry + 1) % _bucket_cnt;
+  // 	}
+  // 	pid_arena[ entry ].first = pid;
+  // 	pid_arena[ entry ].second = thd_id;
+  // 	pthread_mutex_unlock( &map_lock );
+  // }
 }
 
 void mem_alloc::unregister() {
-	// if (THREAD_ALLOC) {
-	// 	pthread_mutex_lock( &map_lock );
-	// 	for (int i = 0; i < _bucket_cnt; i ++) {
-	// 		pid_arena[i].first = 0;
-	// 		pid_arena[i].second = 0;
-	// 	}
-	// 	pthread_mutex_unlock( &map_lock );
-	// }
+  // if (THREAD_ALLOC) {
+  // 	pthread_mutex_lock( &map_lock );
+  // 	for (int i = 0; i < _bucket_cnt; i ++) {
+  // 		pid_arena[i].first = 0;
+  // 		pid_arena[i].second = 0;
+  // 	}
+  // 	pthread_mutex_unlock( &map_lock );
+  // }
 }
 
 // int
@@ -152,52 +153,59 @@ void mem_alloc::unregister() {
 // 	return 0;
 // }
 
+void mem_alloc::free(void* ptr, uint64_t size) {
+  // size = (size + CL_SIZE - 1) & ~CL_SIZE;
+  if (RCU_ALLOC)
+    rcu::s_instance.dealloc_rcu(ptr, size);
+  else
+    _mm_free(ptr);
 
-void mem_alloc::free(void * ptr, uint64_t size) {
-	size = (size + CL_SIZE - 1) & ~CL_SIZE;
-	if (RCU_ALLOC)
-		rcu::s_instance.dealloc_rcu(ptr, size);
-	else
-		_mm_free(ptr);
-
-	// if (NO_FREE) {}
-	// else if (THREAD_ALLOC) {
-	// 	int arena_id = get_arena_id();
-	// 	FreeBlock * block = (FreeBlock *)((UInt64)ptr - sizeof(FreeBlock));
-	// 	int size = block->size;
-	// 	int size_id = get_size_id(size);
-	// 	_arenas[arena_id][size_id].free(ptr);
-	// } else {
-	// 	std::free(ptr);
-	// }
+  // if (NO_FREE) {}
+  // else if (THREAD_ALLOC) {
+  // 	int arena_id = get_arena_id();
+  // 	FreeBlock * block = (FreeBlock *)((UInt64)ptr - sizeof(FreeBlock));
+  // 	int size = block->size;
+  // 	int size_id = get_size_id(size);
+  // 	_arenas[arena_id][size_id].free(ptr);
+  // } else {
+  // 	std::free(ptr);
+  // }
 }
 
 //TODO the program should not access more than a PAGE
 // to guanrantee correctness
 // lock is used for consistency (multiple threads may alloc simultaneously and
 // cause trouble)
-void * mem_alloc::alloc(uint64_t size, uint64_t part_id) {
-	void * ptr;
-	size = (size + CL_SIZE - 1) & ~CL_SIZE;
-	if (RCU_ALLOC)
-		ptr = rcu::s_instance.alloc(size);
-	else
-		ptr = _mm_malloc(size, CL_SIZE);
+void* mem_alloc::alloc(uint64_t size, uint64_t part_id) {
+  void* ptr;
+  // size = (size + CL_SIZE - 1) & ~CL_SIZE;
+  if (RCU_ALLOC)
+    ptr = rcu::s_instance.alloc(size);
+  else
+    ptr = _mm_malloc(size, CL_SIZE);
 
-	// if (size > BlockSizes[SizeNum - 1])
+  if (size >= 1048576 * 2 && part_id != (uint64_t)-1) {
+    auto node = part_id % 2;
+    struct bitmask* bm = numa_allocate_nodemask();
+    numa_bitmask_setbit(bm, node);
+    numa_interleave_memory(ptr, size, bm);
+    numa_free_nodemask(bm);
+  }
+
+  // if (size > BlockSizes[SizeNum - 1])
   //   ptr = malloc(size);
-	// else if (THREAD_ALLOC && (warmup_finish || enable_thread_mem_pool)) {
-	// 	int arena_id = get_arena_id();
-	// 	int size_id = get_size_id(size);
-	// 	ptr = _arenas[arena_id][size_id].alloc();
-	// } else {
-	// 	ptr = malloc(size);
-	// }
-	return ptr;
+  // else if (THREAD_ALLOC && (warmup_finish || enable_thread_mem_pool)) {
+  // 	int arena_id = get_arena_id();
+  // 	int size_id = get_size_id(size);
+  // 	ptr = _arenas[arena_id][size_id].alloc();
+  // } else {
+  // 	ptr = malloc(size);
+  // }
+  return ptr;
 }
 
 void mem_alloc::dump_stats() {
-	if (RCU_ALLOC) {
-		::allocator::DumpStats();
-	}
+  if (RCU_ALLOC) {
+    ::allocator::DumpStats();
+  }
 }
