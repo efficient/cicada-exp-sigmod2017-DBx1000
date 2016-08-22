@@ -26,18 +26,7 @@ void parser(int argc, char* argv[]);
 int main(int argc, char* argv[]) {
   parser(argc, argv);
 
-#if CC_ALG == MICA
-  ::mica::util::lcore.pin_thread(0);
-#endif
-
-  mem_allocator.init(g_part_cnt, MEM_SIZE / g_part_cnt);
-  mem_allocator.register_thread(0);
-
-  stats.init();
-  glob_manager = (Manager*)mem_allocator.alloc(sizeof(Manager), 0);
-  glob_manager->init();
-  if (g_cc_alg == DL_DETECT) dl_detector.init();
-  printf("mem_allocator initialized!\n");
+  // Init workload part 1
   workload* m_wl;
   switch (WORKLOAD) {
     case YCSB:
@@ -56,6 +45,25 @@ int main(int argc, char* argv[]) {
     default:
       assert(false);
   }
+
+  // Init MICA
+#if CC_ALG == MICA
+  ::mica::util::lcore.pin_thread(0);
+#endif
+
+  m_wl->init_mica();
+
+  // Init memory allocator
+  mem_allocator.init(g_part_cnt, MEM_SIZE / g_part_cnt);
+  mem_allocator.register_thread(0);
+
+  stats.init();
+  glob_manager = (Manager*)mem_allocator.alloc(sizeof(Manager), 0);
+  glob_manager->init();
+  if (g_cc_alg == DL_DETECT) dl_detector.init();
+  printf("mem_allocator initialized!\n");
+
+  // Init workload part 2
   m_wl->init();
   printf("workload initialized!\n");
 

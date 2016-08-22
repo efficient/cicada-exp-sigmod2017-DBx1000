@@ -34,6 +34,7 @@ public:
 	MICADB* mica_db;
 #endif
 
+	void init_mica();
 
 	// initialize the tables and indexes.
 	virtual RC init();
