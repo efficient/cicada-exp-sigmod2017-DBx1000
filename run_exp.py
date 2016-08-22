@@ -142,12 +142,13 @@ def set_mica_confs(conf, **kwargs):
 
 dir_name = None
 old_dir_name = None
+
+node_count = None
 max_thread_count = None
 
 prefix = ''
 suffix = ''
 total_seqs = 5
-node_count = 2
 
 hugepage_count = {
   # 100 GiB (some algorithms use lot of memory)
@@ -209,6 +210,9 @@ def remove_stale():
       continue
     if filename in valid_filenames:
       continue
+
+    if not os.path.exists(old_dir_name):
+      os.mkdir(old_dir_name)
     print('stale file: %s' % filename)
     os.rename(dir_name + '/' + filename, old_dir_name + '/' + filename)
 
@@ -896,23 +900,49 @@ def update_filenames():
   sys.exit(0)
 
 
+def detect_core_count():
+  global node_count
+  global max_thread_count
+
+  # simple core count detection
+  core_id = None
+  node_id = None
+  max_core_id = -1
+  max_node_id = -1
+
+  for line in file('/proc/cpuinfo').readlines():
+    line = line.strip()
+    if line.startswith('processor'):
+      core_id = int(line.partition(':')[2])
+    elif line.startswith('physical id'):
+      node_id = int(line.partition(':')[2])
+    elif line == '':
+      max_core_id = max(max_core_id, core_id)
+      max_node_id = max(max_node_id, node_id)
+      core_id = None
+      node_id = None
+
+  node_count = max_node_id + 1
+  max_thread_count = max_core_id + 1
+  max_thread_count /= 2   # hyperthreading
+  # print('total %d nodes, %d cores' % (node_count, max_thread_count))
+
+
 if __name__ == '__main__':
   argv = list(sys.argv)
-  if len(argv) < 4:
-    print('%s dir_name max_thread_count [RUN | RUN patterns | PREPARE patterns]' % argv[0])
+  if len(argv) < 3:
+    print('%s dir_name [RUN | RUN patterns | PREPARE patterns]' % argv[0])
     sys.exit(1)
+
+  detect_core_count()
 
   dir_name = argv[1]
   old_dir_name = 'old_' + dir_name
 
-  max_thread_count = int(argv[2])
-
-  argv = argv[3:]
+  argv = argv[2:]
 
   if not os.path.exists(dir_name):
     os.mkdir(dir_name)
-  if not os.path.exists(old_dir_name):
-    os.mkdir(old_dir_name)
 
   remove_stale()
   # update_filenames()
