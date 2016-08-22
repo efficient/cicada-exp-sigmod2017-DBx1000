@@ -10,6 +10,7 @@ class table_t;
 class base_query;
 class INDEX;
 class ORDERED_INDEX;
+class IndexMBTree;
 
 // each thread has a txn_man.
 // a txn_man corresponds to a single transaction.
@@ -137,13 +138,13 @@ private:
 
 	// insert/remove indexes
 	uint64_t 		   insert_idx_cnt;
-	ORDERED_INDEX* insert_idx_idx[MAX_ROW_PER_TXN];
+	IndexMBTree*   insert_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     insert_idx_key[MAX_ROW_PER_TXN];
 	row_t* 		     insert_idx_row[MAX_ROW_PER_TXN];
 	int	       	   insert_idx_part_id[MAX_ROW_PER_TXN];
 
 	uint64_t 		   remove_idx_cnt;
-	ORDERED_INDEX* remove_idx_idx[MAX_ROW_PER_TXN];
+	IndexMBTree*   remove_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     remove_idx_key[MAX_ROW_PER_TXN];
 	int	      	   remove_idx_part_id[MAX_ROW_PER_TXN];
 

@@ -258,6 +258,17 @@ void workload::index_insert(IndexT* index, uint64_t key, row_t* row,
 #endif
 }
 
+template <>
+void workload::index_insert(IndexMBTree* index, uint64_t key, row_t* row,
+                            int part_id) {
+#if CC_ALG == MICA
+  row = (row_t*)row->get_row_id();
+#endif
+
+  auto rc = index->index_insert(key, row, part_id);
+  assert(rc == RCOK);
+}
+
 template void workload::index_insert(INDEX* index, uint64_t key,
                                      row_t* row, int part_id);
 template void workload::index_insert(ORDERED_INDEX* index, uint64_t key, row_t* row,
