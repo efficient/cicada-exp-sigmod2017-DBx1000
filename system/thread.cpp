@@ -97,7 +97,7 @@ RC thread_t::run() {
 	  exp_endtime = get_server_clock() + static_cast<uint64_t>(MAX_TXN_DURATION * 1000000000.);
 
 	while (true) {
-		ts_t starttime = get_sys_clock();
+		// ts_t starttime = get_sys_clock();
 		if (WORKLOAD != TEST) {
 #ifndef DISABLE_BUILTIN_BACKOFF
 			int trial = 0;
@@ -138,7 +138,7 @@ RC thread_t::run() {
 			m_query = query_queue->get_next_query( _thd_id );
 #endif
 		}
-		INC_STATS(_thd_id, time_query, get_sys_clock() - starttime);
+		// INC_STATS(_thd_id, time_query, get_sys_clock() - starttime);
 		m_txn->abort_cnt = 0;
 //#if CC_ALG == VLL
 //		_wl->get_txn_man(m_txn, this);
@@ -236,10 +236,10 @@ RC thread_t::run() {
 	}
 #endif
 
-		ts_t endtime = get_sys_clock();
-		uint64_t timespan = endtime - starttime;
-		INC_STATS(get_thd_id(), run_time, timespan);
-		INC_STATS(get_thd_id(), latency, timespan);
+		// ts_t endtime = get_sys_clock();
+		// uint64_t timespan = endtime - starttime;
+		// INC_STATS(get_thd_id(), run_time, timespan);
+		// INC_STATS(get_thd_id(), latency, timespan);
 		//stats.add_lat(get_thd_id(), timespan);
 		if (rc == RCOK) {
 			INC_STATS(get_thd_id(), txn_cnt, 1);
@@ -254,7 +254,7 @@ RC thread_t::run() {
       last_commit_time = now;
 #endif
 		} else if (rc == Abort) {
-			INC_STATS(get_thd_id(), time_abort, timespan);
+			// INC_STATS(get_thd_id(), time_abort, timespan);
 			INC_STATS(get_thd_id(), abort_cnt, 1);
 			stats.abort(get_thd_id());
 			m_txn->abort_cnt ++;
