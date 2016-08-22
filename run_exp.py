@@ -910,7 +910,7 @@ def detect_core_count():
   max_core_id = -1
   max_node_id = -1
 
-  for line in file('/proc/cpuinfo').readlines():
+  for line in open('/proc/cpuinfo').readlines():
     line = line.strip()
     if line.startswith('processor'):
       core_id = int(line.partition(':')[2])
