@@ -21,9 +21,9 @@ RC workload::init() {
   printf("detected CPU frequency = %.3f GHz\n", gCPUFreq);
 
 #if CC_ALG == MICA
-  auto config = ::mica::util::Config::load_file("test_tx.json");
+  auto config = ::mica::util::Config::load_file("mica.json");
   mica_alloc = new MICAAlloc(config.get("alloc"));
-  auto page_pool_size = 60 * uint64_t(1073741824);
+  auto page_pool_size = 60 * uint64_t(1073741824);  // 60 GiB
   if (g_thread_cnt == 1) {
     mica_page_pools[0] = new MICAPagePool(mica_alloc, page_pool_size / 2, 0);
     mica_page_pools[1] = nullptr;
@@ -33,6 +33,7 @@ RC workload::init() {
   }
   mica_logger = new MICALogger();
   mica_db = new MICADB(mica_page_pools, mica_logger, &mica_sw, g_thread_cnt);
+  printf("MICA initialized\n");
 #endif
   return RCOK;
 }

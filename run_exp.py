@@ -41,12 +41,13 @@ def set_alg(conf, alg, **kwargs):
     conf = replace_def(conf, 'INDEX_STRUCT', 'IDX_HASH')
     conf = replace_def(conf, 'MICA_FULLINDEX', 'false')
 
-  if alg.startswith('MICA'):
-    conf = replace_def(conf, 'RCU_ALLOC', 'false')
-  else:
-    conf = replace_def(conf, 'RCU_ALLOC', 'true')
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.95) * 2 * 1048576) + 'UL')
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
+  conf = replace_def(conf, 'RCU_ALLOC', 'true')
+  if alg.startswith('MICA'):
+      # ~10240 huge pages (20 GiB) for RCU
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(10240 * 0.95) * 2 * 1048576) + 'UL')
+  else:
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.95) * 2 * 1048576) + 'UL')
 
   return conf
 
@@ -149,10 +150,9 @@ total_seqs = 5
 node_count = 2
 
 hugepage_count = {
-  # 64 GiB (init fails with more hugepages)
-  'MICA': 32768,
-  'MICA+INDEX': 32768,
   # 100 GiB (some algorithms use lot of memory)
+  'MICA': 51200,
+  'MICA+INDEX': 51200,
   'SILO-REF': 51200,
   'SILO': 51200,
   'TICTOC': 51200,
