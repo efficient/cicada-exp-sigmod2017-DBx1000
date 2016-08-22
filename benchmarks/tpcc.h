@@ -9,7 +9,8 @@ class INDEX;
 class tpcc_query;
 
 // #define TPCC_SILO_REF_LAST_NO_O_IDS
-// #define TPCC_DBX1000_SERIAL_DELIVERY
+#define TPCC_DBX1000_SERIAL_DELIVERY
+// #define TPCC_CAVALIA_NO_OL_UPDATE
 // #define EMULATE_SNAPSHOT_FOR_1VCC // Runs read-only TX in repeatable read mode
 
 class tpcc_wl : public workload {
@@ -81,12 +82,18 @@ class tpcc_txn_man : public txn_man {
   RC run_stock_level(tpcc_query* query);
 
 #ifdef TPCC_SILO_REF_LAST_NO_O_IDS
-  uint64_t last_no_o_ids[NUM_WH * DIST_PER_WARE]
-      __attribute__((aligned(CL_SIZE)));
+  struct LastNoOID {
+    uint64_t o_id;
+  } __attribute__((aligned(CL_SIZE)));
+  LastNoOID last_no_o_ids[NUM_WH * DIST_PER_WARE];
 #endif
 
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-  bool active_delivery[NUM_WH] __attribute__((aligned(CL_SIZE)));
+  struct ActiveDelivery {
+    uint32_t lock;
+  } __attribute__((aligned(CL_SIZE)));
+
+  ActiveDelivery active_delivery[NUM_WH];
 #endif
 
   row_t* payment_getWarehouse(uint64_t w_id);

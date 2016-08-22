@@ -733,7 +733,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 #else
   // Use reference Silo's last seen o_id history.
   auto max_key = neworderKey(
-      last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1], d_id, w_id);
+      last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1].o_id, d_id, w_id);
 #endif
   auto part_id = wh_to_part(w_id);
 
@@ -761,7 +761,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   *out_o_id = o_id;
 
 #ifdef TPCC_SILO_REF_LAST_NO_O_IDS
-  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1].o_id = o_id + 1;
 #endif
 
 #if TPCC_DELETE_ROWS
@@ -791,7 +791,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   *out_o_id = o_id;
 
 #ifdef TPCC_SILO_REF_LAST_NO_O_IDS
-  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1] = o_id + 1;
+  last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1].o_id = o_id + 1;
 #endif
 
 #if TPCC_DELETE_ROWS
@@ -887,7 +887,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 
 // DBx1000's active delivery transaction checking.
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-  if (__sync_lock_test_and_set(&active_delivery[arg.w_id - 1], 1) == 1)
+  if (__sync_lock_test_and_set(&active_delivery[arg.w_id - 1].lock, 1) == 1)
     return finish(RCOK);
 #endif
 
@@ -897,9 +897,9 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
       FAIL_ON_ABORT();
 // printf("oops0\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+      __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      // INC_STATS_ALWAYS(get_thd_id(), debug1, 1);
+      INC_STATS_ALWAYS(get_thd_id(), debug1, 1);
       return finish(Abort);
     }
     // No new order for this district.
@@ -922,34 +922,39 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
     delivery_updateOrders(order, arg.o_carrier_id);
 
     double ol_total;
+#ifndef TPCC_CAVALIA_NO_OL_UPDATE
     if (!delivery_updateOrderLine_sumOLAmount(arg.ol_delivery_d, o_id, d_id,
                                               arg.w_id, &ol_total)) {
       FAIL_ON_ABORT();
 // printf("oops2\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+      __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      // INC_STATS_ALWAYS(get_thd_id(), debug2, 1);
+      INC_STATS_ALWAYS(get_thd_id(), debug2, 1);
       return finish(Abort);
     }
+#else
+    ol_total = 1.;
+#endif
 
     if (!delivery_updateCustomer(ol_total, c_id, d_id, arg.w_id)) {
       FAIL_ON_ABORT();
 // printf("oops3\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-      __sync_lock_release(&active_delivery[arg.w_id - 1]);
+      __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      // INC_STATS_ALWAYS(get_thd_id(), debug3, 1);
+      INC_STATS_ALWAYS(get_thd_id(), debug3, 1);
       return finish(Abort);
     }
   }
 #endif
 
+  auto rc = finish(RCOK);
+  if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
-  __sync_lock_release(&active_delivery[arg.w_id - 1]);
+  __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-  // INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
-  return finish(RCOK);
+  return rc;
 }
 
 //////////////////////////////////////////////////////
