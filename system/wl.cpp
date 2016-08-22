@@ -201,47 +201,40 @@ RC workload::init_schema(string schema_file) {
   return RCOK;
 }
 
-void workload::index_insert(string index_name, uint64_t key, row_t* row) {
-  assert(false);
-  if (strncmp(index_name.c_str(), "ORDERED_", 8) != 0) {
-    INDEX* index = (INDEX*)indexes[index_name];
-    index_insert(index, key, row);
-  } else {
-    ORDERED_INDEX* index = (ORDERED_INDEX*)ordered_indexes[index_name];
-    index_insert(index, key, row);
+template <class IndexT>
+void workload::index_insert(IndexT* index, uint64_t key, row_t* row,
+                            int part_id) {
+#if CC_ALG == MICA
+  row = (row_t*)row->get_row_id();
+#endif
+
+#if INDEX_STRUCT == IDX_MICA
+  auto thread_id = ::mica::util::lcore.lcore_id();
+  // printf("thread_id = %lu\n", thread_id);
+
+  MICATransaction tx(mica_db->context(thread_id));
+  while (true) {
+    // printf("idx=%p part_id=%d key=%lu row_id=%lu\n", this, part_id, key,
+    // row_id);
+    if (!tx.begin()) assert(false);
+
+    auto rc = index->index_insert(&tx, key, row, part_id);
+
+    if (rc != RCOK) {
+      if (!tx.abort()) assert(false);
+      continue;
+    }
+    if (!tx.commit()) continue;
+
+    break;
   }
-}
-
-template <class INDEX_T>
-void workload::index_insert(INDEX_T* index, uint64_t key, row_t* row,
-                            int64_t part_id) {
-  uint64_t pid = part_id;
-  if (part_id == -1) pid = get_part_id(row);
-  itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), pid);
-  m_item->init();
-  m_item->type = DT_row;
-  m_item->location = row;
-  m_item->valid = true;
-
-  auto rc = index->index_insert(key, m_item, pid);
+#else
+  auto rc = index->index_insert(key, row, part_id);
   assert(rc == RCOK);
-
-#if INDEX_STRUCT == IDX_MICA
-  // We do not need to keep the index item.
-  mem_allocator.free(m_item, sizeof(itemid_t));
 #endif
 }
 
-template void workload::index_insert(index_btree* index, uint64_t key,
-                                     row_t* row, int64_t part_id);
-template void workload::index_insert(IndexHash* index, uint64_t key, row_t* row,
-                                     int64_t part_id);
-template void workload::index_insert(IndexMBTree* index, uint64_t key,
-                                     row_t* row, int64_t part_id);
-
-#if INDEX_STRUCT == IDX_MICA
-template void workload::index_insert(IndexMICA* index, uint64_t key, row_t* row,
-                                     int64_t part_id);
-template void workload::index_insert(OrderedIndexMICA* index, uint64_t key,
-                                     row_t* row, int64_t part_id);
-#endif
+template void workload::index_insert(INDEX* index, uint64_t key,
+                                     row_t* row, int part_id);
+template void workload::index_insert(ORDERED_INDEX* index, uint64_t key, row_t* row,
+                                     int part_id);

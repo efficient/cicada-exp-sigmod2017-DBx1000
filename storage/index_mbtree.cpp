@@ -18,7 +18,7 @@
 // #endif
 
 struct mbtree_params : public Masstree::nodeparams<> {
-  typedef itemid_t* value_type;
+  typedef row_t* value_type;
   typedef Masstree::value_print<value_type> value_print_type;
   typedef simple_threadinfo threadinfo_type;
   enum { RcuRespCaller = true };
@@ -36,9 +36,10 @@ RC IndexMBTree::init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt) {
   this->table = table;
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
-		mem_allocator.register_thread(part_id % g_thread_cnt);
+    mem_allocator.register_thread(part_id % g_thread_cnt);
 
-    auto t = (concurrent_mbtree*)mem_allocator.alloc(sizeof(concurrent_mbtree), part_id);
+    auto t = (concurrent_mbtree*)mem_allocator.alloc(sizeof(concurrent_mbtree),
+                                                     part_id);
     new (t) concurrent_mbtree;
 
     btree_idx.push_back(t);
@@ -47,55 +48,39 @@ RC IndexMBTree::init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt) {
   return RCOK;
 }
 
-bool IndexMBTree::index_exist(idx_key_t key) {
+RC IndexMBTree::index_insert(idx_key_t key, row_t* row, int part_id) {
+  auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
+
+  u64_varkey mbtree_key(key);
+
+  if (!idx->insert_if_absent(mbtree_key, row)) return ERROR;
+
+  return RCOK;
+}
+
+RC IndexMBTree::index_read(idx_key_t key, row_t** row, int part_id) {
+  auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
+
+  u64_varkey mbtree_key(key);
+
+  if (!idx->search(mbtree_key, *row)) return ERROR;
+
+  return RCOK;
+}
+
+RC IndexMBTree::index_read_multiple(idx_key_t key, row_t** rows,
+                                    uint64_t& count, int part_id) {
+  // Duplicate keys are currently not supported in IndexMBTree.
   assert(false);
-  return false;
+  (void)key;
+  (void)rows;
+  (void)count;
+  (void)part_id;
+  return ERROR;
 }
-
-RC IndexMBTree::index_insert(idx_key_t key, itemid_t* item, int part_id) {
-#if CC_ALG == MICA
-  item->location =
-      reinterpret_cast<void*>(((row_t*)item->location)->get_row_id());
-#endif
-
-  auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
-
-  u64_varkey mbtree_key(key);
-
-  if (!idx->insert_if_absent(mbtree_key, item)) return ERROR;
-
-  return RCOK;
-}
-
-RC IndexMBTree::index_read(idx_key_t key, itemid_t*& item, int part_id,
-                           int thd_id) {
-  (void)thd_id;
-
-  auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
-
-  u64_varkey mbtree_key(key);
-
-  if (!idx->search(mbtree_key, item)) return ERROR;
-
-  return RCOK;
-}
-
-// RC IndexMBTree::index_read_multiple(idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id, int thd_id) {
-//   // Duplicate keys are currently not supported.
-//   assert(false);
-//   (void)key;
-//   (void)row_ids;
-//   (void)count;
-//   (void)part_id;
-//   (void)thd_id;
-//   return ERROR;
-// }
 
 RC IndexMBTree::index_read_range(idx_key_t min_key, idx_key_t max_key,
-                                 itemid_t** items, uint64_t& count, int part_id,
-                                 int thd_id) {
-  (void)thd_id;
-
+                                 row_t** rows, uint64_t& count, int part_id) {
   if (count == 0) return RCOK;
 
   auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
@@ -108,8 +93,8 @@ RC IndexMBTree::index_read_range(idx_key_t min_key, idx_key_t max_key,
   u64_varkey mbtree_key_max(max_key);
 
   uint64_t i = 0;
-  auto f = [&i, items, count](auto& k, auto& v) {
-    items[i++] = v;
+  auto f = [&i, rows, count](auto& k, auto& v) {
+    rows[i++] = v;
     return i < count;
   };
 
@@ -121,10 +106,8 @@ RC IndexMBTree::index_read_range(idx_key_t min_key, idx_key_t max_key,
 }
 
 RC IndexMBTree::index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
-                                     itemid_t** items, uint64_t& count,
-                                     int part_id, int thd_id) {
-  (void)thd_id;
-
+                                     row_t** rows, uint64_t& count,
+                                     int part_id) {
   if (count == 0) return RCOK;
 
   auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
@@ -137,8 +120,8 @@ RC IndexMBTree::index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
   u64_varkey mbtree_key_max(max_key);
 
   uint64_t i = 0;
-  auto f = [&i, items, count](auto& k, auto& v) {
-    items[i++] = v;
+  auto f = [&i, rows, count](auto& k, auto& v) {
+    rows[i++] = v;
     return i < count;
   };
 
@@ -149,12 +132,12 @@ RC IndexMBTree::index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
   return RCOK;
 }
 
-RC IndexMBTree::index_remove(idx_key_t key, itemid_t** out_item, int part_id) {
+RC IndexMBTree::index_remove(idx_key_t key, row_t*, int part_id) {
   auto idx = reinterpret_cast<concurrent_mbtree*>(btree_idx[part_id]);
 
   u64_varkey mbtree_key(key);
 
-  if (!idx->remove(mbtree_key, out_item)) return ERROR;
+  if (!idx->remove(mbtree_key, NULL)) return ERROR;
 
   return RCOK;
 }

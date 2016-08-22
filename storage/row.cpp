@@ -396,9 +396,8 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 }
 
 #if CC_ALG == MICA
-RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, itemid_t* item, uint64_t part_id) {
+RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_row, uint64_t row_id, uint64_t part_id) {
 	assert(part_id >= 0 && part_id < table->mica_tbl.size());
-  auto row_id = reinterpret_cast<uint64_t>(item->location);
 
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl[this->get_part_id()]->row_count());
@@ -407,8 +406,10 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, it
 		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
 		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, false, false))
 			return Abort;
-		row->table = table;
-		row->data = const_cast<char*>(rah.cdata());
+		access_row->table = table;
+		access_row->set_part_id(part_id);
+		access_row->set_row_id(row_id);
+		access_row->data = const_cast<char*>(rah.cdata());
 		return RCOK;
 	}
 
@@ -423,11 +424,11 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t *& row, it
 		assert(false);
 		return Abort;
 	}
-	row->table = table;
+	access_row->table = table;
 	if (type == RD)
-		row->data = const_cast<char*>(rah.cdata());
+		access_row->data = const_cast<char*>(rah.cdata());
 	else
-		row->data = rah.data();
+		access_row->data = rah.data();
 	return RCOK;
 }
 #endif

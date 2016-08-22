@@ -19,18 +19,13 @@ RC TestTxnMan::run_txn(int type, int access_num) {
 
 RC TestTxnMan::testReadwrite(int access_num) {
 	RC rc = RCOK;
-	itemid_t * m_item;
 
-#if INDEX_STRUCT != IDX_MICA
-	m_item = index_read(_wl->the_index, 0, 0);
-	row_t * row = ((row_t *)m_item->location);
-	row_t * row_local = get_row(row, WR);
-#else
-	itemid_t idx_item;
-	m_item = &idx_item;
-	index_read(_wl->the_index, 0, m_item, 0);
-	row_t * row_local = get_row(_wl->the_index, m_item, 0, WR);
-#endif
+	row_t * row;
+	row_t * row_local;
+	rc = index_read(_wl->the_index, 0, &row, 0);
+	assert(rc == RCOK);
+	row_local = get_row(_wl->the_index, row, 0, WR);
+	assert(rc == RCOK);
 	if (access_num == 0) {
 		char str[] = "hello";
 		row_local->set_value(0, 1234);
@@ -64,21 +59,13 @@ RC
 TestTxnMan::testConflict(int access_num)
 {
 	RC rc = RCOK;
-	itemid_t * m_item;
 
+	row_t * row;
+	row_t * row_local;
 	idx_key_t key;
 	for (key = 0; key < 1; key ++) {
-#if INDEX_STRUCT != IDX_MICA
-		m_item = index_read(_wl->the_index, key, 0);
-		row_t * row = ((row_t *)m_item->location);
-		row_t * row_local;
-		row_local = get_row(row, WR);
-#else
-		itemid_t idx_item;
-		m_item = &idx_item;
-		index_read(_wl->the_index, 0, m_item, 0);
-		row_t * row_local = get_row(_wl->the_index, m_item, 0, WR);
-#endif
+		rc = index_read(_wl->the_index, 0, &row, 0);
+		row_local = get_row(_wl->the_index, row, 0, WR);
 		if (row_local) {
 			char str[] = "hello";
 			row_local->set_value(0, 1234);

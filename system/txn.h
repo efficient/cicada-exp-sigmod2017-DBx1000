@@ -96,46 +96,35 @@ public:
 	TxnType 		vll_txn_type;
 
 	// index_read methods
-#if INDEX_STRUCT != IDX_MICA
 	template <typename IndexT>
-	itemid_t *		index_read(IndexT * index, idx_key_t key, int part_id);
+	RC index_read(IndexT* index, idx_key_t key, row_t** row, int part_id);
+
 	template <typename IndexT>
-	void 			index_read(IndexT * index, idx_key_t key, int part_id, itemid_t *& item);
+	RC index_read_multiple(IndexT* index, idx_key_t key, row_t** rows, size_t& count, int part_id);
+
 	template <typename IndexT>
-	RC		index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
+	RC index_read_range(IndexT* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id);
+
 	template <typename IndexT>
-	RC		index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, itemid_t** items, uint64_t& count, int part_id);
-#else
-	template <typename IndexT>
-	RC		index_read(IndexT * index, idx_key_t key, itemid_t* item, int part_id);
-	template <typename IndexT>
-	RC		index_read_multiple(IndexT * index, idx_key_t key, uint64_t* row_ids, uint64_t& count, int part_id);
-	template <typename IndexT>
-	RC		index_read_range(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-	template <typename IndexT>
-	RC		index_read_range_rev(IndexT * index, idx_key_t min_key, idx_key_t max_key, uint64_t* row_ids, uint64_t& count, int part_id);
-#endif
+	RC index_read_range_rev(IndexT* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id);
 
 	// get_row methods
-	row_t * 		get_row(row_t * row, access_t type);
-#if CC_ALG == MICA
 	template <typename IndexT>
-	row_t * 		get_row(IndexT* index, itemid_t * item, int part_id, access_t type);
-#endif
+	row_t* get_row(IndexT* index, row_t* row, int part_id, access_t type);
 
 	// search (index_read + get_row)
   template <typename IndexT>
-  row_t* search(IndexT* index, uint64_t key, int part_id, access_t type);
+  row_t* search(IndexT* index, size_t key, int part_id, access_t type);
 
 	// insert_row/remove_row
-  bool insert_row(table_t* tbl, row_t*& row, int part_id, uint64_t& out_row_id);
+  bool insert_row(table_t* tbl, row_t*& row, int part_id, uint64_t& row_id);
 	bool remove_row(row_t* row);
 
 	// index_insert/index_remove
   template <typename IndexT>
 	bool insert_idx(IndexT* idx, idx_key_t key, row_t* row, int part_id);
   template <typename IndexT>
-	bool remove_idx(IndexT* idx, idx_key_t key, uint64_t row_id, int part_id);
+	bool remove_idx(IndexT* idx, idx_key_t key, row_t* row, int part_id);
 
 	RC apply_index_changes(RC rc);
 

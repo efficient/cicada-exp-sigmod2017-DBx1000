@@ -43,8 +43,6 @@ public:
 
 	bool sim_done;
 protected:
-	void index_insert(string index_name, uint64_t key, row_t * row);
-	template <class INDEX_T>
-	void index_insert(INDEX_T * index, uint64_t key, row_t * row, int64_t part_id = -1);
+	template <class IndexT>
+	void index_insert(IndexT* index, uint64_t key, row_t* row, int part_id);
 };
-

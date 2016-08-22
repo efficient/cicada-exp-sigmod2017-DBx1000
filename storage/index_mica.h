@@ -6,36 +6,33 @@
 
 #if INDEX_STRUCT == IDX_MICA
 
+class row_t;
+
 template <typename MICAIndexT>
 class IndexMICAGeneric : public index_base {
  public:
   RC init(uint64_t part_cnt, table_t* table);
   RC init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt);
 
-  bool index_exist(idx_key_t key);  // check if the key exist.
-  RC index_insert(idx_key_t key, itemid_t* item, int part_id = -1);
+  RC index_insert(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
+  // This method requires the current row value to remove the index entry.
+  RC index_remove(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
 
-  RC index_read(idx_key_t key, itemid_t*& item, int part_id = -1) {
-    return index_read(key, item, part_id, 0);
-  }
-  RC index_read(idx_key_t key, itemid_t*& item, int part_id = -1,
-                int thd_id = 0);
-  RC index_read_multiple(MICATransaction* tx, idx_key_t key, uint64_t* row_ids,
-                         size_t& count, int part_id = -1, int thd_id = 0);
+  RC index_read(MICATransaction* tx, idx_key_t key, row_t** row, int part_id);
+  RC index_read_multiple(MICATransaction* tx, idx_key_t key, row_t** rows,
+                         size_t& count, int part_id);
+
   RC index_read_range(MICATransaction* tx, idx_key_t min_key, idx_key_t max_key,
-                      uint64_t* row_ids, size_t& count, int part_id = -1,
-                      int thd_id = 0);
+                      row_t** rows, size_t& count, int part_id);
   RC index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
-                          idx_key_t max_key, uint64_t* row_ids, size_t& count,
-                          int part_id = -1, int thd_id = 0);
+                          idx_key_t max_key, row_t** rows, size_t& count,
+                          int part_id);
 
   table_t* table;
   std::vector<MICAIndexT*> mica_idx;
 
  private:
   uint64_t bucket_cnt;
-  volatile uint64_t item_cnt;
-  bool overload_warning;
 };
 
 class IndexMICA : public IndexMICAGeneric<MICAIndex> {};

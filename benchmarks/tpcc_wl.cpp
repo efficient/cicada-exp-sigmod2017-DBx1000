@@ -76,7 +76,8 @@ RC tpcc_wl::init_table() {
   tpcc_buffer = new drand48_data*[wh_thd_max];
 
   for (int i = 0; i < wh_thd_max; i++) {
-    tpcc_buffer[i] = (drand48_data*)mem_allocator.alloc(sizeof(drand48_data), -1);
+    tpcc_buffer[i] =
+        (drand48_data*)mem_allocator.alloc(sizeof(drand48_data), -1);
     srand48_r(i + 1, tpcc_buffer[i]);
   }
   InitNURand(0);
@@ -97,7 +98,8 @@ RC tpcc_wl::init_table() {
 }
 
 RC tpcc_wl::get_txn_man(txn_man*& txn_manager, thread_t* h_thd) {
-  txn_manager = (tpcc_txn_man*)mem_allocator.alloc(sizeof(tpcc_txn_man), h_thd->get_thd_id());
+  txn_manager = (tpcc_txn_man*)mem_allocator.alloc(sizeof(tpcc_txn_man),
+                                                   h_thd->get_thd_id());
   new (txn_manager) tpcc_txn_man();
   txn_manager->init(h_thd, this, h_thd->get_thd_id());
   return RCOK;

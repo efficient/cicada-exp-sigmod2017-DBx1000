@@ -25,13 +25,7 @@ RC ycsb_txn_man::run_txn(base_query* query) {
   RC rc;
   ycsb_query* m_query = (ycsb_query*)query;
   ycsb_wl* wl = (ycsb_wl*)h_wl;
-  itemid_t* m_item = NULL;
   row_cnt = 0;
-#if INDEX_STRUCT == IDX_MICA
-  RC idx_rc;
-  itemid_t idx_item;
-  m_item = &idx_item;
-#endif
 
   const uint64_t kColumnSize = MAX_TUPLE_SIZE / 10;
 
@@ -44,31 +38,10 @@ RC ycsb_txn_man::run_txn(base_query* query) {
     bool finish_req = false;
     UInt32 iteration = 0;
     while (!finish_req) {
-      if (iteration == 0) {
-#if INDEX_STRUCT != IDX_MICA
-        m_item = index_read(_wl->the_index, req->key, part_id);
-#else
-        idx_rc = index_read(_wl->the_index, req->key, m_item, part_id);
-        assert(idx_rc == RCOK);
-#endif
-      }
-#if INDEX_STRUCT == IDX_BTREE
-      else {
-        _wl->the_index->index_next(get_thd_id(), m_item);
-        if (m_item == NULL) break;
-      }
-#endif
-      row_t* row = ((row_t*)m_item->location);
-      row_t* row_local;
       access_t type = req->rtype;
+      row_t* row = search(_wl->the_index, req->key, part_id, type);
 
-#if CC_ALG != MICA
-      row_local = get_row(row, type);
-#else
-      (void)row;
-      row_local = get_row(_wl->the_index, m_item, part_id, type);
-#endif
-      if (row_local == NULL) {
+      if (row == NULL) {
         rc = Abort;
         goto final;
       }
@@ -78,7 +51,7 @@ RC ycsb_txn_man::run_txn(base_query* query) {
       /*if (m_query->request_cnt > 1)*/ {
         if (req->rtype == RD || req->rtype == SCAN) {
           //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
-          const char* data = row_local->get_data() + column * kColumnSize;
+          const char* data = row->get_data() + column * kColumnSize;
           for (uint64_t j = 0; j < kColumnSize; j += 64)
             v += static_cast<uint64_t>(data[j]);
           v += static_cast<uint64_t>(data[kColumnSize - 1]);
@@ -88,7 +61,7 @@ RC ycsb_txn_man::run_txn(base_query* query) {
           //					for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
           //int fid = 0;
           // char * data = row->get_data();
-          char* data = row_local->get_data() + column * kColumnSize;
+          char* data = row->get_data() + column * kColumnSize;
           for (uint64_t j = 0; j < kColumnSize; j += 64) {
             v += static_cast<uint64_t>(data[j]);
             data[j] = static_cast<char>(v);

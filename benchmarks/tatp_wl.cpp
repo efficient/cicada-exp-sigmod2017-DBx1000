@@ -108,29 +108,14 @@ void tatp_wl::gen_subscriber(uint64_t s_id, uint64_t thd_id) {
     new_row->set_value(col++, (uint32_t)URand(0, (uint32_t)-1, thd_id));
 
   {
-    itemid_t* m_item =
-        (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-    assert(m_item != NULL);
-    m_item->type = DT_row;
-    m_item->location = new_row;
-    m_item->valid = true;
     uint64_t idx_key = subscriberKey(s_id);
-
-    auto rc = i_subscriber->index_insert(idx_key, m_item, part_id);
-    assert(rc == RCOK);
+    index_insert(i_subscriber, idx_key, new_row, part_id);
   }
   {
-    itemid_t* m_item =
-        (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-    assert(m_item != NULL);
-    m_item->type = DT_row;
-    m_item->location = new_row;
-    m_item->valid = true;
     uint64_t idx_key = subscriberSubNbrKey(sub_nbr);
     auto part_id = key_to_part(
         idx_key);  // The only index that does not use s_id for partionioning
-
-    auto rc = i_subscriber_sub_nbr->index_insert(idx_key, m_item, part_id);
+    index_insert(i_subscriber_sub_nbr, idx_key, new_row, part_id);
     assert(rc == RCOK);
   }
 }
@@ -166,15 +151,8 @@ void tatp_wl::gen_access_info(uint64_t s_id, uint64_t thd_id) {
     tatp_astring(5, 5, data4, thd_id);
     new_row->set_value(col++, data4);
 
-    itemid_t* m_item =
-        (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-    assert(m_item != NULL);
-    m_item->type = DT_row;
-    m_item->location = new_row;
-    m_item->valid = true;
     uint64_t idx_key = accessInfoKey(s_id, ai_type);
-
-    rc = i_access_info->index_insert(idx_key, m_item, part_id);
+    index_insert(i_access_info, idx_key, new_row, part_id);
     assert(rc == RCOK);
   }
 }
@@ -210,15 +188,8 @@ void tatp_wl::gen_spe_and_cal(uint64_t s_id, uint64_t thd_id) {
     tatp_astring(5, 5, data_b, thd_id);
     new_row->set_value(col++, data_b);
 
-    itemid_t* m_item =
-        (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-    assert(m_item != NULL);
-    m_item->type = DT_row;
-    m_item->location = new_row;
-    m_item->valid = true;
     uint64_t idx_key = specialFacilityKey(s_id, sf_type);
-
-    rc = i_special_facility->index_insert(idx_key, m_item, part_id);
+    index_insert(i_special_facility, idx_key, new_row, part_id);
     assert(rc == RCOK);
 
     // call_forwarding
@@ -250,16 +221,8 @@ void tatp_wl::gen_spe_and_cal(uint64_t s_id, uint64_t thd_id) {
       new_row->set_value(col++, numberx);
 
       {
-        itemid_t* m_item =
-            (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-        assert(m_item != NULL);
-        m_item->type = DT_row;
-        m_item->location = new_row;
-        m_item->valid = true;
         uint64_t idx_key = callForwardingKey(s_id, sf_type, start_time);
-
-        auto rc = i_call_forwarding->index_insert(idx_key, m_item, part_id);
-        assert(rc == RCOK);
+        index_insert(i_call_forwarding, idx_key, new_row, part_id);
       }
     }
   }

@@ -155,9 +155,6 @@ public:
     };
 	Data_type type;
 	void * location; // points to the table | page | row
-#if INDEX_STRUCT == IDX_MICA
-	MICATransaction* mica_tx;
-#endif
 	itemid_t * next;
 	bool valid;
 	void init();

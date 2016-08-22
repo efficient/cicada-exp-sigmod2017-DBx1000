@@ -85,15 +85,8 @@ RC ycsb_wl::init_table() {
         for (int i = 0; i < field_size; i++) value[i] = (char)rand() % (1 << 8);
         new_row->set_value(fid, value);
       }
-      itemid_t* m_item =
-          (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-      assert(m_item != NULL);
-      m_item->type = DT_row;
-      m_item->location = new_row;
-      m_item->valid = true;
       uint64_t idx_key = primary_key;
-      rc = the_index->index_insert(idx_key, m_item, part_id);
-      assert(rc == RCOK);
+      index_insert(the_index, idx_key, new_row, part_id);
       total_row++;
     }
   }
@@ -163,16 +156,9 @@ void* ycsb_wl::init_table_slice() {
       new_row->set_value(fid, value);
     }
 
-    itemid_t* m_item =
-        (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
-    assert(m_item != NULL);
-    m_item->type = DT_row;
-    m_item->location = new_row;
-    m_item->valid = true;
     uint64_t idx_key = primary_key;
 
-    rc = the_index->index_insert(idx_key, m_item, part_id);
-    assert(rc == RCOK);
+    index_insert(the_index, idx_key, new_row, part_id);
 
     // 		if (key % 1000000 == 0) {
     // 			printf("key=%" PRIu64 "\n", key);

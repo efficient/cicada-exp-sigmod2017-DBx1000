@@ -89,31 +89,14 @@ bool tatp_txn_man::enum_call_forwarding(uint32_t s_id, uint8_t sf_type,
   auto part_id = key_to_part(s_id);
 
   uint64_t cnt = 4;
-#if INDEX_STRUCT != IDX_MICA
-  itemid_t* items[4];
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  row_t* rows[4];
+  auto idx_rc = index_read_range(index, key, max_key, rows, cnt, part_id);
   if (idx_rc == Abort) return false;
-#else
-  uint64_t row_ids[4];
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  if (idx_rc == Abort) return false;
-#endif
   assert(cnt < 4);
 
   for (uint64_t i = 0; i < cnt; i++) {
-#if INDEX_STRUCT != IDX_MICA
-#if CC_ALG != MICA
-    auto shared = (row_t*)items[i]->location;
-    auto local = get_row(shared, RD);
-#else
-    auto local = get_row(index, items[i], part_id, RD);
-#endif
-#else  // INDEX_STRUCT == IDX_MICA
-    itemid_t idx_item;
-    auto item = &idx_item;
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-    auto local = get_row(index, item, part_id, RD);
-#endif
+    auto shared = rows[i];
+    auto local = get_row(index, shared, part_id, RD);
     if (local == NULL) return false;
 
     if (!func(local)) break;
@@ -136,34 +119,25 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
   auto part_id = key_to_part(s_id);
 
   uint64_t cnt = 4;
-#if INDEX_STRUCT != IDX_MICA
-  itemid_t* items[4];
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  row_t* rows[4];
+  auto idx_rc = index_read_range(index, key, max_key, rows, cnt, part_id);
   if (idx_rc == Abort) {
     FAIL_ON_ABORT();
     return finish(Abort);
   }
-#else
-  uint64_t row_ids[4];
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  if (idx_rc == Abort) {
-    FAIL_ON_ABORT();
-    return finish(Abort);
-  }
-#endif
   assert(cnt < 4);
 
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
-    auto shared = (row_t*)items[i]->location;
-    auto local = get_row(shared, RD);
+    auto shared = rows[i];
+    auto local = get_row(index, shared, part_id, RD);
 
     uint8_t start_time;
     local->get_value((int)CallForwardingConst::start_time, start_time);
     if (start_time != arg.start_time) continue;
 
     // Get a new local row with WR to allow detecting conflicts.
-    local = get_row(shared, WR);
+    local = get_row(index, shared, part_id, WR);
     if (!remove_row(shared)) {
       FAIL_ON_ABORT();
       return finish(Abort);
@@ -173,11 +147,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
 
     // MICA handles row deletion directly without using remove_row().
     auto table = _wl->t_call_forwarding;
-#if INDEX_STRUCT != IDX_MICA
-    auto row_id = reinterpret_cast<uint64_t>(items[i]->location);
-#else
-    auto row_id = row_ids[i];
-#endif
+    auto row_id = reinterpret_cast<uint64_t>(rows[i]);
     MICARowAccessHandle rah(mica_tx);
     if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) ||
         !rah.read_row()) {
@@ -399,23 +369,14 @@ RC tatp_txn_man::run_update_subscriber_data(tatp_query* query) {
     auto key = specialFacilityKey(arg.s_id, arg.sf_type);
     auto part_id = key_to_part(arg.s_id);
 
-// It is OK if there is no row.
-#if INDEX_STRUCT != IDX_MICA
-    auto item = index_read(index, key, part_id);
-    if (item == NULL) return finish(RCOK);
-#else
-    itemid_t idx_item;
-    auto item = &idx_item;
-    auto idx_rc = index_read(index, key, item, part_id);
-    if (idx_rc != RCOK) return finish(RCOK);
-#endif
+    row_t* row;
+    auto rc = index_read(index, key, &row, part_id);
+    if (rc == Abort) return finish(Abort);
+    // It is OK if there is no row.
+    if (rc == ERROR) return finish(RCOK);
 
-#if CC_ALG != MICA
-    auto shared = (row_t*)item->location;
-    auto local = get_row(shared, WR);
-#else
-    auto local = get_row(index, item, part_id, WR);
-#endif
+    auto local = get_row(index, row, part_id, WR);
+
     // We still should be able to write to an existing row.
     if (local == NULL) {
       FAIL_ON_ABORT();

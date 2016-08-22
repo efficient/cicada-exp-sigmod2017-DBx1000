@@ -133,42 +133,21 @@ row_t* tpcc_txn_man::payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
   auto index = _wl->i_customer_last;
   auto key = custNPKey(d_id, w_id, c_last);
   auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
-  auto item = index_read(index, key, part_id);
-  if (item == NULL) {
+
+  row_t* rows[100];
+  size_t count = 100;
+  auto rc = index_read_multiple(index, key, rows, count, part_id);
+  if (rc != RCOK) {
     assert(false);
     return NULL;
   }
+  if (count == 0) return NULL;
+  assert(count != 100);
 
-  uint64_t cnt = 0;
-  auto it = item;
-  auto mid = item;
-  while (it != NULL) {
-    cnt++;
-    it = it->next;
-    if (cnt % 2 == 0) mid = mid->next;
-  }
-#else
-  uint64_t cnt = 100;
-  uint64_t row_ids[100];
-
-  auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
-  if (idx_rc == Abort) return NULL;
-  assert(idx_rc == RCOK);
-  assert(cnt != 0 && cnt != 100);
-
-  itemid_t idx_item;
-  auto mid = &idx_item;
-  mid->location = reinterpret_cast<void*>(row_ids[cnt / 2]);
-#endif
-
-#if CC_ALG != MICA
-  auto shared = (row_t*)mid->location;
-  auto local = get_row(shared, WR);
-#else
+  auto mid = rows[count / 2];
   auto local = get_row(index, mid, part_id, WR);
-#endif
   if (local != NULL) local->get_value(C_ID, *out_c_id);
+
   // printf("payment_getCustomerByLastName: %" PRIu64 "\n", cnt);
   return local;
 }
@@ -584,16 +563,8 @@ row_t* tpcc_txn_man::order_status_getCustomerByCustomerId(uint64_t w_id,
   auto index = _wl->i_customer_id;
   auto key = custKey(c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
   return search(index, key, part_id, RD);
-#else
-  auto item = index_read(index, key, part_id);
-  if (item == NULL) return NULL;
-  auto shared = (row_t*)item->location;
-  auto local = shared;
-  return local;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   return search(index, key, part_id, PEEK);
 #endif
@@ -609,39 +580,20 @@ row_t* tpcc_txn_man::order_status_getCustomerByLastName(uint64_t w_id,
   auto index = _wl->i_customer_last;
   auto key = custNPKey(d_id, w_id, c_last);
   auto part_id = wh_to_part(w_id);
-#if INDEX_STRUCT != IDX_MICA
-  auto item = index_read(index, key, part_id);
-  assert(item != NULL);
 
-  uint64_t cnt = 0;
-  auto it = item;
-  auto mid = item;
-  while (it != NULL) {
-    cnt++;
-    it = it->next;
-    if (cnt % 2 == 0) mid = mid->next;
+  row_t* rows[100];
+  size_t count = 100;
+  auto rc = index_read_multiple(index, key, rows, count, part_id);
+  if (rc != RCOK) {
+    assert(false);
+    return NULL;
   }
-#else
-  uint64_t cnt = 100;
-  uint64_t row_ids[100];
+  if (count == 0) return NULL;
+  assert(count != 100);
 
-  auto idx_rc = index_read_multiple(index, key, row_ids, cnt, part_id);
-  assert(idx_rc != Abort);
-  assert(idx_rc == RCOK);
-  assert(cnt != 0 && cnt != 100);
-
-  itemid_t idx_item;
-  auto mid = &idx_item;
-  mid->location = reinterpret_cast<void*>(row_ids[cnt / 2]);
-#endif
-
-#if CC_ALG != MICA
-  auto shared = (row_t*)mid->location;
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
-  auto local = get_row(shared, RD);
-#else
-  auto local = shared;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
+  auto mid = rows[count / 2];
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
+  auto local = get_row(index, mid, part_id, RD);
 #else
   auto local = get_row(index, mid, part_id, PEEK);
 #endif
@@ -658,65 +610,32 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   auto max_key = orderCustKey(1, c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-  uint64_t cnt = 1;
-  itemid_t* items[1];
+  row_t* rows[1];
+  uint64_t count = 1;
 
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
 
-  // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
-  if (cnt == 0) {
+  // printf("order_status_getLastOrder: %" PRIu64 "\n", count);
+  if (count == 0) {
     // There must be at least one order per customer.
     printf("order_status_getLastOrder: w_id=%" PRIu64 " d_id=%" PRIu64
-           " c_id=%" PRIu64 " cnt=%" PRIu64 "\n",
-           w_id, d_id, c_id, cnt);
+           " c_id=%" PRIu64 " count=%" PRIu64 "\n",
+           w_id, d_id, c_id, count);
     assert(false);
     return NULL;
   }
-  if (cnt == 0) return NULL;
+  if (count == 0) return NULL;
 
-#if CC_ALG != MICA
-  auto shared = (row_t*)items[0]->location;
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
-  auto local = get_row(shared, RD);
+  auto shared = rows[0];
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
+  auto local = get_row(index, shared, part_id, RD);
 #else
-  auto local = shared;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
-#else
-  auto local = get_row(index, items[0], part_id, PEEK);
+  auto local = get_row(index, shared, part_id, PEEK);
 #endif
+  if (local == NULL) return NULL;
 
-#else  // INDEX_STRUCT == IDX_MICA
-
-  uint64_t cnt = 1;
-  uint64_t row_ids[1];
-
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  assert(idx_rc != Abort);
-  assert(idx_rc == RCOK);
-
-  // printf("order_status_getLastOrder: %" PRIu64 "\n", cnt);
-  if (cnt == 0) {
-    // There must be at least one order per customer.
-    printf("order_status_getLastOrder: w_id=%" PRIu64 " d_id=%" PRIu64
-           " c_id=%" PRIu64 " cnt=%" PRIu64 "\n",
-           w_id, d_id, c_id, cnt);
-    assert(mica_tx->is_peek_only());
-    index->mica_idx[part_id]->check(mica_tx);
-    assert(false);
-    return NULL;
-  }
-  if (cnt == 0) return NULL;
-
-  itemid_t idx_item;
-  auto item = &idx_item;
-  item->location = reinterpret_cast<void*>(row_ids[0]);
-
-  auto local = get_row(index, item, part_id, PEEK);
-#endif
-  assert(local != NULL);
   return local;
 }
 
@@ -728,28 +647,22 @@ bool tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   auto max_key = orderlineKey(15, o_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-  uint64_t cnt = 16;
-  itemid_t* items[16];
+  row_t* rows[16];
+  uint64_t count = 16;
 
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
-  assert(cnt != 16);
+  assert(count != 16);
 
-  for (uint64_t i = 0; i < cnt; i++) {
-#if CC_ALG != MICA
-    auto shared = (row_t*)items[i]->location;
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
-    auto local = get_row(shared, RD);
+  for (uint64_t i = 0; i < count; i++) {
+    auto shared = rows[i];
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
+    auto local = get_row(index, shared, part_id, RD);
 #else
-    auto local = shared;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
+    auto local = get_row(index, shared, part_id, PEEK);
+#endif
     if (local == NULL) return false;
-#else
-    auto local = get_row(index, items[i], part_id, PEEK);
-    assert(local != NULL);
-#endif
 
     // int64_t ol_i_id;
     // uint64_t ol_supply_w_id, ol_quantity, ol_delivery_d;
@@ -762,35 +675,6 @@ bool tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
     (void)local;
   }
 
-#else  // INDEX_STRUCT == IDX_MICA
-
-  uint64_t cnt = 16;
-  uint64_t row_ids[16];
-
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  assert(idx_rc != Abort);
-  assert(idx_rc == RCOK);
-  assert(cnt != 16);
-
-  itemid_t idx_item;
-  auto item = &idx_item;
-
-  for (uint64_t i = 0; i < cnt; i++) {
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-    auto local = get_row(index, item, part_id, PEEK);
-    assert(local != NULL);
-
-    // int64_t ol_i_id;
-    // uint64_t ol_supply_w_id, ol_quantity, ol_delivery_d;
-    // double ol_amount;
-    // local->get_value(OL_I_ID, ol_i_id);
-    // local->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
-    // local->get_value(OL_QUANTITY, ol_quantity);
-    // local->get_value(OL_AMOUNT, ol_amount);
-    // local->get_value(OL_DELIVERY_D, ol_delivery_d);
-    (void)local;
-  }
-#endif
   // printf("order_status_getOrderLines: w_id=%" PRIu64 " d_id=%" PRIu64
   //        " o_id=%" PRIu64 " cnt=%" PRIu64 "\n",
   //        w_id, d_id, o_id, cnt);
@@ -853,56 +737,23 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 #endif
   auto part_id = wh_to_part(w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-  uint64_t cnt = 1;
-  itemid_t* items[1];
+  row_t* rows[1];
+  uint64_t count = 1;
 
-  auto idx_rc = index_read_range_rev(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range_rev(index, key, max_key, rows, count, part_id);
   if (idx_rc == Abort) return false;
   assert(idx_rc == RCOK);
 
-  // printf("delivery_getNewOrder_deleteNewOrder: %" PRIu64 "\n", cnt);
-  if (cnt == 0) {
+  // printf("delivery_getNewOrder_deleteNewOrder: %" PRIu64 "\n", count);
+  if (count == 0) {
     // No new order; this is acceptable and we do not need to abort TX.
     *out_o_id = -1;
     return true;
   }
-
-  // Pick an order randomly to reduce future contention.
-  // uint64_t i = RAND(cnt, h_thd->get_thd_id());
-  uint64_t i = 0;
-
-  auto item = items[i];
-
-#else  // INDEX_STRUCT == IDX_MICA
-
-  uint64_t cnt = 1;
-  uint64_t row_ids[1];
-
-  auto idx_rc =
-      index_read_range_rev(index, key, max_key, row_ids, cnt, part_id);
-  if (idx_rc == Abort) return false;
-  assert(idx_rc == RCOK);
-
-  // printf("delivery_getNewOrder_deleteNewOrder: %" PRIu64 "\n", cnt);
-  if (cnt == 0) {
-    // No new order; this is acceptable and we do not need to abort TX.
-    *out_o_id = -1;
-    return true;
-  }
-
-  // Pick an order randomly to reduce future contention.
-  // uint64_t i = RAND(cnt, h_thd->get_thd_id());
-  uint64_t i = 0;
-
-  itemid_t idx_item;
-  auto item = &idx_item;
-  item->location = reinterpret_cast<void*>(row_ids[i]);
-#endif
 
 #if CC_ALG != MICA
-  auto shared = (row_t*)item->location;
-  auto local = get_row(shared, WR);
+  auto shared = rows[0];
+  auto local = get_row(index, shared, part_id, WR);
   if (local == NULL) return false;
 
   int64_t o_id;
@@ -919,14 +770,13 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
 #else  // CC_ALG == MICA
 
-  // auto local = get_row(index, item, part_id, WR);
   // Use the raw interface directly for deletion.
   auto table = _wl->t_neworder;
-  auto row_id = reinterpret_cast<uint64_t>(item->location);
-  // printf("%" PRIu64 "\n", row_id);
+
   MICARowAccessHandle rah(mica_tx);
   // assert(part_id >= 0 && part_id < table->mica_tbl.size());
-  if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) ||
+  if (!rah.peek_row(table->mica_tbl[part_id], (uint64_t)rows[0], false, true,
+                    true) ||
       !rah.read_row() || !rah.write_row()) {
     return false;
   }
@@ -954,17 +804,11 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   {
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
-#if INDEX_STRUCT != IDX_MICA
     // printf("o_id=%" PRIi64 " d_id=%" PRIu64 " w_id=%" PRIu64 "\n", o_id, d_id,
     //        w_id);
-    // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 "\n",
-    //        idx, key, (uint64_t)-1, part_id);
-    if (!remove_idx(idx, key, (uint64_t)-1, part_id)) return false;
-#else
     // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 " \n",
-    //        idx, key, row_id, part_id);
-    if (!remove_idx(idx, key, row_id, part_id)) return false;
-#endif
+    //        idx, key, (uint64_t)rows[0], part_id);
+    if (!remove_idx(idx, key, rows[0], part_id)) return false;
   }
 #endif
   return true;
@@ -998,21 +842,16 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
   auto max_key = orderlineKey(15, no_o_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-  uint64_t cnt = 16;
-  itemid_t* items[16];
+  row_t* rows[16];
+  uint64_t count = 16;
 
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
   if (idx_rc != RCOK) return false;
-  assert(cnt != 16);
+  assert(count != 16);
 
-  for (uint64_t i = 0; i < cnt; i++) {
-#if CC_ALG != MICA
-    auto shared = (row_t*)items[i]->location;
-    auto local = get_row(shared, WR);
-#else
-    auto local = get_row(index, items[i], part_id, WR);
-#endif
+  for (uint64_t i = 0; i < count; i++) {
+    auto shared = rows[i];
+    auto local = get_row(index, shared, part_id, WR);
     if (local == NULL) return false;
     double ol_amount;
     local->get_value(OL_AMOUNT, ol_amount);
@@ -1020,28 +859,6 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
     ol_total += ol_amount;
   }
 
-#else  // INDEX_STRUCT == IDX_MICA
-
-  uint64_t cnt = 16;
-  uint64_t row_ids[16];
-
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  if (idx_rc != RCOK) return false;
-  assert(cnt != 16);
-
-  itemid_t idx_item;
-  auto item = &idx_item;
-
-  for (uint64_t i = 0; i < cnt; i++) {
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-    auto local = get_row(index, item, part_id, WR);
-    if (local == NULL) return false;
-    double ol_amount;
-    local->get_value(OL_AMOUNT, ol_amount);
-    local->set_value(OL_DELIVERY_D, o_entry_d);
-    ol_total += ol_amount;
-  }
-#endif
   // printf("delivery_updateOrderLine_sumOLAmount: w_id=%" PRIu64 " d_id=%" PRIu64
   //        " o_id=%" PRIu64 " cnt=%" PRIu64 "\n",
   //        w_id, d_id, no_o_id, cnt);
@@ -1144,16 +961,8 @@ row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
   auto index = _wl->i_district;
   auto key = distKey(d_id, d_w_id);
   auto part_id = wh_to_part(d_w_id);
-#if CC_ALG != MICA
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
   return search(index, key, part_id, RD);
-#else
-  auto item = index_read(index, key, part_id);
-  if (item == NULL) return NULL;
-  auto shared = (row_t*)item->location;
-  auto local = shared;
-  return local;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
 #else
   return search(index, key, part_id, PEEK);
 #endif
@@ -1181,27 +990,21 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
   auto max_key = orderlineKey(15, ol_o_id - 20, ol_d_id, ol_w_id);
   auto part_id = wh_to_part(ol_w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-  uint64_t cnt = 301;
-  itemid_t* items[301];
+  row_t* rows[301];
+  uint64_t count = 301;
 
-  auto idx_rc = index_read_range(index, key, max_key, items, cnt, part_id);
+  auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
   assert(idx_rc != Abort);
   assert(idx_rc == RCOK);
 
-  for (uint64_t i = 0; i < cnt; i++) {
-#if CC_ALG != MICA
-    auto orderline_shared = (row_t*)items[i]->location;
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
-    auto orderline = get_row(orderline_shared, RD);
+  for (uint64_t i = 0; i < count; i++) {
+    auto orderline_shared = rows[i];
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
+    auto orderline = get_row(index, orderline_shared, part_id, RD);
 #else
-    auto orderline = orderline_shared;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
+    auto orderline = get_row(index, orderline_shared, part_id, PEEK);
+#endif
     if (orderline == NULL) return false;
-#else
-    auto orderline = get_row(index, items[i], part_id, PEEK);
-    assert(orderline != NULL);
-#endif
 
     uint64_t ol_i_id, ol_supply_w_id;
     orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
@@ -1213,36 +1016,6 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
     ol_i_id_list[list_size] = ol_i_id;
     list_size++;
   }
-
-#else  // INDEX_STRUCT == IDX_MICA
-
-  uint64_t cnt = 301;
-  uint64_t row_ids[301];
-
-  auto idx_rc = index_read_range(index, key, max_key, row_ids, cnt, part_id);
-  assert(idx_rc != Abort);
-  assert(idx_rc == RCOK);
-
-  itemid_t idx_item;
-  auto item = &idx_item;
-
-  for (uint64_t i = 0; i < cnt; i++) {
-    item->location = reinterpret_cast<void*>(row_ids[i]);
-
-    auto orderline = get_row(index, item, part_id, PEEK);
-    assert(orderline != NULL);
-
-    uint64_t ol_i_id, ol_supply_w_id;
-    orderline->get_value(OL_SUPPLY_W_ID, ol_supply_w_id);
-    if (ol_supply_w_id != s_w_id) continue;
-
-    orderline->get_value(OL_I_ID, ol_i_id);
-
-    assert(list_size < sizeof(ol_i_id_list) / sizeof(ol_i_id_list[0]));
-    ol_i_id_list[list_size] = ol_i_id;
-    list_size++;
-  }
-#endif
   assert(list_size <= 300);
 
   uint64_t distinct_ol_i_id_list[300];
@@ -1266,30 +1039,15 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
     auto index = _wl->i_stock;
     auto part_id = wh_to_part(s_w_id);
 
-#if INDEX_STRUCT != IDX_MICA
-    auto item = index_read(index, key, part_id);
-    assert(item != NULL);
+#if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
+    auto row = search(index, key, part_id, RD);
 #else
-    idx_rc = index_read(index, key, item, part_id);
-    assert(idx_rc != Abort);
-    assert(idx_rc == RCOK);
+    auto row = search(index, key, part_id, PEEK);
 #endif
-
-#if CC_ALG != MICA
-    auto shared = (row_t*)item->location;
-#ifndef EMULATE_SNAPSHOT_FOR_1VCC
-    auto local = get_row(shared, RD);
-#else
-    auto local = shared;
-#endif  // !EMULATE_SNAPSHOT_FOR_1VCC
-    if (local == NULL) return false;
-#else
-    auto local = get_row(index, item, part_id, PEEK);
-    assert(local != NULL);
-#endif
+    if (row == NULL) return false;
 
     uint64_t s_quantity;
-    local->get_value(S_QUANTITY, s_quantity);
+    row->get_value(S_QUANTITY, s_quantity);
     if (s_quantity < threshold) result++;
   }
 
@@ -1309,14 +1067,10 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
   auto& arg = query->args.stock_level;
 
   auto district = stock_level_getOId(arg.w_id, arg.d_id);
-#if CC_ALG != MICA
   if (district == NULL) {
     FAIL_ON_ABORT();
     return finish(Abort);
   }
-#else
-  assert(district != NULL);
-#endif
   int64_t o_id;
   district->get_value(D_NEXT_O_ID, o_id);
 
