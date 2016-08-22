@@ -152,6 +152,12 @@ RC txn_man::apply_index_changes(RC rc) {
 		// XXX: Freeing the row immediately is unsafe due to concurrent access.
 		// We do this only when using RCU.
 	  if (RCU_ALLOC) mem_allocator.free(row, row_t::alloc_size(row->get_table()));
+		// XXX: We need to perform the following to free up all the resources
+// #if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA && !defined(USE_INLINED_DATA)
+// 			// XXX: Need to find the manager size.
+// 			mem_allocator.free(row->manager, 0);
+// #endif
+// 			row->free_row();
 	}
 	remove_cnt = 0;
 #endif
@@ -201,10 +207,11 @@ void txn_man::cleanup(RC rc) {
 			row_t * row = insert_rows[i];
 			assert(g_part_alloc == false);
 #if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA && !defined(USE_INLINED_DATA)
+			// XXX: Need to find the manager size.
 			mem_allocator.free(row->manager, 0);
 #endif
 			row->free_row();
-			mem_allocator.free(row, sizeof(row));
+			mem_allocator.free(row, row_t::alloc_size(row->get_table()));
 		}
 	}
 	row_cnt = 0;
