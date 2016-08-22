@@ -924,7 +924,7 @@ def detect_core_count():
 
   node_count = max_node_id + 1
   max_thread_count = max_core_id + 1
-  max_thread_count /= 2   # hyperthreading
+  max_thread_count = int(max_thread_count / 2)   # hyperthreading
   # print('total %d nodes, %d cores' % (node_count, max_thread_count))
 
 
