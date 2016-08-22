@@ -59,6 +59,7 @@ int ycsb_wl::key_to_part(uint64_t key) {
   return key / rows_per_part;
 }
 
+/*
 RC ycsb_wl::init_table() {
   RC rc;
   uint64_t total_row = 0;
@@ -94,6 +95,7 @@ ins_done:
   printf("[YCSB] Table \"MAIN_TABLE\" initialized.\n");
   return RCOK;
 }
+*/
 
 // init table in parallel
 void ycsb_wl::init_table_parallel() {
@@ -129,13 +131,15 @@ void* ycsb_wl::init_table_slice() {
   mem_allocator.register_thread(tid);
 
   RC rc;
-  assert(g_synth_table_size % g_init_parallelism == 0);
   assert(tid < g_init_parallelism);
   while ((UInt32)ATOM_FETCH_ADD(next_tid, 0) < g_init_parallelism) {
   }
   assert((UInt32)ATOM_FETCH_ADD(next_tid, 0) == g_init_parallelism);
-  uint64_t slice_size = g_synth_table_size / g_init_parallelism;
-  for (uint64_t key_i = slice_size * tid; key_i < slice_size * (tid + 1); key_i++) {
+  uint64_t slice_size = (g_synth_table_size + g_init_parallelism) / g_init_parallelism;
+  uint64_t slice_offset = slice_size * tid;
+  if (slice_offset + slice_size >= g_synth_table_size)
+    slice_size = g_synth_table_size - slice_offset;
+  for (uint64_t key_i = slice_offset; key_i < slice_offset + slice_size; key_i++) {
     uint64_t key = shuffled_ids[key_i];
     row_t* new_row = NULL;
 #if CC_ALG == MICA

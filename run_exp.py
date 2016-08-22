@@ -58,10 +58,10 @@ def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_r
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   if total_count == 1:
     conf = replace_def(conf, 'PART_CNT', '1')
-    conf = replace_def(conf, 'INIT_PARALLELISM', '1')
+    conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
   else:
     conf = replace_def(conf, 'PART_CNT', '2')
-    conf = replace_def(conf, 'INIT_PARALLELISM', '2')
+    conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
