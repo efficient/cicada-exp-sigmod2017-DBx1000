@@ -947,7 +947,6 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
       return finish(Abort);
     }
   }
-#endif
 
   auto rc = finish(RCOK);
   if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
@@ -955,6 +954,11 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
   __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
   return rc;
+
+#else  // !TPCC_FULL
+
+  return finish(RCOK);
+#endif
 }
 
 //////////////////////////////////////////////////////
