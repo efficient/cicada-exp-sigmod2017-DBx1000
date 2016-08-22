@@ -571,7 +571,7 @@ RC txn_man::finish(RC rc) {
 			rc = RCOK;
 	}
 	else
-		if (!mica_tx->abort())
+		if (mica_tx->has_began() && !mica_tx->abort())
 			assert(false);
 	cleanup(rc);
 #else
