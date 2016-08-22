@@ -402,13 +402,14 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_ro
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl[this->get_part_id()]->row_count());
 
+	access_row->table = table;
+	access_row->set_part_id(part_id);
+	access_row->set_row_id(row_id);
+
 	if (type == PEEK) {
 		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
 		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, false, false))
 			return Abort;
-		access_row->table = table;
-		access_row->set_part_id(part_id);
-		access_row->set_row_id(row_id);
 		access_row->data = const_cast<char*>(rah.cdata());
 		return RCOK;
 	}
@@ -424,7 +425,6 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_ro
 		assert(false);
 		return Abort;
 	}
-	access_row->table = table;
 	if (type == RD)
 		access_row->data = const_cast<char*>(rah.cdata());
 	else
