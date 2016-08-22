@@ -899,7 +899,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      INC_STATS_ALWAYS(get_thd_id(), debug1, 1);
+      // INC_STATS_ALWAYS(get_thd_id(), debug1, 1);
       return finish(Abort);
     }
     // No new order for this district.
@@ -930,7 +930,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      INC_STATS_ALWAYS(get_thd_id(), debug2, 1);
+      // INC_STATS_ALWAYS(get_thd_id(), debug2, 1);
       return finish(Abort);
     }
 #else
@@ -943,13 +943,13 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
-      INC_STATS_ALWAYS(get_thd_id(), debug3, 1);
+      // INC_STATS_ALWAYS(get_thd_id(), debug3, 1);
       return finish(Abort);
     }
   }
 
   auto rc = finish(RCOK);
-  if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
+  // if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
   __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
