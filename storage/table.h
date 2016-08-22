@@ -19,7 +19,7 @@ public:
 
 	void delete_row(); // TODO delete_row is not supportet yet
 
-	uint64_t get_table_size() { return cur_tab_size; };
+	// uint64_t get_table_size() { return cur_tab_size; };
 	Catalog * get_schema() { return schema; };
 	const char * get_table_name() { return table_name; };
 
@@ -32,7 +32,7 @@ public:
 
 private:
 	const char * 	table_name;
-	uint64_t  		cur_tab_size;
+	// uint64_t  		cur_tab_size;
 	uint64_t part_cnt;
 	char 			pad[CL_SIZE - sizeof(void *)*3];
 };
