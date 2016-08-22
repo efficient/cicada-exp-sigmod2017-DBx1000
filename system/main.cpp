@@ -202,11 +202,11 @@ int main(int argc, char* argv[]) {
 #endif
 
   // spawn and run txns again.
-  // int ret = system("perf record -a sleep 1 &");
-  // int ret = system("perf record -a -g sleep 1 &");
-  // int ret = system("perf record -a -g -e LLC-load-misses sleep 1 &");
-  // int ret = system("perf record -C 1 sleep 1 &");
-  // int ret = system("perf record -C 2 sleep 1 &");
+  // int ret = system("perf record -a -o perf.data sleep 1 &");
+  // int ret = system("perf record -a -o perf.data -g sleep 1 &");
+  // int ret = system("perf record -a -o perf.data -g -e LLC-load-misses sleep 1 &");
+  // int ret = system("perf record -C 1 -o perf.data sleep 1 &");
+  // int ret = system("perf record -C 2 -o perf.data sleep 1 &");
   // int ret = system("perf stat -a -e cycles,instructions,cache-references,cache-misses,branches,branch-misses,stalled-cycles-frontend,L1-dcache-load-misses,L1-dcache-store-misses,L1-icache-load-misses,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,dTLB-load-misses,dTLB-store-misses,iTLB-loads,iTLB-load-misses,node-stores,node-load-misses,node-stores,node-store-misses sleep 1 &");
   // int ret = system("perf stat -C 1 sleep 1 &");
   // int ret = system("perf stat -C 2 sleep 1 &");

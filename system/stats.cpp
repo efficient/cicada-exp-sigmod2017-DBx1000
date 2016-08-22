@@ -93,17 +93,17 @@ void Stats::add_debug(uint64_t thd_id, uint64_t value, uint32_t select) {
 }
 
 void Stats::commit(uint64_t thd_id) {
-	if (STATS_ENABLE) {
-		_stats[thd_id]->time_man += tmp_stats[thd_id]->time_man;
-		_stats[thd_id]->time_index += tmp_stats[thd_id]->time_index;
-		_stats[thd_id]->time_wait += tmp_stats[thd_id]->time_wait;
-		tmp_stats[thd_id]->init();
-	}
+	// if (STATS_ENABLE) {
+	// 	_stats[thd_id]->time_man += tmp_stats[thd_id]->time_man;
+	// 	_stats[thd_id]->time_index += tmp_stats[thd_id]->time_index;
+	// 	_stats[thd_id]->time_wait += tmp_stats[thd_id]->time_wait;
+	// 	tmp_stats[thd_id]->init();
+	// }
 }
 
 void Stats::abort(uint64_t thd_id) {
-	if (STATS_ENABLE)
-		tmp_stats[thd_id]->init();
+	// if (STATS_ENABLE)
+	// 	tmp_stats[thd_id]->init();
 }
 
 void Stats::print(double sim_time) {

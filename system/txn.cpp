@@ -306,7 +306,7 @@ row_t* txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type) {
 	if (CC_ALG == HSTORE)
 		return row;
 
-	uint64_t starttime = get_sys_clock();
+	// uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
 	if (accesses[row_cnt] == NULL) {
 		Access * access = (Access *) mem_allocator.alloc(sizeof(Access), -1);
@@ -365,8 +365,8 @@ row_t* txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type) {
 	if (type == WR)
 		wr_cnt ++;
 
-	uint64_t timespan = get_sys_clock() - starttime;
-	INC_TMP_STATS(get_thd_id(), time_man, timespan);
+	// uint64_t timespan = get_sys_clock() - starttime;
+	// INC_TMP_STATS(get_thd_id(), time_man, timespan);
 	return accesses[row_cnt - 1]->data;
 }
 #else	// CC_ALG == MICA
@@ -378,7 +378,7 @@ txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type)
 	if (row_cnt == 0 && !mica_tx->has_began())
 		mica_tx->begin();
 
-	uint64_t starttime = get_sys_clock();
+	// uint64_t starttime = get_sys_clock();
 	RC rc = RCOK;
 	assert(row_cnt < MAX_ROW_PER_TXN);
 	if (accesses[row_cnt] == NULL) {
@@ -402,8 +402,8 @@ txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type)
 	if (type == WR)
 		wr_cnt ++;
 
-	uint64_t timespan = get_sys_clock() - starttime;
-	INC_TMP_STATS(get_thd_id(), time_man, timespan);
+	// uint64_t timespan = get_sys_clock() - starttime;
+	// INC_TMP_STATS(get_thd_id(), time_man, timespan);
 	return accesses[row_cnt - 1]->data;
 }
 #endif
@@ -544,7 +544,7 @@ RC txn_man::finish(RC rc) {
 	rc = apply_index_changes(rc);
 	return rc;
 #endif
-	uint64_t starttime = get_sys_clock();
+	// uint64_t starttime = get_sys_clock();
 #if CC_ALG == OCC
 	if (rc == RCOK)
 		rc = occ_man.validate(this);
@@ -579,9 +579,9 @@ RC txn_man::finish(RC rc) {
 	cleanup(rc);
 #endif
 
-	uint64_t timespan = get_sys_clock() - starttime;
-	INC_TMP_STATS(get_thd_id(), time_man,  timespan);
-	INC_STATS(get_thd_id(), time_cleanup,  timespan);
+	// uint64_t timespan = get_sys_clock() - starttime;
+	// INC_TMP_STATS(get_thd_id(), time_man,  timespan);
+	// INC_STATS(get_thd_id(), time_cleanup,  timespan);
 	return rc;
 }
 
