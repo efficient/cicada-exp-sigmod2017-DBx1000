@@ -319,8 +319,6 @@ row_t* txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type) {
 #elif (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE)
 		access->orig_data = (row_t *) mem_allocator.alloc(row_t::max_alloc_size(), -1);
 		access->orig_data->init(MAX_TUPLE_SIZE);
-#else
-		assert(false);
 #endif
 		num_accesses_alloc ++;
 	}
