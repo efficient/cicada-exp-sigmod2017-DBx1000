@@ -45,7 +45,7 @@ def set_alg(conf, alg, **kwargs):
     conf = replace_def(conf, 'RCU_ALLOC', 'false')
   else:
     conf = replace_def(conf, 'RCU_ALLOC', 'true')
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count * 0.95) * 2 * 1048576) + 'UL')
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.95) * 2 * 1048576) + 'UL')
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
 
   return conf
@@ -141,17 +141,24 @@ def set_mica_confs(conf, **kwargs):
 
 dir_name = None
 old_dir_name = None
+max_thread_count = None
+
 prefix = ''
 suffix = ''
 total_seqs = 5
 node_count = 2
-max_thread_count = None
-# max_thread_count = 20
-# max_thread_count = 28
-# max_thread_count = 32
-# hugepage_count = 32768  # 64 GiB
-# hugepage_count = 40960  # 80 GiB
-hugepage_count = 51200  # 100 GiB
+
+hugepage_count = {
+  # 64 GiB (init fails with more hugepages)
+  'MICA': 32768,
+  'MICA+INDEX': 32768,
+  # 100 GiB (some algorithms use lot of memory)
+  'SILO-REF': 51200,
+  'SILO': 51200,
+  'TICTOC': 51200,
+  'HEKATON': 51200,
+  'NO_WAIT': 51200,
+}
 
 def gen_filename(exp):
   s = ''
@@ -652,6 +659,7 @@ def unique_exps(exps):
   l = []
   for exp in exps:
     if exp in l: continue
+    assert exp['alg'] in hugepage_count
     l.append(exp)
   return l
 
@@ -697,7 +705,7 @@ def make_silo_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 30'
   cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
-  cmd += ' --numa-memory %dG' % int(int(hugepage_count * 0.95) * 2 / 1024)
+  cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.95) * 2 / 1024)
   return cmd
 
 def make_ermia_cmd(exp):
@@ -725,7 +733,7 @@ def make_ermia_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 30'
   # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
-  cmd += ' --node-memory-gb %d' % int(hugepage_count * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
+  cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
   cmd += ' --enable-gc'
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
@@ -760,10 +768,11 @@ def run(exp, prepare_only):
   os.system('rm -f ./rundb')
 
   # if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
-  if True:
-    if hugepage_status != (hugepage_count, exp['alg']):
-      os.system('../script/setup.sh %d %d > /dev/null' % (hugepage_count / 2, hugepage_count / 2))
-      hugepage_status = (hugepage_count, exp['alg'])
+  # if True:
+  if hugepage_status != (hugepage_count[exp['alg']], exp['alg']):
+    os.system('../script/setup.sh %d %d > /dev/null' % \
+      (hugepage_count[exp['alg']] / 2, hugepage_count[exp['alg']] / 2))
+    hugepage_status = (hugepage_count[exp['alg']], exp['alg'])
   # else:
   #   if hugepage_status != (0, ''):
   #     os.system('../script/setup.sh 0 0 > /dev/null')

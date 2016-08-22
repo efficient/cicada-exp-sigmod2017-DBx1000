@@ -23,8 +23,7 @@ RC workload::init() {
 #if CC_ALG == MICA
   auto config = ::mica::util::Config::load_file("test_tx.json");
   mica_alloc = new MICAAlloc(config.get("alloc"));
-  // auto page_pool_size = 76 * uint64_t(1073741824);
-  auto page_pool_size = 95 * uint64_t(1073741824);
+  auto page_pool_size = 60 * uint64_t(1073741824);
   if (g_thread_cnt == 1) {
     mica_page_pools[0] = new MICAPagePool(mica_alloc, page_pool_size / 2, 0);
     mica_page_pools[1] = nullptr;
