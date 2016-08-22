@@ -80,6 +80,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
 #endif
 
   // static constexpr bool kCollectCommitStats = false;
+  // static constexpr bool kCollectExtraCommitStats = true;
   // static constexpr bool kCollectProcessingStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
 
@@ -248,4 +249,3 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 #ifndef UINT64_MAX
 #define UINT64_MAX 		18446744073709551615UL
 #endif // UINT64_MAX
-
