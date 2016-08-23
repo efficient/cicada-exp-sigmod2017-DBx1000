@@ -345,7 +345,8 @@ def enum_exps(seq):
           tatp.update({ 'bench': 'TATP', 'tx_count': tx_count })
 
           # for scale_factor in [1, 2, 5, 10, 20, 50, 100]:
-          for scale_factor in [1, 10]:
+          # for scale_factor in [1, 10]:
+          for scale_factor in [1]:
             if tag != 'macrobench': continue
             tatp.update({ 'scale_factor': scale_factor })
             yield dict(tatp)
