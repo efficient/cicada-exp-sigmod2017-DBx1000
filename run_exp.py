@@ -168,8 +168,8 @@ hugepage_count = {
   # 32 GiB + (16 GiB for RCU)
   'MICA': (32 + 16) * 1024 / 2,
   'MICA+INDEX': (32 + 16) * 1024 / 2,
-  # 48 GiB
-  'HEKATON': 48 * 1024 / 2,
+  # 64 GiB
+  'HEKATON': 64 * 1024 / 2,
 }
 
 def gen_filename(exp):
