@@ -44,8 +44,8 @@ def set_alg(conf, alg, **kwargs):
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
   conf = replace_def(conf, 'RCU_ALLOC', 'true')
   if alg.startswith('MICA'):
-      # ~4096 huge pages (8 GiB) for RCU
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(4096 * 0.99) * 2 * 1048576) + 'UL')
+      # ~8192 huge pages (16 GiB) for RCU
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(8192 * 0.99) * 2 * 1048576) + 'UL')
   else:
     conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.99) * 2 * 1048576) + 'UL')
 
@@ -54,7 +54,7 @@ def set_alg(conf, alg, **kwargs):
 
 def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_ratio, zipf_theta, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
-  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'WARMUP', str(int(tx_count / 3)))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
   conf = replace_def(conf, 'INIT_PARALLELISM', str(thread_count))
@@ -72,7 +72,7 @@ def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_r
 
 def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
-  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'WARMUP', str(int(tx_count / 3)))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
@@ -100,7 +100,7 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
 
 def set_tatp(conf, thread_count, scale_factor, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TATP')
-  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'WARMUP', str(int(tx_count / 3)))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(67))
   conf = replace_def(conf, 'TATP_SCALE_FACTOR', str(scale_factor))
@@ -164,11 +164,11 @@ hugepage_count = {
   'SILO': 32 * 1024 / 2,
   'TICTOC': 32 * 1024 / 2,
   'NO_WAIT': 32 * 1024 / 2,
-  # 32 GiB + (8 GiB for RCU)
-  'MICA': (32 + 8) * 1024 / 2,
-  'MICA+INDEX': (32 + 8) * 1024 / 2,
-  # 48 GiB
-  'HEKATON': 48 * 1024 / 2,
+  # 32 GiB + (16 GiB for RCU)
+  'MICA': (32 + 16) * 1024 / 2,
+  'MICA+INDEX': (32 + 16) * 1024 / 2,
+  # 96 GiB
+  'HEKATON': 96 * 1024 / 2,
 }
 
 def gen_filename(exp):
