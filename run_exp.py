@@ -44,10 +44,10 @@ def set_alg(conf, alg, **kwargs):
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
   conf = replace_def(conf, 'RCU_ALLOC', 'true')
   if alg.startswith('MICA'):
-      # ~10240 huge pages (20 GiB) for RCU
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(10240 * 0.95) * 2 * 1048576) + 'UL')
+      # ~4096 huge pages (8 GiB) for RCU
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(4096 * 0.99) * 2 * 1048576) + 'UL')
   else:
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.95) * 2 * 1048576) + 'UL')
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.99) * 2 * 1048576) + 'UL')
 
   return conf
 
@@ -56,13 +56,9 @@ def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_r
   conf = replace_def(conf, 'WORKLOAD', 'YCSB')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
-  if total_count == 1:
-    conf = replace_def(conf, 'PART_CNT', '1')
-    conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
-  else:
-    conf = replace_def(conf, 'PART_CNT', '2')
-    conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
+  conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
+  conf = replace_def(conf, 'PART_CNT', '2') # use both NUMA node
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
   conf = replace_def(conf, 'REQ_PER_QUERY', str(req_per_query))
@@ -78,10 +74,11 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TPCC')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
-  # INIT_PARALLELISM does not affect tpcc initialization
-  # conf = replace_def(conf, 'INIT_PARALLELISM', '2')
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
+  # INIT_PARALLELISM does not affect tpcc initialization
+  # We still set it to avoid confusing mem_alloc
+  conf = replace_def(conf, 'INIT_PARALLELISM', str(warehouse_count))
   conf = replace_def(conf, 'PART_CNT', str(warehouse_count))
 
   if bench == 'TPCC':
@@ -98,6 +95,18 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
     conf = replace_def(conf, 'TPCC_FULL', 'true')
   else:
     assert False
+
+  return conf
+
+
+def set_tatp(conf, thread_count, tx_count, **kwargs):
+  conf = replace_def(conf, 'WORKLOAD', 'TATP')
+  conf = replace_def(conf, 'WARMUP', str(tx_count))
+  conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
+  conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(67))
+  conf = replace_def(conf, 'TATP_SCALE_FACTOR', str(scale_factor))
+  conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
+  conf = replace_def(conf, 'PART_CNT', str(thread_count))
 
   return conf
 
@@ -151,14 +160,16 @@ suffix = ''
 total_seqs = 5
 
 hugepage_count = {
-  # 100 GiB (some algorithms use lot of memory)
-  'MICA': 51200,
-  'MICA+INDEX': 51200,
-  'SILO-REF': 51200,
-  'SILO': 51200,
-  'TICTOC': 51200,
-  'HEKATON': 51200,
-  'NO_WAIT': 51200,
+  # 32 GiB
+  'SILO-REF': 32 * 1024 / 2,
+  'SILO': 32 * 1024 / 2,
+  'TICTOC': 32 * 1024 / 2,
+  'NO_WAIT': 32 * 1024 / 2,
+  # 32 GiB + (8 GiB for RCU)
+  'MICA': (32 + 8) * 1024 / 2,
+  'MICA+INDEX': (32 + 8) * 1024 / 2,
+  # 48 GiB
+  'HEKATON': 48 * 1024 / 2,
 }
 
 def gen_filename(exp):
@@ -325,6 +336,18 @@ def enum_exps(seq):
             #   # Seem to be broken in ERMIA
             #   continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+        # TATP
+        if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+          tpcc = dict(common)
+          tx_count = 2000000
+          tpcc.update({ 'bench': 'TATP', 'tx_count': tx_count })
+
+          # for scale_factor in [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]:
+          for scale_factor in [1, 10, 100, 1000]:
+            if tag != 'macrobench': continue
+            tpcc.update({ 'scale_factor': scale_factor })
             yield dict(tpcc)
 
       for thread_count in [max_thread_count]:
@@ -615,6 +638,8 @@ def update_conf(conf, exp):
     conf = set_ycsb(conf, **exp)
   elif exp['bench'] in ('TPCC', 'TPCC-FULL'):
     conf = set_tpcc(conf, **exp)
+  elif exp['bench'] == 'TATP':
+    conf = set_tatp(conf, **exp)
   else: assert False
   if exp['alg'].startswith('MICA') or exp['tag'] == 'backoff':
     conf = set_mica_confs(conf, **exp)
@@ -709,7 +734,7 @@ def make_silo_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 30'
   cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
-  cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.95) * 2 / 1024)
+  cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
   return cmd
 
 def make_ermia_cmd(exp):

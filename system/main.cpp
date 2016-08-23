@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
   vll_man.init();
 #endif
 
-  printf("mem_allocator stats after workload init:\n");
+  fprintf(stderr, "mem_allocator stats after workload init:\n");
   mem_allocator.dump_stats();
 
   pthread_barrier_init(&start_bar, NULL, g_thread_cnt + 1);
@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
 
   pthread_barrier_init(&start_bar, NULL, g_thread_cnt + 1);
 
-  printf("mem_allocator stats after warmup:\n");
+  fprintf(stderr, "mem_allocator stats after warmup:\n");
   mem_allocator.dump_stats();
 
 #if CC_ALG == MICA
@@ -287,7 +287,7 @@ int main(int argc, char* argv[]) {
          inter_commit_latency.perc(0.999));
 #endif
 
-  printf("mem_allocator stats after main processing:\n");
+  fprintf(stderr, "mem_allocator stats after main processing:\n");
   mem_allocator.dump_stats();
 
 #if PRINT_LAT_DIST
