@@ -15,7 +15,7 @@
 #include "mem_alloc.h"
 #include "manager.h"
 
-#ifdef USE_INLINED_DATA
+#if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
 
 size_t row_t::alloc_size(table_t* t) { return sizeof(row_t) + t->get_schema()->get_tuple_size(); }
 
