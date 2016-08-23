@@ -6,6 +6,7 @@
 class workload;
 class ycsb_query;
 class tpcc_query;
+class tatp_query;
 
 class base_query {
 public:
@@ -23,8 +24,10 @@ public:
 	int q_idx;
 #if WORKLOAD == YCSB
 	ycsb_query * queries;
-#else 
+#elif WORKLOAD == TPCC
 	tpcc_query * queries;
+#elif WORKLOAD == TATP
+	tatp_query * queries;
 #endif
 	char pad[CL_SIZE - sizeof(void *) - sizeof(int)];
 	drand48_data buffer;

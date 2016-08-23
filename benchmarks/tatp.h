@@ -54,6 +54,8 @@ class tatp_txn_man : public txn_man {
   RC run_update_location(tatp_query* query);
   RC run_update_subscriber_data(tatp_query* query);
 
+  int key_to_part(uint64_t key) { return _wl->key_to_part(key); }
+
   bool get_sub_id(const char* sub_nbr, uint32_t* out_s_id);
   row_t* get_special_facility(uint32_t s_id, uint8_t sf_type);
   template <typename Func>

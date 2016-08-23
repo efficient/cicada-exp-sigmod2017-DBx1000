@@ -99,14 +99,14 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   return conf
 
 
-def set_tatp(conf, thread_count, tx_count, **kwargs):
+def set_tatp(conf, thread_count, scale_factor, tx_count, **kwargs):
   conf = replace_def(conf, 'WORKLOAD', 'TATP')
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(67))
   conf = replace_def(conf, 'TATP_SCALE_FACTOR', str(scale_factor))
   conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
-  conf = replace_def(conf, 'PART_CNT', str(thread_count))
+  conf = replace_def(conf, 'PART_CNT', '2') # use both NUMA node
 
   return conf
 
@@ -339,16 +339,16 @@ def enum_exps(seq):
             yield dict(tpcc)
 
         # TATP
-        if alg not in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
-          tpcc = dict(common)
-          tx_count = 2000000
-          tpcc.update({ 'bench': 'TATP', 'tx_count': tx_count })
+        if alg not in ('MICA', 'SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+          tatp = dict(common)
+          tx_count = 200000
+          tatp.update({ 'bench': 'TATP', 'tx_count': tx_count })
 
-          # for scale_factor in [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]:
-          for scale_factor in [1, 10, 100, 1000]:
+          # for scale_factor in [1, 2, 5, 10, 20, 50, 100]:
+          for scale_factor in [1, 10]:
             if tag != 'macrobench': continue
-            tpcc.update({ 'scale_factor': scale_factor })
-            yield dict(tpcc)
+            tatp.update({ 'scale_factor': scale_factor })
+            yield dict(tatp)
 
       for thread_count in [max_thread_count]:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }

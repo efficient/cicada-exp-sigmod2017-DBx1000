@@ -68,7 +68,7 @@ uint64_t tatp_subArr(int min, int max, const uint64_t* arr, uint64_t arrLen,
 
   memcpy(out_arr, arr, sizeof(uint64_t) * arrLen);
   for (uint64_t i = 0; i < cnt; i++) {
-    uint64_t j = URand(i + 1, arrLen - 1, thd_id);
+    uint64_t j = URand(i, arrLen - 1, thd_id);
 
     uint64_t t = out_arr[i];
     out_arr[i] = out_arr[j];

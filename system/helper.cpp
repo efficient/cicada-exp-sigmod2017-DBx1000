@@ -33,12 +33,12 @@ uint64_t get_part_id(void * addr) {
 	return ((uint64_t)addr / PAGE_SIZE) % g_part_cnt;
 }
 
-uint64_t key_to_part(uint64_t key) {
-	if (g_part_alloc)
-		return key % g_part_cnt;
-	else
-		return 0;
-}
+// uint64_t key_to_part(uint64_t key) {
+// 	if (g_part_alloc)
+// 		return key % g_part_cnt;
+// 	else
+// 		return 0;
+// }
 
 uint64_t merge_idx_key(UInt64 key_cnt, UInt64 * keys) {
 	UInt64 len = 64 / key_cnt;
@@ -105,4 +105,3 @@ uint64_t myrand::next() {
 	seed = (seed * 1103515247UL + 12345UL) % (1UL<<63);
 	return (seed / 65537) % RAND_MAX;
 }
-

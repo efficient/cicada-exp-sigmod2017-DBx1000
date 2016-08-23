@@ -20,9 +20,9 @@
 #include "mem_alloc.h"
 #include "catalog.h"
 
-static void FAIL_ON_ABORT() { assert(false); }
+// static void FAIL_ON_ABORT() { assert(false); }
 
-// static void FAIL_ON_ABORT() {}
+static void FAIL_ON_ABORT() {}
 
 void tatp_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
   txn_man::init(h_thd, h_wl, thd_id);
@@ -33,6 +33,7 @@ RC tatp_txn_man::run_txn(base_query* query) {
   RC rc;
 
   auto m_query = (tatp_query*)query;
+  // printf("%d\n", (int)m_query->type);
   switch (m_query->type) {
     case TATPTxnType::DeleteCallForwarding:
       rc = run_delete_call_forwarding(m_query);
@@ -109,6 +110,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
 
   uint32_t s_id;
   if (!get_sub_id(arg.sub_nbr, &s_id)) {
+    // printf("1\n");
     FAIL_ON_ABORT();
     return finish(Abort);
   }
@@ -122,6 +124,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
   row_t* rows[4];
   auto idx_rc = index_read_range(index, key, max_key, rows, cnt, part_id);
   if (idx_rc == Abort) {
+    // printf("2\n");
     FAIL_ON_ABORT();
     return finish(Abort);
   }
@@ -130,15 +133,23 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
   for (uint64_t i = 0; i < cnt; i++) {
 #if CC_ALG != MICA
     auto shared = rows[i];
-    auto local = get_row(index, shared, part_id, RD);
+    // auto local = get_row(index, shared, part_id, RD);
+    // DBx1000 cannot handle upgrades, so we have to request WR.
+    auto local = get_row(index, shared, part_id, WR);
+    if (local == NULL) {
+      // printf("2-1\n");
+      FAIL_ON_ABORT();
+      return finish(Abort);
+    }
 
     uint8_t start_time;
     local->get_value((int)CallForwardingConst::start_time, start_time);
     if (start_time != arg.start_time) continue;
 
     // Get a new local row with WR to allow detecting conflicts.
-    local = get_row(index, shared, part_id, WR);
+    // local = get_row(index, shared, part_id, WR);
     if (!remove_row(shared)) {
+      // printf("3\n");
       FAIL_ON_ABORT();
       return finish(Abort);
     }
@@ -151,6 +162,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     MICARowAccessHandle rah(mica_tx);
     if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) ||
         !rah.read_row()) {
+      // printf("4\n");
       FAIL_ON_ABORT();
       return finish(Abort);
     }
@@ -158,18 +170,27 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     row_t tmp_row;
     auto row = &tmp_row;
     row->table = table;
-    row->data = rah.data();
+    row->data = const_cast<char*>(rah.cdata());
 
     uint8_t start_time;
     row->get_value((int)CallForwardingConst::start_time, start_time);
     if (start_time != arg.start_time) continue;
 
     if (!rah.write_row() || !rah.delete_row()) {
+      // printf("5\n");
       FAIL_ON_ABORT();
       return finish(Abort);
     }
 #endif
+
+    auto key = callForwardingKey(s_id, arg.sf_type, start_time);
+    if (!remove_idx(index, key, rows[i], part_id)) {
+      // printf("6\n");
+      FAIL_ON_ABORT();
+      return finish(Abort);
+    }
   }
+  // printf("7\n");
   return finish(RCOK);
 }
 
@@ -285,6 +306,7 @@ RC tatp_txn_man::run_insert_call_forwarding(tatp_query* query) {
   if (!enum_call_forwarding(s_id, arg.sf_type, [&arg, &unique](auto& row) {
         uint8_t start_time;
         row->get_value((int)CallForwardingConst::start_time, start_time);
+        // printf("%d\n", start_time);
         if (start_time != arg.start_time) return true;
         unique = false;
         return false;
@@ -371,7 +393,10 @@ RC tatp_txn_man::run_update_subscriber_data(tatp_query* query) {
 
     row_t* row;
     auto rc = index_read(index, key, &row, part_id);
-    if (rc == Abort) return finish(Abort);
+    if (rc == Abort) {
+      FAIL_ON_ABORT();
+      return finish(Abort);
+    }
     // It is OK if there is no row.
     if (rc == ERROR) return finish(RCOK);
 

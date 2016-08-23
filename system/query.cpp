@@ -6,6 +6,7 @@
 #include "ycsb_query.h"
 #include "tpcc_query.h"
 #include "tpcc_helper.h"
+#include "tatp_query.h"
 
 /*************************************************/
 //     class Query_queue
@@ -22,6 +23,9 @@ Query_queue::init(workload * h_wl) {
 #if WORKLOAD == YCSB
 	ycsb_query::calculateDenom();
 #elif WORKLOAD == TPCC
+	assert(tpcc_buffer != NULL);
+#elif WORKLOAD == TATP
+	// TATP shares tpcc_buffer with TPCC
 	assert(tpcc_buffer != NULL);
 #endif
 	int64_t begin = get_server_clock();
@@ -82,6 +86,10 @@ Query_thd::init(workload * h_wl, int thread_id) {
 	srand48_r(thread_id + 1, &buffer);
 #elif WORKLOAD == TPCC
 	queries = (tpcc_query *) mem_allocator.alloc(sizeof(tpcc_query) * request_cnt, thread_id);
+#elif WORKLOAD == TATP
+	queries = (tatp_query *) mem_allocator.alloc(sizeof(tatp_query) * request_cnt, thread_id);
+#else
+		assert(false);
 #endif
 	for (UInt32 qid = 0; qid < request_cnt; qid ++) {
 #if WORKLOAD == YCSB
@@ -89,6 +97,9 @@ Query_thd::init(workload * h_wl, int thread_id) {
 		queries[qid].init(thread_id, h_wl, this);
 #elif WORKLOAD == TPCC
 		new(&queries[qid]) tpcc_query();
+		queries[qid].init(thread_id, h_wl);
+#elif WORKLOAD == TATP
+		new(&queries[qid]) tatp_query();
 		queries[qid].init(thread_id, h_wl);
 #endif
 	}

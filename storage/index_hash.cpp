@@ -136,10 +136,14 @@ void BucketHeader::insert_item(idx_key_t key, itemid_t* item, int part_id) {
 
 void BucketHeader::read_item(idx_key_t key, itemid_t*& item) {
   BucketNode* cur_node = first_node;
-  while (cur_node != NULL) {
+  while (true) {
+    if (cur_node == NULL) {
+      item = NULL;
+      return;
+    }
     if (cur_node->key == key) break;
     cur_node = cur_node->next;
   }
-  M_ASSERT(cur_node->key == key, "Key does not exist!");
+  // M_ASSERT(cur_node->key == key, "Key does not exist!");
   item = cur_node->items;
 }

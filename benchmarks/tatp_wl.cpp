@@ -159,7 +159,7 @@ void tatp_wl::gen_access_info(uint64_t s_id, uint64_t thd_id) {
 
 void tatp_wl::gen_spe_and_cal(uint64_t s_id, uint64_t thd_id) {
   static const uint64_t spe_arr[] = {1, 2, 3, 4};
-  static const uint64_t cal_arr[] = {0, 8, 6};
+  static const uint64_t cal_arr[] = {0, 8, 16};
 
   uint64_t sf_types[4];
   uint64_t sf_len = tatp_subArr(

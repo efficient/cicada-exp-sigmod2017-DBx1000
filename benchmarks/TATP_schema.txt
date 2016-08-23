@@ -82,5 +82,5 @@ SPECIAL_FACILITY,250000
 
 // indexed by (s_id, sf_type); non-unique (up to 4 duplicates); mutable
 // NUM_SUBSCRIBERS * E([1...4]) * E([0...3])
-INDEX=ORDERD_CALL_FORWARDING_IDX
+INDEX=ORDERED_CALL_FORWARDING_IDX
 CALL_FORWARDING,375000
