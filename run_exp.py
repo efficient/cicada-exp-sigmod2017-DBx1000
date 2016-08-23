@@ -44,8 +44,8 @@ def set_alg(conf, alg, **kwargs):
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
   conf = replace_def(conf, 'RCU_ALLOC', 'true')
   if alg.startswith('MICA'):
-      # ~4096 huge pages (8 GiB) for RCU
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(4096 * 0.99) * 2 * 1048576) + 'UL')
+      # ~8192 huge pages (16 GiB) for RCU
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(8192 * 0.99) * 2 * 1048576) + 'UL')
   else:
     conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.99) * 2 * 1048576) + 'UL')
 
@@ -165,9 +165,9 @@ hugepage_count = {
   'SILO': 32 * 1024 / 2,
   'TICTOC': 32 * 1024 / 2,
   'NO_WAIT': 32 * 1024 / 2,
-  # 32 GiB + (8 GiB for RCU)
-  'MICA': (32 + 8) * 1024 / 2,
-  'MICA+INDEX': (32 + 8) * 1024 / 2,
+  # 32 GiB + (16 GiB for RCU)
+  'MICA': (32 + 16) * 1024 / 2,
+  'MICA+INDEX': (32 + 16) * 1024 / 2,
   # 48 GiB
   'HEKATON': 48 * 1024 / 2,
 }
