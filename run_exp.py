@@ -190,7 +190,7 @@ def parse_filename(filename):
     filename = filename[:-len(suffix)]
   for entry in filename.split('__'):
     key, _, value = entry.partition('@')
-    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len'):
+    if key in ('thread_count', 'total_count', 'record_size', 'req_per_query', 'tx_count', 'seq', 'warehouse_count', 'slow_gc', 'column_count', 'max_scan_len', 'scale_factor'):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
