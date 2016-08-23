@@ -44,8 +44,8 @@ def set_alg(conf, alg, **kwargs):
   # conf = replace_def(conf, 'RCU_ALLOC', 'false')
   conf = replace_def(conf, 'RCU_ALLOC', 'true')
   if alg.startswith('MICA'):
-      # ~8192 huge pages (16 GiB) for RCU
-    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(8192 * 0.99) * 2 * 1048576) + 'UL')
+      # ~4096 huge pages (8 GiB) for RCU
+    conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(4096 * 0.99) * 2 * 1048576) + 'UL')
   else:
     conf = replace_def(conf, 'RCU_ALLOC_SIZE', str(int(hugepage_count[alg] * 0.99) * 2 * 1048576) + 'UL')
 
@@ -57,8 +57,8 @@ def set_ycsb(conf, thread_count, total_count, record_size, req_per_query, read_r
   conf = replace_def(conf, 'WARMUP', str(tx_count))
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(record_size))
-  conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
-  conf = replace_def(conf, 'PART_CNT', '2') # use both NUMA node
+  conf = replace_def(conf, 'INIT_PARALLELISM', str(thread_count))
+  conf = replace_def(conf, 'PART_CNT', str(min(2, thread_count))) # try to use both NUMA node, but do not create too many partitions
 
   conf = replace_def(conf, 'SYNTH_TABLE_SIZE', str(total_count))
   conf = replace_def(conf, 'REQ_PER_QUERY', str(req_per_query))
@@ -77,7 +77,6 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(704))
   conf = replace_def(conf, 'NUM_WH', str(warehouse_count))
   # INIT_PARALLELISM does not affect tpcc initialization
-  # We still set it to avoid confusing mem_alloc
   conf = replace_def(conf, 'INIT_PARALLELISM', str(warehouse_count))
   conf = replace_def(conf, 'PART_CNT', str(warehouse_count))
 
@@ -105,8 +104,8 @@ def set_tatp(conf, thread_count, scale_factor, tx_count, **kwargs):
   conf = replace_def(conf, 'MAX_TXN_PER_PART', str(tx_count))
   conf = replace_def(conf, 'MAX_TUPLE_SIZE', str(67))
   conf = replace_def(conf, 'TATP_SCALE_FACTOR', str(scale_factor))
-  conf = replace_def(conf, 'INIT_PARALLELISM', str(max_thread_count))
-  conf = replace_def(conf, 'PART_CNT', '2') # use both NUMA node
+  conf = replace_def(conf, 'INIT_PARALLELISM', str(thread_count))
+  conf = replace_def(conf, 'PART_CNT', str(min(2, thread_count))) # try to use both NUMA node, but do not create too many partitions
 
   return conf
 
@@ -165,11 +164,11 @@ hugepage_count = {
   'SILO': 32 * 1024 / 2,
   'TICTOC': 32 * 1024 / 2,
   'NO_WAIT': 32 * 1024 / 2,
-  # 32 GiB + (16 GiB for RCU)
-  'MICA': (32 + 16) * 1024 / 2,
-  'MICA+INDEX': (32 + 16) * 1024 / 2,
-  # 64 GiB
-  'HEKATON': 64 * 1024 / 2,
+  # 32 GiB + (8 GiB for RCU)
+  'MICA': (32 + 8) * 1024 / 2,
+  'MICA+INDEX': (32 + 8) * 1024 / 2,
+  # 48 GiB
+  'HEKATON': 48 * 1024 / 2,
 }
 
 def gen_filename(exp):

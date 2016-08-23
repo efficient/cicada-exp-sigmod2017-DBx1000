@@ -99,6 +99,8 @@ ins_done:
 
 // init table in parallel
 void ycsb_wl::init_table_parallel() {
+  assert(g_init_parallelism <= g_thread_cnt);
+
   enable_thread_mem_pool = true;
   pthread_t p_thds[g_init_parallelism - 1];
   for (UInt32 i = 0; i < g_init_parallelism - 1; i++)

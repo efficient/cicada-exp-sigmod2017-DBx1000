@@ -50,6 +50,8 @@ RC tatp_wl::init_schema(string schema_file) {
 }
 
 RC tatp_wl::init_table() {
+  assert(g_init_parallelism <= g_thread_cnt);
+
   tpcc_buffer = new drand48_data*[g_init_parallelism];
 
   for (uint32_t i = 0; i < g_init_parallelism; i++) {

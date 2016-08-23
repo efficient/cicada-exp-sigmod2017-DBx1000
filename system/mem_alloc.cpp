@@ -27,14 +27,12 @@ void mem_alloc::init(uint64_t part_cnt, uint64_t bytes_per_part) {
   // }
 
   if (RCU_ALLOC) {
-    size_t thread_count = std::max((THREAD_CNT), (INIT_PARALLELISM));
-
-    const size_t maxpercpu = util::iceil((RCU_ALLOC_SIZE) / thread_count,
+    const size_t maxpercpu = util::iceil((RCU_ALLOC_SIZE) / g_thread_cnt,
                                          ::allocator::GetHugepageSize());
-    ::allocator::Initialize(thread_count, maxpercpu);
+    ::allocator::Initialize(g_thread_cnt, maxpercpu);
 
     std::vector<std::thread> threads;
-    for (uint64_t thread_id = 0; thread_id < thread_count; thread_id++) {
+    for (uint64_t thread_id = 0; thread_id < g_thread_cnt; thread_id++) {
       threads.emplace_back([&, thread_id] {
         rcu::s_instance.pin_current_thread(thread_id);
         rcu::s_instance.fault_region();
