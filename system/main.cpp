@@ -290,6 +290,9 @@ int main(int argc, char* argv[]) {
   fprintf(stderr, "mem_allocator stats after main processing:\n");
   mem_allocator.dump_stats();
 
+  m_wl->mica_page_pools[0]->print_status();
+  m_wl->mica_page_pools[1]->print_status();
+
 #if PRINT_LAT_DIST
   printf("LatencyStart\n");
   inter_commit_latency.print(stdout);
