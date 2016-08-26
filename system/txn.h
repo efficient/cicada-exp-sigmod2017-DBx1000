@@ -20,11 +20,15 @@ enum TxnType {VLL_Blocked, VLL_Free};
 
 class Access {
 public:
+#if CC_ALG != MICA
 	access_t 	type;
 	row_t * 	orig_row;
+#endif
 	row_t * 	data;
+#if CC_ALG != MICA
 	row_t * 	orig_data;
-	void cleanup();
+#endif
+	// void cleanup();
 #if CC_ALG == TICTOC
 	ts_t 		wts;
 	ts_t 		rts;

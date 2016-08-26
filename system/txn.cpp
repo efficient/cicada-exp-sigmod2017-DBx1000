@@ -176,7 +176,8 @@ void txn_man::cleanup(RC rc) {
 
 	readonly = false;
 	return;
-#endif
+
+#else
 
 	for (int rid = row_cnt - 1; rid >= 0; rid --) {
 		row_t * orig_r = accesses[rid]->orig_row;
@@ -223,11 +224,12 @@ void txn_man::cleanup(RC rc) {
 	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
+#if CC_ALG == MICA
+	readonly = false;
+#endif
 #if CC_ALG == DL_DETECT
 	dl_detector.clear_dep(get_txn_id());
 #endif
-#if CC_ALG == MICA
-	readonly = false;
 #endif
 }
 
@@ -426,8 +428,10 @@ txn_man::get_row(IndexT* index, row_t* row, int part_id, access_t type)
 	if (rc == Abort) {
 		return NULL;
 	}
+#if CC_ALG != MICA
 	accesses[row_cnt]->type = type;
 	accesses[row_cnt]->orig_row = nullptr;
+#endif
 
 	row_cnt ++;
 	if (type == WR)

@@ -89,6 +89,7 @@ OptCC::per_row_validate(txn_man * txn) {
 }
 
 RC OptCC::central_validate(txn_man * txn) {
+#if CC_ALG == OCC
 	RC rc;
 	uint64_t start_tn = txn->start_ts;
 	uint64_t finish_tn;
@@ -180,9 +181,13 @@ final:
 		rc = Abort;
 	}
 	return rc;
+#else
+	return RCOK;
+#endif
 }
 
 RC OptCC::get_rw_set(txn_man * txn, set_ent * &rset, set_ent *& wset) {
+#if CC_ALG == OCC
 	wset = (set_ent*) mem_allocator.alloc(sizeof(set_ent), 0);
 	rset = (set_ent*) mem_allocator.alloc(sizeof(set_ent), 0);
 	wset->set_size = txn->wr_cnt;
@@ -202,15 +207,18 @@ RC OptCC::get_rw_set(txn_man * txn, set_ent * &rset, set_ent *& wset) {
 
 	assert(n == wset->set_size);
 	assert(m == rset->set_size);
+#endif
 	return RCOK;
 }
 
 bool OptCC::test_valid(set_ent * set1, set_ent * set2) {
+#if CC_ALG == OCC
 	for (UInt32 i = 0; i < set1->set_size; i++)
 		for (UInt32 j = 0; j < set2->set_size; j++) {
 			if (set1->rows[i] == set2->rows[j]) {
 				return false;
 			}
 		}
+#endif
 	return true;
 }
