@@ -110,20 +110,20 @@ RC txn_man::apply_index_changes(RC rc) {
 
 		if (rc_insert != RCOK) {
 			// Roll back previous inserts upon insert failure.
-			
+
 			while (i > 0) {
 				i--;
 				auto idx = insert_idx_idx[i];
 				auto key = insert_idx_key[i];
 				// auto row = insert_idx_row[i];
 				auto part_id = insert_idx_part_id[i];
-				
+
 				auto rc_remove = idx->index_remove(key, NULL, part_id);
 				assert(rc_remove == RCOK);
-				
+
 				// New rows that are not inserted will be freed in cleanup()
 			}
-			
+
 			insert_idx_cnt = 0;
 			return rc_insert;
 		}
@@ -166,15 +166,18 @@ RC txn_man::apply_index_changes(RC rc) {
 }
 
 void txn_man::cleanup(RC rc) {
-#if CC_ALG == HEKATON
+#if CC_ALG == HEKATON || CC_ALG == MICA
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
 	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
+
+	readonly = false;
 	return;
 #endif
+
 	for (int rid = row_cnt - 1; rid >= 0; rid --) {
 		row_t * orig_r = accesses[rid]->orig_row;
 		access_t type = accesses[rid]->type;

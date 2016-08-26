@@ -262,11 +262,15 @@ int main(int argc, char* argv[]) {
     for (auto mica_tbl : table->mica_tbl) {
       printf("table %s part%2" PRIu64 ":\n", it.first.c_str(), part_id);
       mica_tbl->print_table_status();
-      // mica_tbl->print_pool_status();
       // printf("\n");
       part_id++;
     }
   }
+
+  m_wl->mica_db->print_pool_status();
+
+  m_wl->mica_page_pools[0]->print_status();
+  m_wl->mica_page_pools[1]->print_status();
 
   ::mica::util::Latency inter_commit_latency;
   for (uint32_t i = 0; i < thd_cnt; i++)
@@ -289,9 +293,6 @@ int main(int argc, char* argv[]) {
 
   fprintf(stderr, "mem_allocator stats after main processing:\n");
   mem_allocator.dump_stats();
-
-  m_wl->mica_page_pools[0]->print_status();
-  m_wl->mica_page_pools[1]->print_status();
 
 #if PRINT_LAT_DIST
   printf("LatencyStart\n");
