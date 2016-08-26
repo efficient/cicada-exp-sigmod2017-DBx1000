@@ -71,7 +71,6 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
   this->table = table;
   this->bucket_cnt = bucket_cnt;
 
-  auto mica_tbl = table->mica_tbl;
   auto db = table->mica_db;
 
   bucket_cnt = (bucket_cnt + part_cnt - 1) / part_cnt;

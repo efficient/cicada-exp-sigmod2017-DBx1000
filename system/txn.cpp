@@ -505,7 +505,7 @@ bool txn_man::insert_idx(OrderedIndexMICA* index, uint64_t key, row_t* row,
                             int part_id) {
   row = (row_t*)row->get_row_id();
 
-  auto mica_idx = index->mica_idx;
+  auto& mica_idx = index->mica_idx;
   // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row->row_id), 0) != 1)
   return mica_idx[part_id]->insert(mica_tx, key, (uint64_t)row) == 1;
 }
@@ -525,7 +525,7 @@ bool txn_man::remove_idx(IndexMBTree* index, uint64_t key, row_t* row,
 #if INDEX_STRUCT == IDX_MICA
 template <>
 bool txn_man::remove_idx(OrderedIndexMICA* index, uint64_t key, row_t* row, int part_id) {
-  auto mica_idx = index->mica_idx;
+  auto& mica_idx = index->mica_idx;
   // return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
   return mica_idx[part_id]->remove(mica_tx, key, (uint64_t)row) == 1;
 }
