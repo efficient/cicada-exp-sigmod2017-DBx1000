@@ -12,6 +12,7 @@
 #include "index_mbtree.h"
 #include "tpcc_const.h"
 #include "mem_alloc.h"
+// #include <unordered_set>
 
 void tpcc_txn_man::init(thread_t* h_thd, workload* h_wl, uint64_t thd_id) {
   txn_man::init(h_thd, h_wl, thd_id);
@@ -1030,6 +1031,7 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
   uint64_t distinct_ol_i_id_list[300];
   uint64_t distinct_ol_i_id_count = 0;
   uint64_t result = 0;
+  // std::unordered_set<uint64_t> ol_i_id_set(300 * 2);
 
   for (uint64_t i = 0; i < list_size; i++) {
     uint64_t ol_i_id = ol_i_id_list[i];
@@ -1043,6 +1045,10 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
     if (duplicate) continue;
 
     distinct_ol_i_id_list[distinct_ol_i_id_count++] = ol_i_id;
+
+    // auto it = ol_i_id_set.find(ol_i_id);
+    // if (it != ol_i_id_set.end()) continue;
+    // ol_i_id_set.emplace_hint(it, ol_i_id);
 
     auto key = stockKey(ol_i_id, s_w_id);
     auto index = _wl->i_stock;
