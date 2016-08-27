@@ -727,7 +727,7 @@ def make_silo_cmd(exp):
   cmd += ' --parallel-loading'
   cmd += ' --pin-cpus'
   cmd += ' --retry-aborted-transactions'
-  cmd += ' --backoff-aborted-transactions'  # Without this, it gets < 1000 Tps under high contention
+  # cmd += ' --backoff-aborted-transactions'  # Better for 1 warehouse (> 1000 Tps), worse for 4+ warehouses for TPC-C
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
@@ -755,7 +755,7 @@ def make_ermia_cmd(exp):
   cmd += ' --verbose'
   # cmd += ' --parallel-loading'  # Broken in the current code
   cmd += ' --retry-aborted-transactions'
-  cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
+  # cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
