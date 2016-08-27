@@ -174,7 +174,9 @@ void txn_man::cleanup(RC rc) {
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
 
+#if CC_ALG == MICA
 	readonly = false;
+#endif
 	return;
 
 #else
