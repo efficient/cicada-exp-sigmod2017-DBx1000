@@ -176,7 +176,8 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     row->get_value((int)CallForwardingConst::start_time, start_time);
     if (start_time != arg.start_time) continue;
 
-    if (!rah.write_row() || !rah.delete_row()) {
+    if (!rah.write_row(MICARowAccessHandle::kEmptyVersionSize) ||
+        !rah.delete_row()) {
       // printf("5\n");
       FAIL_ON_ABORT();
       return finish(Abort);

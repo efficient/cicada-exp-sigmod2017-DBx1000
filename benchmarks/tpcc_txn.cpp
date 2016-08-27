@@ -778,14 +778,14 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   // assert(part_id >= 0 && part_id < table->mica_tbl.size());
   if (!rah.peek_row(table->mica_tbl[part_id], (uint64_t)rows[0], false, true,
                     true) ||
-      !rah.read_row() || !rah.write_row()) {
+      !rah.read_row()) {
     return false;
   }
 
   row_t tmp_row;
   auto row = &tmp_row;
   row->table = table;
-  row->data = rah.data();
+  row->data = const_cast<char*>(rah.cdata());
 
   int64_t o_id;
   row->get_value(NO_O_ID, o_id);
@@ -797,7 +797,9 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
 #if TPCC_DELETE_ROWS
   // MICA handles row deletion directly without using remove_row().
-  if (!rah.delete_row()) return false;
+  if (!rah.write_row(MICARowAccessHandle::kEmptyVersionSize) ||
+      !rah.delete_row())
+    return false;
 #endif
 #endif
 
@@ -950,7 +952,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
   }
 
   auto rc = finish(RCOK);
-  // if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
+// if (rc != RCOK) INC_STATS_ALWAYS(get_thd_id(), debug4, 1);
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
   __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
