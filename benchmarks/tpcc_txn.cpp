@@ -90,14 +90,23 @@ row_t* tpcc_txn_man::payment_getWarehouse(uint64_t w_id) {
   auto index = _wl->i_warehouse;
   auto key = warehouseKey(w_id);
   auto part_id = wh_to_part(w_id);
+#if !TPCC_VERT_PART
   return search(index, key, part_id, g_wh_update ? WR : RD);
+#else
+  return search(index, key, part_id, RD);
+#endif
 }
 
 void tpcc_txn_man::payment_updateWarehouseBalance(row_t* row, double h_amount) {
   // UPDATE WAREHOUSE SET W_YTD = W_YTD + ? WHERE W_ID = ?
   double w_ytd;
+#if !TPCC_VERT_PART
   row->get_value(W_YTD, w_ytd);
   if (g_wh_update) row->set_value(W_YTD, w_ytd + h_amount);
+#else
+  row->get_value(W_VERT_PART_YTD, w_ytd);
+  if (g_wh_update) row->set_value(W_VERT_PART_YTD, w_ytd + h_amount);
+#endif
 }
 
 row_t* tpcc_txn_man::payment_getDistrict(uint64_t d_w_id, uint64_t d_id) {
@@ -105,14 +114,23 @@ row_t* tpcc_txn_man::payment_getDistrict(uint64_t d_w_id, uint64_t d_id) {
   auto index = _wl->i_district;
   auto key = distKey(d_id, d_w_id);
   auto part_id = wh_to_part(d_w_id);
+#if !TPCC_VERT_PART
   return search(index, key, part_id, WR);
+#else
+  return search(index, key, part_id, RD);
+#endif
 }
 
 void tpcc_txn_man::payment_updateDistrictBalance(row_t* row, double h_amount) {
   // UPDATE DISTRICT SET D_YTD = D_YTD + ? WHERE D_W_ID  = ? AND D_ID = ?
   double d_ytd;
+#if !TPCC_VERT_PART
   row->get_value(D_YTD, d_ytd);
   row->set_value(D_YTD, d_ytd + h_amount);
+#else
+  row->get_value(D_VERT_PART_YTD, d_ytd);
+  row->set_value(D_VERT_PART_YTD, d_ytd + h_amount);
+#endif
 }
 
 row_t* tpcc_txn_man::payment_getCustomerByCustomerId(uint64_t w_id,
@@ -122,7 +140,11 @@ row_t* tpcc_txn_man::payment_getCustomerByCustomerId(uint64_t w_id,
   auto index = _wl->i_customer_id;
   auto key = custKey(c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
+#if !TPCC_VERT_PART
   return search(index, key, part_id, WR);
+#else
+  return search(index, key, part_id, RD);
+#endif
 }
 
 row_t* tpcc_txn_man::payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
@@ -146,19 +168,24 @@ row_t* tpcc_txn_man::payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
   assert(count != 100);
 
   auto mid = rows[count / 2];
+#if !TPCC_VERT_PART
   auto local = get_row(index, mid, part_id, WR);
+#else
+  auto local = get_row(index, mid, part_id, RD);
+#endif
   if (local != NULL) local->get_value(C_ID, *out_c_id);
 
   // printf("payment_getCustomerByLastName: %" PRIu64 "\n", cnt);
   return local;
 }
 
-void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
+bool tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
                                           uint64_t c_d_id, uint64_t c_w_id,
                                           uint64_t d_id, uint64_t w_id,
                                           double h_amount) {
-  // UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ?, C_DATA = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?
-  // UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?
+// UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ?, C_DATA = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?
+// UPDATE CUSTOMER SET C_BALANCE = ?, C_YTD_PAYMENT = ?, C_PAYMENT_CNT = ? WHERE C_W_ID = ? AND C_D_ID = ? AND C_ID = ?
+#if !TPCC_VERT_PART
   double c_balance;
   row->get_value(C_BALANCE, c_balance);
   row->set_value(C_BALANCE, c_balance - h_amount);
@@ -168,6 +195,24 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
   uint64_t c_payment_cnt;
   row->get_value(C_PAYMENT_CNT, c_payment_cnt);
   row->set_value(C_PAYMENT_CNT, c_payment_cnt + 1);
+#else
+  {
+    auto index = _wl->i_customer_id_payment;
+    auto key = custKey(c_id, d_id, w_id);
+    auto part_id = wh_to_part(w_id);
+    auto row = search(index, key, part_id, WR);
+    if (row == NULL) return false;
+    double c_balance;
+    row->get_value(C_VERT_PART_BALANCE, c_balance);
+    row->set_value(C_VERT_PART_BALANCE, c_balance - h_amount);
+    double c_ytd_payment;
+    row->get_value(C_VERT_PART_YTD_PAYMENT, c_ytd_payment);
+    row->set_value(C_VERT_PART_YTD_PAYMENT, c_ytd_payment + h_amount);
+    uint64_t c_payment_cnt;
+    row->get_value(C_VERT_PART_PAYMENT_CNT, c_payment_cnt);
+    row->set_value(C_VERT_PART_PAYMENT_CNT, c_payment_cnt + 1);
+  }
+#endif
 
 #if TPCC_FULL
 #if !TPCC_SMALL
@@ -176,12 +221,26 @@ void tpcc_txn_man::payment_updateCustomer(row_t* row, uint64_t c_id,
     char c_new_data[501];
     sprintf(c_new_data, "%4d %2d %4d %2d %4d $%7.2f | ", (int)c_id, (int)c_d_id,
             (int)c_w_id, (int)d_id, (int)w_id, h_amount);
+#if !TPCC_VERT_PART
     const char* c_data = row->get_value(C_DATA);
     strncat(c_new_data, c_data, 500 - strlen(c_new_data));
     row->set_value(C_DATA, c_new_data);
+#else   // TPCC_VERT_PART
+    {
+      auto index = _wl->i_customer_id_c_data;
+      auto key = custKey(c_id, d_id, w_id);
+      auto part_id = wh_to_part(w_id);
+      auto row = search(index, key, part_id, WR);
+      if (row == NULL) return false;
+      const char* c_data = row->get_value(C_VERT_PART_C_DATA);
+      strncat(c_new_data, c_data, 500 - strlen(c_new_data));
+      row->set_value(C_VERT_PART_C_DATA, c_new_data);
+    }
+#endif  // TPCC_VERT_PART
   }
 #endif
 #endif
+  return true;
 }
 
 bool tpcc_txn_man::payment_insertHistory(uint64_t c_id, uint64_t c_d_id,
@@ -222,14 +281,43 @@ RC tpcc_txn_man::run_payment(tpcc_query* query) {
     FAIL_ON_ABORT();
     return finish(Abort);
   }
+
+#if !TPCC_VERT_PART
   payment_updateWarehouseBalance(warehouse, arg.h_amount);
+#else
+  {
+    auto index = _wl->i_warehouse_ytd;
+    auto key = warehouseKey(arg.w_id);
+    auto part_id = wh_to_part(arg.w_id);
+    auto row = search(index, key, part_id, WR);
+    if (row == NULL) {
+      FAIL_ON_ABORT();
+      return finish(Abort);
+    }
+    payment_updateWarehouseBalance(row, arg.h_amount);
+  }
+#endif
 
   auto district = payment_getDistrict(arg.w_id, arg.d_id);
   if (district == NULL) {
     FAIL_ON_ABORT();
     return finish(Abort);
   };
+#if !TPCC_VERT_PART
   payment_updateDistrictBalance(district, arg.h_amount);
+#else
+  {
+    auto index = _wl->i_district_ytd;
+    auto key = distKey(arg.d_id, arg.w_id);
+    auto part_id = wh_to_part(arg.w_id);
+    auto row = search(index, key, part_id, WR);
+    if (row == NULL) {
+      FAIL_ON_ABORT();
+      return finish(Abort);
+    }
+    payment_updateDistrictBalance(row, arg.h_amount);
+  }
+#endif
 
   auto c_id = arg.c_id;
   row_t* customer;
@@ -242,8 +330,11 @@ RC tpcc_txn_man::run_payment(tpcc_query* query) {
     FAIL_ON_ABORT();
     return finish(Abort);
   };
-  payment_updateCustomer(customer, c_id, arg.c_d_id, arg.c_w_id, arg.d_id,
-                         arg.w_id, arg.h_amount);
+  if (!payment_updateCustomer(customer, c_id, arg.c_d_id, arg.c_w_id, arg.d_id,
+                              arg.w_id, arg.h_amount)) {
+    FAIL_ON_ABORT();
+    return finish(Abort);
+  }
 
 #if TPCC_INSERT_ROWS
   char w_name[11];
@@ -292,18 +383,30 @@ row_t* tpcc_txn_man::new_order_getDistrict(uint64_t d_id, uint64_t d_w_id) {
   auto index = _wl->i_district;
   auto key = distKey(d_id, d_w_id);
   auto part_id = wh_to_part(d_w_id);
+#if !TPCC_VERT_PART
   return search(index, key, part_id, WR);
+#else
+  return search(index, key, part_id, RD);
+#endif
 }
 
 void tpcc_txn_man::new_order_incrementNextOrderId(row_t* row,
                                                   int64_t* out_o_id) {
   // UPDATE DISTRICT SET D_NEXT_O_ID = ? WHERE D_ID = ? AND D_W_ID = ?
   int64_t o_id;
+#if !TPCC_VERT_PART
   row->get_value(D_NEXT_O_ID, o_id);
+#else
+  row->get_value(D_VERT_PART_NEXT_O_ID, o_id);
+#endif
   // printf("%" PRIi64 "\n", o_id);
   *out_o_id = o_id;
   o_id++;
+#if !TPCC_VERT_PART
   row->set_value(D_NEXT_O_ID, o_id);
+#else
+  row->set_value(D_VERT_PART_NEXT_O_ID, o_id);
+#endif
 }
 
 row_t* tpcc_txn_man::new_order_getCustomer(uint64_t w_id, uint64_t d_id,
@@ -500,7 +603,18 @@ RC tpcc_txn_man::run_new_order(tpcc_query* query) {
   // r_dist_local->get_value(D_TAX, d_tax);
 
   int64_t o_id;
+#if !TPCC_VERT_PART
   new_order_incrementNextOrderId(district, &o_id);
+#else
+  {
+    auto index = _wl->i_district_next_o_id;
+    auto key = distKey(arg.d_id, arg.w_id);
+    auto part_id = wh_to_part(arg.w_id);
+    auto row = search(index, key, part_id, WR);
+    if (row == NULL) return finish(Abort);
+    new_order_incrementNextOrderId(row, &o_id);
+  }
+#endif
 
   auto customer = new_order_getCustomer(arg.w_id, arg.d_id, arg.c_id);
   if (customer == NULL) {
@@ -871,16 +985,25 @@ bool tpcc_txn_man::delivery_updateOrderLine_sumOLAmount(uint64_t o_entry_d,
 
 bool tpcc_txn_man::delivery_updateCustomer(double ol_total, uint64_t c_id,
                                            uint64_t d_id, uint64_t w_id) {
-  // UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?
+// UPDATE CUSTOMER SET C_BALANCE = C_BALANCE + ? WHERE C_ID = ? AND C_D_ID = ? AND C_W_ID = ?
+#if !TPCC_VERT_PART
   auto index = _wl->i_customer_id;
+#else
+  auto index = _wl->i_customer_id_payment;
+#endif
   auto key = custKey(c_id, d_id, w_id);
   auto part_id = wh_to_part(w_id);
   auto row = search(index, key, part_id, WR);
   if (row == NULL) return false;
 
   double c_balance;
+#if !TPCC_VERT_PART
   row->get_value(C_BALANCE, c_balance);
   row->set_value(C_BALANCE, c_balance + ol_total);
+#else
+  row->get_value(C_VERT_PART_BALANCE, c_balance);
+  row->set_value(C_VERT_PART_BALANCE, c_balance + ol_total);
+#endif
   return true;
 }
 
@@ -969,8 +1092,12 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 //////////////////////////////////////////////////////
 
 row_t* tpcc_txn_man::stock_level_getOId(uint64_t d_w_id, uint64_t d_id) {
-  // SELECT D_NEXT_O_ID FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?
+// SELECT D_NEXT_O_ID FROM DISTRICT WHERE D_W_ID = ? AND D_ID = ?
+#if !TPCC_VERT_PART
   auto index = _wl->i_district;
+#else
+  auto index = _wl->i_district_next_o_id;
+#endif
   auto key = distKey(d_id, d_w_id);
   auto part_id = wh_to_part(d_w_id);
 #if CC_ALG != MICA && !defined(EMULATE_SNAPSHOT_FOR_1VCC)
@@ -1089,7 +1216,11 @@ RC tpcc_txn_man::run_stock_level(tpcc_query* query) {
     return finish(Abort);
   }
   int64_t o_id;
+#if !TPCC_VERT_PART
   district->get_value(D_NEXT_O_ID, o_id);
+#else
+  district->get_value(D_VERT_PART_NEXT_O_ID, o_id);
+#endif
 
   uint64_t distinct_count;
   if (!stock_level_getStockCount(arg.w_id, arg.d_id, o_id, arg.w_id,

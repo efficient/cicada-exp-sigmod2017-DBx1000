@@ -90,7 +90,9 @@ enum {
 	W_STATE,
 	W_ZIP,
 	W_TAX,
+#if !TPCC_VERT_PART
 	W_YTD
+#endif
 };
 enum {
 	D_ID,
@@ -102,8 +104,10 @@ enum {
 	D_STATE,
 	D_ZIP,
 	D_TAX,
+#if !TPCC_VERT_PART
 	D_YTD,
 	D_NEXT_O_ID
+#endif
 };
 enum {
 	C_ID,
@@ -122,11 +126,13 @@ enum {
 	C_CREDIT,
 	C_CREDIT_LIM,
 	C_DISCOUNT,
+#if !TPCC_VERT_PART
 	C_BALANCE,
 	C_YTD_PAYMENT,
 	C_PAYMENT_CNT,
 	C_DELIVERY_CNT,
 	C_DATA
+#endif
 };
 enum {
 	H_C_ID,
@@ -191,4 +197,24 @@ enum {
 	S_REMOTE_CNT,
 	S_DATA
 };
+#if TPCC_VERT_PART
+enum {
+	W_VERT_PART_YTD,
+};
+enum {
+	D_VERT_PART_YTD,
+};
+enum {
+	D_VERT_PART_NEXT_O_ID,
+};
+enum {
+	C_VERT_PART_BALANCE,
+	C_VERT_PART_YTD_PAYMENT,
+	C_VERT_PART_PAYMENT_CNT,
+	C_VERT_PART_DELIVERY_CNT,
+};
+enum {
+	C_VERT_PART_C_DATA,
+};
+#endif
 #endif

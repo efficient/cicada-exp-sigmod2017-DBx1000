@@ -22,7 +22,11 @@ RC tpcc_wl::init() {
 #if TPCC_SMALL
   path += "TPCC_short_schema.txt";
 #else
+#if !TPCC_VERT_PART
   path += "TPCC_full_schema.txt";
+#else
+  path += "TPCC_full_schema_vert_part.txt";
+#endif
 #endif
   cout << "reading schema file: " << path << endl;
   init_schema(path.c_str());
@@ -54,6 +58,21 @@ RC tpcc_wl::init_schema(const char* schema_file) {
   i_order_cust = ordered_indexes["ORDERED_ORDER_CUST_IDX"];
   i_neworder = ordered_indexes["ORDERED_NEWORDER_IDX"];
   i_orderline = ordered_indexes["ORDERED_ORDERLINE_IDX"];
+
+#if TPCC_VERT_PART
+  t_warehouse_ytd = tables["WAREHOUSE_YTD"];
+  t_district_ytd = tables["DISTRICT_YTD"];
+  t_district_next_o_id = tables["DISTRICT_NEXT_O_ID"];
+  t_customer_payment = tables["CUSTOMER_PAYMENT"];
+  t_customer_c_data = tables["CUSTOMER_C_DATA"];
+
+  i_warehouse_ytd = indexes["WAREHOUSE_YTD_IDX"];
+  i_district_ytd = indexes["DISTRICT_YTD_IDX"];
+  i_district_next_o_id = indexes["DISTRICT_NEXT_O_ID_IDX"];
+  i_customer_id_payment = indexes["CUSTOMER_ID_PAYMENT"];
+  i_customer_id_c_data = indexes["CUSTOMER_ID_C_DATA_IDX"];
+#endif
+
   return RCOK;
 }
 
@@ -163,11 +182,22 @@ void tpcc_wl::init_tab_wh(uint32_t wid) {
   MakeNumberString(9, 9, zip, wid - 1); /* Zip */
   row->set_value(W_ZIP, zip);
   double tax = (double)URand(0L, 2000L, wid - 1) / 10000.0;
-  double w_ytd = 300000.00;
   row->set_value(W_TAX, tax);
+  double w_ytd = 300000.00;
+#if !TPCC_VERT_PART
   row->set_value(W_YTD, w_ytd);
+#endif
 
   index_insert(i_warehouse, warehouseKey(wid), row, wh_to_part(wid));
+
+#if TPCC_VERT_PART
+  t_warehouse_ytd->get_new_row(row, wh_to_part(wid), row_id);
+  row->set_primary_key(warehouseKey(wid));
+
+  row->set_value(W_VERT_PART_YTD, w_ytd);
+
+  index_insert(i_warehouse_ytd, warehouseKey(wid), row, wh_to_part(wid));
+#endif
 }
 
 void tpcc_wl::init_tab_dist(uint64_t wid) {
@@ -200,12 +230,34 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
     MakeNumberString(9, 9, zip, wid - 1); /* Zip */
     row->set_value(D_ZIP, zip);
     double tax = (double)URand(0L, 2000L, wid - 1) / 10000.0;
-    double w_ytd = 30000.00;
+    double d_ytd = 30000.00;
     row->set_value(D_TAX, tax);
-    row->set_value(D_YTD, w_ytd);
+#if !TPCC_VERT_PART
+    row->set_value(D_YTD, d_ytd);
     row->set_value(D_NEXT_O_ID, uint64_t(3001));
+#endif
 
     index_insert(i_district, distKey(did, wid), row, wh_to_part(wid));
+
+#if TPCC_VERT_PART
+    {
+      t_district_ytd->get_new_row(row, wh_to_part(wid), row_id);
+      row->set_primary_key(distKey(did, wid));
+
+      row->set_value(D_VERT_PART_YTD, d_ytd);
+
+      index_insert(i_district_ytd, distKey(did, wid), row, wh_to_part(wid));
+    }
+    {
+      t_district_next_o_id->get_new_row(row, wh_to_part(wid), row_id);
+      row->set_primary_key(distKey(did, wid));
+
+      row->set_value(D_VERT_PART_NEXT_O_ID, uint64_t(3001));
+
+      index_insert(i_district_next_o_id, distKey(did, wid), row,
+                   wh_to_part(wid));
+    }
+#endif
   }
 }
 
@@ -297,10 +349,11 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     row->set_value(C_PHONE, phone);
     row->set_value(C_SINCE, uint64_t(0));
     row->set_value(C_CREDIT_LIM, 50000.0);
-    row->set_value(C_DELIVERY_CNT, uint64_t(0));
     char c_data[500];
     MakeAlphaString(300, 500, c_data, wid - 1);
+#if !TPCC_VERT_PART
     row->set_value(C_DATA, c_data);
+#endif
 #endif
     if (RAND(10, wid - 1) == 0) {
       char tmp[] = "GC";
@@ -310,12 +363,39 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
       row->set_value(C_CREDIT, tmp);
     }
     row->set_value(C_DISCOUNT, (double)URand(1, 5000, wid - 1) / 10000.0);
+#if !TPCC_VERT_PART
     row->set_value(C_BALANCE, -10.0);
     row->set_value(C_YTD_PAYMENT, 10.0);
     row->set_value(C_PAYMENT_CNT, uint64_t(1));
+    row->set_value(C_DELIVERY_CNT, uint64_t(0));
+#endif
     index_insert(i_customer_last, custNPKey(did, wid, c_last), row,
                  wh_to_part(wid));
     index_insert(i_customer_id, custKey(cid, did, wid), row, wh_to_part(wid));
+
+#if TPCC_VERT_PART
+    {
+      t_customer_payment->get_new_row(row, wh_to_part(wid), row_id);
+      row->set_primary_key(custKey(cid, did, wid));
+
+      row->set_value(C_VERT_PART_BALANCE, -10.0);
+      row->set_value(C_VERT_PART_YTD_PAYMENT, 10.0);
+      row->set_value(C_VERT_PART_PAYMENT_CNT, uint64_t(1));
+      row->set_value(C_VERT_PART_DELIVERY_CNT, uint64_t(0));
+
+      index_insert(i_customer_id_payment, custKey(cid, did, wid), row,
+                   wh_to_part(wid));
+    }
+    {
+      t_customer_c_data->get_new_row(row, wh_to_part(wid), row_id);
+      row->set_primary_key(custKey(cid, did, wid));
+
+      row->set_value(C_VERT_PART_C_DATA, c_data);
+
+      index_insert(i_customer_id_c_data, custKey(cid, did, wid), row,
+                   wh_to_part(wid));
+    }
+#endif
   }
 }
 

@@ -145,6 +145,7 @@
 #define TPCC_DELETE_INDEX false
 // TPCC_FULL requires TPCC_INSERT_ROWS and TPCC_UPDATE_INDEX to fully function
 #define TPCC_FULL         false
+#define TPCC_VERT_PART		false
 //
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,

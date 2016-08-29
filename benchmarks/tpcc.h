@@ -40,6 +40,20 @@ class tpcc_wl : public workload {
   ORDERED_INDEX* i_neworder;
   ORDERED_INDEX* i_orderline;
 
+#if TPCC_VERT_PART
+  table_t* t_warehouse_ytd;
+  table_t* t_district_ytd;
+  table_t* t_district_next_o_id;
+  table_t* t_customer_payment;
+  table_t* t_customer_c_data;
+
+  INDEX* i_warehouse_ytd;
+  INDEX* i_district_ytd;
+  INDEX* i_district_next_o_id;
+  INDEX* i_customer_id_payment;
+  INDEX* i_customer_id_c_data;
+#endif
+
   bool** delivering;
   uint32_t next_tid;
 
@@ -104,7 +118,7 @@ class tpcc_txn_man : public txn_man {
                                          uint64_t c_id);
   row_t* payment_getCustomerByLastName(uint64_t w_id, uint64_t d_id,
                                        const char* c_last, uint64_t* out_c_id);
-  void payment_updateCustomer(row_t* row, uint64_t c_id, uint64_t c_d_id,
+  bool payment_updateCustomer(row_t* row, uint64_t c_id, uint64_t c_d_id,
                               uint64_t c_w_id, uint64_t d_id, uint64_t w_id,
                               double h_amount);
   bool payment_insertHistory(uint64_t c_id, uint64_t c_d_id, uint64_t c_w_id,
