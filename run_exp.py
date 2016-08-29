@@ -335,6 +335,9 @@ def enum_exps(seq):
             # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
             #   # Seem to be broken in ERMIA
             #   continue;
+            if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
+                # Broken in FOEDUS
+                continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -344,6 +347,9 @@ def enum_exps(seq):
             # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
             #   # Seem to be broken in ERMIA
             #   continue;
+            if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
+                # Broken in FOEDUS
+                continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -808,8 +814,12 @@ def make_foedus_cmd(exp):
   cmd += ' -loggers_per_node=2'
   cmd += ' -neworder_remote_percent=1'
   cmd += ' -payment_remote_percent=15'
-  cmd += ' -thread_per_node=%d' % (exp['thread_count'] // node_count)
-  cmd += ' -numa_nodes=%d' % node_count
+  if exp['thread_count'] == 1:
+    cmd += ' -thread_per_node=1'
+    cmd += ' -numa_nodes=1'
+  else:
+    cmd += ' -thread_per_node=%d' % (exp['thread_count'] // node_count)
+    cmd += ' -numa_nodes=%d' % node_count
   cmd += ' -log_buffer_mb=1024'
   cmd += ' -null_log_device=true' # no logging
   cmd += ' -high_priority=false'
