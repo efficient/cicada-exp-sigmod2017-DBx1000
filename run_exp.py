@@ -169,6 +169,8 @@ hugepage_count = {
   # 48 GiB (16 threads, 28 warehouses use much more memory for some reason)
   'SILO-REF': 48 * 1024 / 2,
   'SILO-REF-BACKOFF': 48 * 1024 / 2,
+  'ERMIA-SI-REF': 48 * 1024 / 2,
+  'ERMIA-SI-REF-BACKOFF': 48 * 1024 / 2,
   # 96 GiB
   'HEKATON': 96 * 1024 / 2,
 }
@@ -245,7 +247,7 @@ def enum_exps(seq):
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
               # 'SILO-REF',
               'SILO-REF-BACKOFF',
-              #'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF',
+              # 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF',
               ]
 
   macrobenchs = ['macrobench']
@@ -265,7 +267,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -296,7 +298,7 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
@@ -315,7 +317,7 @@ def enum_exps(seq):
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
         # if True:
         if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
@@ -325,7 +327,7 @@ def enum_exps(seq):
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
             if tag != 'macrobench': continue
-            # if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+            # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
             #   # Seem to be broken in ERMIA
             #   continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
@@ -334,14 +336,14 @@ def enum_exps(seq):
           for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
-            # if alg in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF') and warehouse_count < thread_count:
+            # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
             #   # Seem to be broken in ERMIA
             #   continue;
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
         # TATP
-        # if alg not in ('MICA', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        # if alg not in ('MICA', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
         #   tatp = dict(common)
         #   tx_count = 200000
         #   tatp.update({ 'bench': 'TATP', 'tx_count': tx_count })
@@ -357,7 +359,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -380,7 +382,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+      if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -716,7 +718,7 @@ def find_exps_to_run(exps, pats):
 
 
 def validate_result(exp, output):
-  if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+  if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
     return output.find('txn breakdown: ') != -1
   elif not exp['tag'].startswith('native-'):
     return output.find('[summary] tput=') != -1
@@ -741,7 +743,7 @@ def make_silo_cmd(exp, backoff):
   cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
   return cmd
 
-def make_ermia_cmd(exp):
+def make_ermia_cmd(exp, backoff):
   tmpfs_dir = '/tmp'
   log_dir = '/tmp/ermia-log'
   if os.path.exists(log_dir):
@@ -751,15 +753,16 @@ def make_ermia_cmd(exp):
    # --parallel-loading seems to be broken
    # --ops-per-worker is somehow very slow
 
-  if exp['alg'] == 'ERMIA-SI-REF':
+  if exp['alg'] == 'ERMIA-SI-REF-BACKOFF':
     cmd = 'ermia/dbtest-SI'
-  elif exp['alg'] == 'ERMIA-SI_SSN-REF':
+  elif exp['alg'] == 'ERMIA-SI_SSN-REF-BACKOFF':
     cmd = 'ermia/dbtest-SI_SSN'
   else: assert False
   cmd += ' --verbose'
   # cmd += ' --parallel-loading'  # Broken in the current code
   cmd += ' --retry-aborted-transactions'
-  # cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
+  if backoff:
+    cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
@@ -821,9 +824,9 @@ def run(exp, prepare_only):
   if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF'):
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_silo_cmd(exp, exp['alg'].find('-BACKOFF') != -1)
-  elif exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+  elif exp['alg'] in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
     assert exp['bench'] == 'TPCC-FULL'
-    cmd = make_ermia_cmd(exp)
+    cmd = make_ermia_cmd(exp, exp['alg'].find('-BACKOFF') != -1)
   elif not exp['tag'].startswith('native-'):
     # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
     cmd = 'sudo ./rundb'
