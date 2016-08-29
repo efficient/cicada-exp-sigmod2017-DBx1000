@@ -173,6 +173,9 @@ hugepage_count = {
   'ERMIA-SI-REF-BACKOFF': 48 * 1024 / 2,
   # 96 GiB
   'HEKATON': 96 * 1024 / 2,
+  # 112 GiB
+  'FOEDUS-MOCC-REF': 112 * 1024 / 2,
+  'FOEDUS-OCC-REF': 112 * 1024 / 2,
 }
 
 def gen_filename(exp):
@@ -248,7 +251,9 @@ def enum_exps(seq):
               # 'SILO-REF',
               'SILO-REF-BACKOFF',
               # 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF',
-              ]
+              #'FOEDUS-MOCC-REF',
+              'FOEDUS-OCC-REF',
+             ]
 
   macrobenchs = ['macrobench']
   factors = ['factor']
@@ -267,7 +272,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -298,7 +303,7 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
@@ -317,7 +322,7 @@ def enum_exps(seq):
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
         # if True:
         if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
@@ -343,7 +348,7 @@ def enum_exps(seq):
             yield dict(tpcc)
 
         # TATP
-        # if alg not in ('MICA', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+        # if alg not in ('MICA', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
         #   tatp = dict(common)
         #   tx_count = 200000
         #   tatp.update({ 'bench': 'TATP', 'tx_count': tx_count })
@@ -359,7 +364,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -382,7 +387,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
+      if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -720,6 +725,9 @@ def find_exps_to_run(exps, pats):
 def validate_result(exp, output):
   if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
     return output.find('txn breakdown: ') != -1
+  elif exp['alg'] in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+    return output.find('final result:') != -1 and \
+           output.find('total pages, 0 free pages') == -1
   elif not exp['tag'].startswith('native-'):
     return output.find('[summary] tput=') != -1
   else:
@@ -778,6 +786,44 @@ def make_ermia_cmd(exp, backoff):
   cmd += ' --null-log-device'
   return cmd
 
+def make_foedus_cmd(exp):
+  os.system('sudo sysctl -q -w kernel.shmmax=9223372036854775807')
+  os.system('sudo sysctl -q -w kernel.shmall=1152921504606846720')
+  os.system('sudo sysctl -q -w kernel.shmmni=409600')
+  os.system('sudo sysctl -q -w vm.max_map_count=2147483647')
+  os.system('sudo sh -c "grep \"^hugeshm\" /etc/group|cut -d: -f3| cat > /proc/sys/vm/hugetlb_shm_group"')
+
+  os.system('rm -rf /dev/shm/foedus_tpcc/')
+  os.system('rm -rf /tmp/libfoedus.*')
+
+  # based on foedus_code/build/experiments-core/src/foedus/tpcc/run_common.sh,run_dl580.sh
+  cmd = 'env CPUPROFILE_FREQUENCY=1 foedus_code/build/experiments-core/src/foedus/tpcc/tpcc'
+  # see tpcc_driver.cpp for options
+  cmd += ' -fork_workers=false' # forking seems to ignore thread count limit
+  cmd += ' -take_snapshot=false'
+  cmd += ' -nvm_folder=/dev/shm'
+  cmd += ' -volatile_pool_size=20'  # this determines overall memory use
+  cmd += ' -snapshot_pool_size=2'
+  cmd += ' -reducer_buffer_size=1'
+  cmd += ' -loggers_per_node=2'
+  cmd += ' -neworder_remote_percent=1'
+  cmd += ' -payment_remote_percent=15'
+  cmd += ' -thread_per_node=%d' % (exp['thread_count'] // node_count)
+  cmd += ' -numa_nodes=%d' % node_count
+  cmd += ' -log_buffer_mb=1024'
+  cmd += ' -null_log_device=true' # no logging
+  cmd += ' -high_priority=false'
+  cmd += ' -warehouses=%d' % exp['warehouse_count']
+  cmd += ' -duration_micro=%d' % (20 * 1000000) # FOEDUS requires a ton of memory, so we cannot run it for 30 seconds
+  if exp['alg'] == 'FOEDUS-MOCC-REF':
+    cmd += ' -hcc_policy=0' # MOCC
+  elif exp['alg'] == 'FOEDUS-OCC-REF':
+    cmd += ' -hcc_policy=1' # OCC
+  else: assert False
+  cmd += ' 2>&1'
+  cmd += ' | grep -m1 "Experiment ended"' # to force stop runs with MOCC
+  return cmd
+
 
 hugepage_status = None
 
@@ -827,6 +873,9 @@ def run(exp, prepare_only):
   elif exp['alg'] in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
     assert exp['bench'] == 'TPCC-FULL'
     cmd = make_ermia_cmd(exp, exp['alg'].find('-BACKOFF') != -1)
+  elif exp['alg'] in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+    assert exp['bench'] == 'TPCC-FULL'
+    cmd = make_foedus_cmd(exp)
   elif not exp['tag'].startswith('native-'):
     # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
     cmd = 'sudo ./rundb'
@@ -839,7 +888,7 @@ def run(exp, prepare_only):
   if prepare_only: return
 
   # compile
-  if exp['alg'] in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
+  if exp['alg'] in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
     ret = 0
   elif not exp['tag'].startswith('native-'):
     ret = os.system('make -j > /dev/null')
