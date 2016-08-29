@@ -821,7 +821,7 @@ def make_foedus_cmd(exp):
     cmd += ' -hcc_policy=1' # OCC
   else: assert False
   cmd += ' 2>&1'
-  cmd += ' | grep -m1 "Experiment ended"' # to force stop runs with MOCC
+  #cmd += ' | grep -m1 "Experiment ended"' # to force stop runs with MOCC
   return cmd
 
 
