@@ -798,14 +798,14 @@ def make_ermia_cmd(exp):
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
-  if exp['warehouse_count'] < exp['thread_count']:
+  if exp['warehouse_count'] != exp['thread_count']:
     # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
     cmd += ' --bench-opts="--warehouse-spread=100"'
   else:
     # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Disabled for consistency (also not supported by devs)
     pass
   cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
-  cmd += ' --enable-gc' # throughput decreases gradually if the experiment is long; maybe only occurs with too small free memory (either huge or normal)
+  # cmd += ' --enable-gc' # throughput decreases substantially (down to 20-50%) if the experiment runs more than 10 seconds
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
   cmd += ' --log-buffer-mb 512'
@@ -937,12 +937,19 @@ def run(exp, prepare_only):
 
   # run
   p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  stdout, stderr = p.communicate()
+  #p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  try:
+    stdout, stderr = p.communicate(timeout=120)
+    killed = False
+  except subprocess.TimeoutExpired:
+    p.kill()
+    stdout, stderr = p.communicate()
+    killed = True
   stdout = stdout.decode('utf-8')
   stderr = stderr.decode('utf-8')
   output = stdout + '\n\n' + stderr
-  if p.returncode != 0:
-    print('failed to run exp for %s' % format_exp(exp))
+  if p.returncode != 0 or killed:
+    print('failed to run exp for %s (status=%d, killed=%s)' % (format_exp(exp), p.returncode, killed))
     open(filename + '.failed', 'w').write(output)
     return
   if not validate_result(exp, output):
