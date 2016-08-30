@@ -329,8 +329,6 @@ def enum_exps(seq):
             yield dict(tpcc)
 
         # full TPCC
-        # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        # if True:
         if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
           tx_count = 200000
@@ -514,6 +512,26 @@ def enum_exps(seq):
       tpcc = dict(common)
       tx_count = 200000
       tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
+
+      warehouse_count = 4
+      tpcc.update({ 'warehouse_count': warehouse_count })
+      yield dict(tpcc)
+
+      # if common['tag'] == 'gc':
+      #   warehouse_count = 1
+      #   tpcc.update({ 'warehouse_count': warehouse_count })
+      #   yield dict(tpcc)
+
+      # if common['tag'] in ('gc', 'factor'):
+      if common['tag'] in ('gc',):
+        warehouse_count = max_thread_count
+        tpcc.update({ 'warehouse_count': warehouse_count })
+        yield dict(tpcc)
+
+      # TPCC-FULL
+      tpcc = dict(common)
+      tx_count = 200000
+      tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count })
 
       warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
