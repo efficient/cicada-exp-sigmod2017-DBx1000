@@ -799,9 +799,10 @@ def make_ermia_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
   if exp['warehouse_count'] < exp['thread_count']:
+    # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
     cmd += ' --bench-opts="--warehouse-spread=100"'
   else:
-    cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+    # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Disabled for consistency (also not supported by devs)
   cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
   cmd += ' --enable-gc' # throughput decreases gradually if the experiment is long; maybe only occurs with too small free memory (either huge or normal)
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
