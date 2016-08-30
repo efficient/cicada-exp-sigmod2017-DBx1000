@@ -1,11 +1,8 @@
 #!/bin/bash
 
-pushd ermia/
+cd ermia || exit 1
 ./build-all.sh
-popd
 
-echo "mlock limit must be set to unlimited"
 echo "add to /etc/security/limits.conf: (replace [user] with the username)"
-echo "[user] soft memlock unlimited"
-echo "[user] hard memlock unlimited"
+echo "[user] - memlock unlimited"
 
