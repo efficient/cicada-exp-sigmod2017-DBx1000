@@ -803,6 +803,7 @@ def make_ermia_cmd(exp):
     cmd += ' --bench-opts="--warehouse-spread=100"'
   else:
     # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Disabled for consistency (also not supported by devs)
+    pass
   cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
   cmd += ' --enable-gc' # throughput decreases gradually if the experiment is long; maybe only occurs with too small free memory (either huge or normal)
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
