@@ -166,13 +166,19 @@ hugepage_count = {
   # 32 GiB + (16 GiB for RCU)
   'MICA': (32 + 16) * 1024 / 2,
   'MICA+INDEX': (32 + 16) * 1024 / 2,
+  # 96 GiB
+  'HEKATON': 96 * 1024 / 2,
+
   # 48 GiB (16 threads, 28 warehouses use much more memory for some reason)
   'SILO-REF': 48 * 1024 / 2,
   'SILO-REF-BACKOFF': 48 * 1024 / 2,
-  'ERMIA-SI-REF': 48 * 1024 / 2,
-  'ERMIA-SI-REF-BACKOFF': 48 * 1024 / 2,
-  # 96 GiB
-  'HEKATON': 96 * 1024 / 2,
+
+  # 64 GiB (using too much hugepages can reduce tput)
+  'ERMIA-SI-REF': 64 * 1024 / 2,
+  'ERMIA-SI-REF-BACKOFF': 64 * 1024 / 2,
+  'ERMIA-SI_SSN-REF': 64 * 1024 / 2,
+  'ERMIA-SI_SSN-REF-BACKOFF': 64 * 1024 / 2,
+
   # 112 GiB
   'FOEDUS-MOCC-REF': 112 * 1024 / 2,
   'FOEDUS-OCC-REF': 112 * 1024 / 2,
@@ -248,10 +254,12 @@ def format_exp(exp):
 def enum_exps(seq):
   all_algs = ['MICA', 'MICA+INDEX', #'MICA+FULLINDEX',
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
-              # 'SILO-REF',
-              'SILO-REF-BACKOFF',
-              # 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF',
-              #'FOEDUS-MOCC-REF',
+              'SILO-REF',
+              # 'SILO-REF-BACKOFF',
+              'ERMIA-SI-REF',
+              # 'ERMIA-SI-REF-BACKOFF',
+              # 'ERMIA-SI_SSN-REF-BACKOFF',
+              'FOEDUS-MOCC-REF',
               'FOEDUS-OCC-REF',
              ]
 
@@ -272,7 +280,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+        if alg.find('-REF') == -1:
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -303,7 +311,7 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+        if alg.find('-REF') == -1:
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
@@ -322,7 +330,6 @@ def enum_exps(seq):
 
         # full TPCC
         # if alg in ('MICA', 'MICA+INDEX', 'MICA+FULLINDEX'):
-        #if alg in ('MICA+INDEX', 'MICA+FULLINDEX', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
         # if True:
         if alg not in ('MICA',):  # MICA must use the native index
           tpcc = dict(common)
@@ -332,10 +339,10 @@ def enum_exps(seq):
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
             if tag != 'macrobench': continue
-            # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
-            #   # Seem to be broken in ERMIA
-            #   continue;
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
+                # Broken in FOEDUS
+                continue
+            if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
                 # Broken in FOEDUS
                 continue
             tpcc.update({ 'warehouse_count': warehouse_count })
@@ -344,17 +351,17 @@ def enum_exps(seq):
           for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
-            # if alg in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF') and warehouse_count < thread_count:
-            #   # Seem to be broken in ERMIA
-            #   continue;
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
+                # Broken in FOEDUS
+                continue
+            if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
                 # Broken in FOEDUS
                 continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
         # TATP
-        # if alg not in ('MICA', 'SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+        # if alg.find('-REF') == -1:
         #   tatp = dict(common)
         #   tx_count = 200000
         #   tatp.update({ 'bench': 'TATP', 'tx_count': tx_count })
@@ -370,7 +377,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+        if alg.find('-REF') == -1:
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -393,7 +400,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg not in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+      if alg.find('-REF') == -1:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -729,37 +736,43 @@ def find_exps_to_run(exps, pats):
 
 
 def validate_result(exp, output):
-  if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF', 'ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
-    return output.find('txn breakdown: ') != -1
-  elif exp['alg'] in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
-    return output.find('final result:') != -1 and \
-           output.find('total pages, 0 free pages') == -1
+  if exp['alg'].find('-REF') != -1:
+    if exp['arg'].startswith('SILO') or exp['arg'].startswith('ERMIA'):
+      return output.find('txn breakdown: ') != -1
+    elif exp['alg'].startswith('FOEDUS'):
+      return output.find('final result:') != -1 and \
+             output.find('total pages, 0 free pages') == -1
+    else:
+      assert False
   elif not exp['tag'].startswith('native-'):
     return output.find('[summary] tput=') != -1
   else:
     return output.find('cleaning up') != -1
 
 
-def make_silo_cmd(exp, backoff):
+def make_silo_cmd(exp):
   cmd = 'silo/out-perf.masstree/benchmarks/dbtest'
   cmd += ' --verbose'
   cmd += ' --parallel-loading'
   cmd += ' --pin-cpus'
   cmd += ' --retry-aborted-transactions'
-  if backoff:
+  if exp['alg'].find('-BACKOFF') != -1:
     cmd += ' --backoff-aborted-transactions'  # Better for 1 warehouse (> 1000 Tps), worse for 4+ warehouses for TPC-C
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 30'
+  cmd += ' --runtime 20'  # Can run for 30 seconds but for consistency
   cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
   cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
   return cmd
 
-def make_ermia_cmd(exp, backoff):
-  tmpfs_dir = '/tmp'
-  log_dir = '/tmp/ermia-log'
+def make_ermia_cmd(exp):
+  tmpfs_dir = '/tmpfs'
+  log_dir = '/tmpfs/ermia-log'
+
+  if not os.path.exists(tmpfs_dir):
+    os.system('sudo ln -s /run/shm /tmpfs')
   if os.path.exists(log_dir):
     shutil.rmtree(log_dir)
   os.mkdir(log_dir)
@@ -767,24 +780,30 @@ def make_ermia_cmd(exp, backoff):
    # --parallel-loading seems to be broken
    # --ops-per-worker is somehow very slow
 
-  if exp['alg'] == 'ERMIA-SI-REF-BACKOFF':
-    cmd = 'ermia/dbtest-SI'
-  elif exp['alg'] == 'ERMIA-SI_SSN-REF-BACKOFF':
+  if exp['alg'].find('-SI_SSN') != -1:
     cmd = 'ermia/dbtest-SI_SSN'
+  elif exp['alg'].find('-SI') != -1:
+    cmd = 'ermia/dbtest-SI'
   else: assert False
   cmd += ' --verbose'
-  # cmd += ' --parallel-loading'  # Broken in the current code
+  # cmd += ' --parallel-loading'  # Broken
   cmd += ' --retry-aborted-transactions'
-  if backoff:
-    cmd += ' --backoff-aborted-transactions'  # For consistency with SILO-REF
+  if exp['alg'].find('-BACKOFF') != -1:
+    # Broken; this creates zero throughput when warehouse count < thread count
+    # cmd += ' --backoff-aborted-transactions'
+    pass
+    assert False
   cmd += ' --bench tpcc'
   cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 30'
-  # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Unstable/do not finish
-  cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.9) # reduce it slightly because it often gets stuck if this is too tight to the available hugepages (competing with jemalloc?)
-  cmd += ' --enable-gc'
+  cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
+  if exp['warehouse_count'] < exp['thread_count']:
+    cmd += ' --bench-opts="--warehouse-spread=100"'
+  else:
+    cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+  cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
+  cmd += ' --enable-gc' # throughput decreases gradually if the experiment is long; maybe only occurs with too small free memory (either huge or normal)
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
   cmd += ' --log-dir %s' % log_dir
   cmd += ' --log-buffer-mb 512'
@@ -859,8 +878,6 @@ def run(exp, prepare_only):
   os.system('make clean -j > /dev/null')
   os.system('rm -f ./rundb')
 
-  # if exp['alg'].startswith('MICA') or exp['alg'] in ('ERMIA-SI-REF', 'ERMIA-SI_SSN-REF'):
-  # if True:
   if hugepage_status != (hugepage_count[exp['alg']], exp['alg']):
     os.system('../script/setup.sh %d %d > /dev/null' % \
       (hugepage_count[exp['alg']] / 2, hugepage_count[exp['alg']] / 2))
@@ -877,15 +894,18 @@ def run(exp, prepare_only):
   # cmd
   filename = dir_name + '/' + gen_filename(exp)
 
-  if exp['alg'] in ('SILO-REF', 'SILO-REF-BACKOFF'):
-    assert exp['bench'] == 'TPCC-FULL'
-    cmd = make_silo_cmd(exp, exp['alg'].find('-BACKOFF') != -1)
-  elif exp['alg'] in ('ERMIA-SI-REF-BACKOFF', 'ERMIA-SI_SSN-REF-BACKOFF'):
-    assert exp['bench'] == 'TPCC-FULL'
-    cmd = make_ermia_cmd(exp, exp['alg'].find('-BACKOFF') != -1)
-  elif exp['alg'] in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
-    assert exp['bench'] == 'TPCC-FULL'
-    cmd = make_foedus_cmd(exp)
+  if exp['alg'].find('-REF') != -1:
+    if exp['alg'].startswith('SILO'):
+      assert exp['bench'] == 'TPCC-FULL'
+      cmd = make_silo_cmd(exp)
+    elif exp['alg'].startswith('ERMIA'):
+      assert exp['bench'] == 'TPCC-FULL'
+      cmd = make_ermia_cmd(exp)
+    elif exp['alg'].startswith('FOEDUS'):
+      assert exp['bench'] == 'TPCC-FULL'
+      cmd = make_foedus_cmd(exp)
+    else:
+      assert False
   elif not exp['tag'].startswith('native-'):
     # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
     cmd = 'sudo ./rundb'
@@ -898,7 +918,7 @@ def run(exp, prepare_only):
   if prepare_only: return
 
   # compile
-  if exp['alg'] in ('SILO-REF', 'ERMIA-SI-REF', 'ERMIA-SI_SSN-REF', 'FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF'):
+  if exp['alg'].find('-REF') != -1:
     ret = 0
   elif not exp['tag'].startswith('native-'):
     ret = os.system('make -j > /dev/null')
