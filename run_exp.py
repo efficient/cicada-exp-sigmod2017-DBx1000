@@ -737,7 +737,7 @@ def find_exps_to_run(exps, pats):
 
 def validate_result(exp, output):
   if exp['alg'].find('-REF') != -1:
-    if exp['arg'].startswith('SILO') or exp['arg'].startswith('ERMIA'):
+    if exp['alg'].startswith('SILO') or exp['alg'].startswith('ERMIA'):
       return output.find('txn breakdown: ') != -1
     elif exp['alg'].startswith('FOEDUS'):
       return output.find('final result:') != -1 and \
