@@ -289,7 +289,7 @@ RC tpcc_txn_man::run_payment(tpcc_query* query) {
     auto index = _wl->i_warehouse_ytd;
     auto key = warehouseKey(arg.w_id);
     auto part_id = wh_to_part(arg.w_id);
-    auto row = search(index, key, part_id, WR);
+    auto row = search(index, key, part_id, g_wh_update ? WR : RD);
     if (row == NULL) {
       FAIL_ON_ABORT();
       return finish(Abort);
