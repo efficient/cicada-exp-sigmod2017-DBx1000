@@ -14,6 +14,10 @@ public:
 	uint64_t waiting_time;
 	uint64_t part_num;
 	uint64_t * part_to_access;
+#if WORKLOAD == TPCC && TPCC_SPLIT_DELIVERY
+	uint32_t sub_query_id;
+	uint32_t max_sub_query_id;
+#endif
 };
 
 // All the querise for a particular thread.

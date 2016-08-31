@@ -29,6 +29,11 @@ void tpcc_query::init(uint64_t thd_id, workload* h_wl) {
   else
     gen_new_order(thd_id);
 #endif
+
+#if WORKLOAD == TPCC && TPCC_SPLIT_DELIVERY
+	sub_query_id = 0;
+	max_sub_query_id = type == TPCC_DELIVERY ? 10 : 1;
+#endif
 }
 
 void tpcc_query::gen_payment(uint64_t thd_id) {

@@ -1017,7 +1017,12 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
     return finish(RCOK);
 #endif
 
-  for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++) {
+#if !TPCC_SPLIT_DELIVERY
+  for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++)
+#else
+  for (uint64_t d_id = query->sub_query_id + 1; d_id == query->sub_query_id + 1; d_id++)
+#endif
+  {
     int64_t o_id;
     if (!delivery_getNewOrder_deleteNewOrder(d_id, arg.w_id, &o_id)) {
       FAIL_ON_ABORT();

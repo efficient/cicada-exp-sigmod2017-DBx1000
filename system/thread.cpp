@@ -231,9 +231,28 @@ RC thread_t::run() {
 		}
 
 #ifdef DISABLE_BUILTIN_BACKOFF
-	if (rc == RCOK) {
+	if (rc == RCOK && m_query != NULL) {
+#if WORKLOAD == TPCC && TPCC_SPLIT_DELIVERY
+		if (++m_query->sub_query_id != m_query->max_sub_query_id)
+			continue;
+#endif
 		m_query = nullptr;
 	}
+#endif
+
+#if WORKLOAD == TPCC && TPCC_SPLIT_DELIVERY
+	if (rc == RCOK && m_query != NULL)
+		if (++m_query->sub_query_id != m_query->max_sub_query_id) {
+			for (int i = 0; i < _abort_buffer_size; i ++) {
+				if (_abort_buffer[i].query == NULL) {
+					_abort_buffer[i].query = m_query;
+					_abort_buffer[i].ready_time = get_server_clock();
+					_abort_buffer_empty_slots --;
+					break;
+				}
+			}
+			continue;
+		}
 #endif
 
 		// ts_t endtime = get_sys_clock();
