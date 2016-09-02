@@ -1043,7 +1043,7 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
     auto order = delivery_getCId(o_id, d_id, arg.w_id);
     if (order == NULL) {
       // There is no guarantee that we will see a order row even after seeing a related new_order row in this read-write transaction.
-      // FAIL_ON_ABORT();
+      FAIL_ON_ABORT();
       // printf("oops1\n");
       return finish(Abort);
     }
