@@ -91,7 +91,7 @@ RC txn_man::apply_index_changes(RC rc) {
 	if (rc != RCOK)
 	return rc;
 
-#if INDEX_STRUCT != IDX_MICA
+#if INDEX_STRUCT != IDX_MICA || (INDEX_STRUCT == IDX_MICA && defined(IDX_MICA_USE_MBTREE))
 	// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
 
 #if RCU_ALLOC
@@ -103,6 +103,7 @@ RC txn_man::apply_index_changes(RC rc) {
 		auto key = insert_idx_key[i];
 		auto row = insert_idx_row[i];
 		auto part_id = insert_idx_part_id[i];
+		// printf("insert_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
 
 		assert(part_id != -1);
 
@@ -601,7 +602,14 @@ RC txn_man::finish(RC rc) {
 #elif CC_ALG == MICA
 	if (rc == RCOK) {
 		if (mica_tx->has_began())
+#ifndef IDX_MICA_USE_MBTREE
 			rc = mica_tx->commit() ? RCOK : Abort;
+#else
+                {
+                        auto write_func = [this]() { return apply_index_changes(RCOK) == RCOK; };
+			rc = mica_tx->commit(NULL, write_func) ? RCOK : Abort;
+                }
+#endif
 		else
 			rc = RCOK;
 	}

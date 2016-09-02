@@ -115,6 +115,7 @@ int main(int argc, char* argv[]) {
             }
           }
         }
+#ifndef IDX_MICA_USE_MBTREE
         for (auto it : m_wl->ordered_indexes) {
           auto index = it.second;
           uint64_t part_id = 0;
@@ -134,6 +135,7 @@ int main(int argc, char* argv[]) {
             }
           }
         }
+#endif
 #endif
 
         m_wl->mica_db->deactivate(thread_id);

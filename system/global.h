@@ -231,14 +231,20 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 // principal index structure. The workload may decide to use a different
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
 #if (INDEX_STRUCT == IDX_BTREE)
+
 #define INDEX		index_btree
 #define ORDERED_INDEX		index_btree
+
 #elif (INDEX_STRUCT == IDX_MICA)
+
 #define INDEX		IndexMICA
 // #define INDEX		OrderedIndexMICA
 #define ORDERED_INDEX		OrderedIndexMICA
 // #define ORDERED_INDEX		IndexMBTree
+// #define IDX_MICA_USE_MBTREE
+
 #else  // IDX_HASH
+
 #define INDEX		IndexHash
 // #define ORDERED_INDEX		index_btree
 #define ORDERED_INDEX		IndexMBTree

@@ -17,8 +17,19 @@
 // #undef NDEBUG
 // #endif
 
+#if CC_ALG == MICA
+struct mbtree_value_type {
+  row_t* row;
+  int refcount;
+};
+#endif
+
 struct mbtree_params : public Masstree::nodeparams<> {
+#if CC_ALG != MICA
   typedef row_t* value_type;
+#else
+  typedef mbtree_value_type value_type;
+#endif
   typedef Masstree::value_print<value_type> value_print_type;
   typedef simple_threadinfo threadinfo_type;
   enum { RcuRespCaller = true };
@@ -53,7 +64,12 @@ RC IndexMBTree::index_insert(idx_key_t key, row_t* row, int part_id) {
 
   u64_varkey mbtree_key(key);
 
+#if CC_ALG != MICA
   if (!idx->insert_if_absent(mbtree_key, row)) return ERROR;
+#else
+  mbtree_value_type v{row, 1};
+  if (!idx->insert_refcount(mbtree_key, v)) return ERROR;
+#endif
 
   return RCOK;
 }
@@ -63,7 +79,13 @@ RC IndexMBTree::index_read(idx_key_t key, row_t** row, int part_id) {
 
   u64_varkey mbtree_key(key);
 
+#if CC_ALG != MICA
   if (!idx->search(mbtree_key, *row)) return ERROR;
+#else
+  mbtree_value_type v;
+  if (!idx->search(mbtree_key, v)) return ERROR;
+  *row = v.row;
+#endif
 
   return RCOK;
 }
@@ -94,7 +116,11 @@ RC IndexMBTree::index_read_range(idx_key_t min_key, idx_key_t max_key,
 
   uint64_t i = 0;
   auto f = [&i, rows, count](auto& k, auto& v) {
+#if CC_ALG != MICA
     rows[i++] = v;
+#else
+    rows[i++] = v.row;
+#endif
     return i < count;
   };
 
@@ -121,7 +147,11 @@ RC IndexMBTree::index_read_range_rev(idx_key_t min_key, idx_key_t max_key,
 
   uint64_t i = 0;
   auto f = [&i, rows, count](auto& k, auto& v) {
+#if CC_ALG != MICA
     rows[i++] = v;
+#else
+    rows[i++] = v.row;
+#endif
     return i < count;
   };
 
@@ -137,7 +167,11 @@ RC IndexMBTree::index_remove(idx_key_t key, row_t*, int part_id) {
 
   u64_varkey mbtree_key(key);
 
+#if CC_ALG != MICA
   if (!idx->remove(mbtree_key, NULL)) return ERROR;
+#else
+  if (!idx->remove_refcount(mbtree_key, NULL)) return ERROR;
+#endif
 
   return RCOK;
 }
