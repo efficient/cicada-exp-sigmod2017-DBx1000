@@ -469,7 +469,8 @@ bool txn_man::insert_row(table_t* tbl, row_t*& row, int part_id,
   assert(row != NULL);
   assert(part_id >= 0 && part_id < (int)tbl->mica_tbl.size());
   MICARowAccessHandle rah(mica_tx);
-  if (!rah.new_row(tbl->mica_tbl[part_id])) return false;
+  const uint64_t data_sizes[] = {tbl->get_schema()->get_tuple_size()};
+  if (!MICARowAccessHandle::new_row(&rah, tbl->mica_tbl[part_id], false, data_sizes)) return false;
   out_row_id = rah.row_id();
   row->set_row_id(out_row_id);
   row->set_part_id(part_id);

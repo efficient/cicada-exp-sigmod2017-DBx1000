@@ -47,12 +47,15 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
   // printf("thread_id = %lu\n", thread_id);
 
   MICATransaction tx(db->context(thread_id));
+	Catalog * schema = host_table->get_schema();
+	int tuple_size = schema->get_tuple_size();
 	while (true) {
 		if (!tx.begin())
 			assert(false);
 		MICARowAccessHandle rah(&tx);
+                const uint64_t data_sizes[] = {static_cast<uint64_t>(tuple_size)};
 
-		if (!rah.new_row(tbl)) {
+		if (!MICARowAccessHandle::new_row(&rah, tbl, false, data_sizes)) {
 			if (!tx.abort())
 				assert(false);
 			continue;
@@ -366,7 +369,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	assert(_part_id >= 0 && _part_id < table->mica_tbl.size());
 	if (type == PEEK) {
 		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
-		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, false, false))
+		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, false, false))
 			return Abort;
 		row->table = table;
 		row->data = const_cast<char*>(rah.cdata());
@@ -375,10 +378,10 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl[_part_id], _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);
@@ -408,7 +411,7 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_ro
 
 	if (type == PEEK) {
 		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
-		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, false, false))
+		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, false, false))
 			return Abort;
 		access_row->data = const_cast<char*>(rah.cdata());
 		return RCOK;
@@ -416,10 +419,10 @@ RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_ro
 
 	MICARowAccessHandle rah(txn->mica_tx);
 	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, false) || !rah.read_row())
+		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, true, false) || !rah.read_row())
 			return Abort;
 	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) || !rah.read_row() || !rah.write_row())
+		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, true, true) || !rah.read_row() || !rah.write_row())
 			return Abort;
 	} else {
 		assert(false);

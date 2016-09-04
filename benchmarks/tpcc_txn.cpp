@@ -890,7 +890,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
   MICARowAccessHandle rah(mica_tx);
   // assert(part_id >= 0 && part_id < table->mica_tbl.size());
-  if (!rah.peek_row(table->mica_tbl[part_id], (uint64_t)rows[0], false, true,
+  if (!rah.peek_row(table->mica_tbl[part_id], 0, (uint64_t)rows[0], false, true,
                     true) ||
       !rah.read_row()) {
     return false;
@@ -911,9 +911,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
 #if TPCC_DELETE_ROWS
   // MICA handles row deletion directly without using remove_row().
-  if (!rah.write_row(MICARowAccessHandle::kEmptyVersionSize) ||
-      !rah.delete_row())
-    return false;
+  if (!rah.write_row(0) || !MICARowAccessHandle::delete_row(&rah)) return false;
 #endif
 #endif
 
@@ -1020,7 +1018,8 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #if !TPCC_SPLIT_DELIVERY
   for (uint64_t d_id = 1; d_id <= DIST_PER_WARE; d_id++)
 #else
-  for (uint64_t d_id = query->sub_query_id + 1; d_id == query->sub_query_id + 1; d_id++)
+  for (uint64_t d_id = query->sub_query_id + 1; d_id == query->sub_query_id + 1;
+       d_id++)
 #endif
   {
     int64_t o_id;

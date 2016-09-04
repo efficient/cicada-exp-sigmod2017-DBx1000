@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
             if ((part_id++) % g_thread_cnt != thread_id) continue;
 
             uint64_t i = 0;
-            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
+            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), 0, i,
                                  static_cast<uint64_t>(-1), false);
 
             if (thread_id == 0) {
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
             auto mica_tbl = idx->index_table();
 
             uint64_t i = 0;
-            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
+            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), 0, i,
                                  static_cast<uint64_t>(-1), false);
 
             if (thread_id == 0) {
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
             auto mica_tbl = idx->index_table();
 
             uint64_t i = 0;
-            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), i,
+            mica_tbl->renew_rows(m_wl->mica_db->context(thread_id), 0, i,
                                  static_cast<uint64_t>(-1), false);
 
             if (thread_id == 0) {

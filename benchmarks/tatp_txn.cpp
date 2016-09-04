@@ -160,7 +160,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     auto table = _wl->t_call_forwarding;
     auto row_id = reinterpret_cast<uint64_t>(rows[i]);
     MICARowAccessHandle rah(mica_tx);
-    if (!rah.peek_row(table->mica_tbl[part_id], row_id, false, true, true) ||
+    if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, true, true) ||
         !rah.read_row()) {
       // printf("4\n");
       FAIL_ON_ABORT();
@@ -176,8 +176,7 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     row->get_value((int)CallForwardingConst::start_time, start_time);
     if (start_time != arg.start_time) continue;
 
-    if (!rah.write_row(MICARowAccessHandle::kEmptyVersionSize) ||
-        !rah.delete_row()) {
+    if (!rah.write_row(0) || !MICARowAccessHandle::delete_row(&rah)) {
       // printf("5\n");
       FAIL_ON_ABORT();
       return finish(Abort);

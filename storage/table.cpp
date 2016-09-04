@@ -12,6 +12,7 @@ void table_t::init(Catalog* schema, uint64_t part_cnt) {
 
 #if CC_ALG == MICA
   uint64_t data_size = schema->get_tuple_size();
+  const uint64_t data_sizes[] = {data_size};
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
     uint64_t thread_id = part_id % g_thread_cnt;
     ::mica::util::lcore.pin_thread(thread_id);
@@ -20,7 +21,7 @@ void table_t::init(Catalog* schema, uint64_t part_cnt) {
     int i = 0;
     while (true) {
       sprintf(buf, "%s_%d", table_name, i);
-      if (mica_db->create_table(buf, data_size)) break;
+      if (mica_db->create_table(buf, 1, data_sizes)) break;
       i++;
     }
     auto p = mica_db->get_table(buf);
