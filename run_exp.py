@@ -9,6 +9,15 @@ import subprocess
 import pprint
 
 
+COLOR_RED = '\x1b[31m'
+COLOR_GREEN = '\x1b[32m'
+COLOR_YELLOW = '\x1b[33m'
+COLOR_BLUE = '\x1b[34m'
+COLOR_MAGENTA = '\x1b[35m'
+COLOR_CYAN ='\x1b[36m'
+COLOR_RESET = '\x1b[0m'
+
+
 def replace_def(conf, name, value):
   pattern = r'^#define %s\s+.+$' % re.escape(name)
   repl = r'#define %s %s' % (name, value)
@@ -967,11 +976,13 @@ def run(exp, prepare_only):
   stderr = stderr.decode('utf-8')
   output = stdout + '\n\n' + stderr
   if p.returncode != 0 or killed:
-    print('failed to run exp for %s (status=%d, killed=%s)' % (format_exp(exp), p.returncode, killed))
+    s = 'failed to run exp for %s (status=%d, killed=%s)' % (format_exp(exp), p.returncode, killed)
+    print(COLOR_RED + s + COLOR_RESET)
     open(filename + '.failed', 'w').write(output)
     return
   if not validate_result(exp, output):
-    print('validation failed for %s' % format_exp(exp))
+    s = 'validation failed for %s' % format_exp(exp)
+    print(COLOR_RED + s + COLOR_RESET)
     open(filename + '.failed', 'w').write(output)
     return
 
@@ -1015,7 +1026,8 @@ def run_all(pats, prepare_only):
 
   for i, exp in enumerate(exps):
     start = time.time()
-    print('exp %d/%d: %s' % (i + 1, len(exps), format_exp(exp)))
+    s = 'exp %d/%d: %s' % (i + 1, len(exps), format_exp(exp))
+    print(COLOR_BLUE + s + COLOR_RESET)
 
     run(exp, prepare_only)
     if prepare_only: break
