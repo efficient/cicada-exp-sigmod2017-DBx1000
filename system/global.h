@@ -82,6 +82,7 @@ struct DBConfig : public ::mica::transaction::BasicDBConfig {
   // static constexpr bool kCollectCommitStats = false;
   // static constexpr bool kCollectExtraCommitStats = true;
   // static constexpr bool kCollectProcessingStats = true;
+  // static constexpr bool kCollectROTXStalenessStats = true;
   // typedef ::mica::transaction::ActiveTiming Timing;
 
   typedef ::mica::transaction::NullLogger<DBConfig> Logger;
