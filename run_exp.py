@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import glob
 import os
 import sys
 import re
@@ -722,9 +723,9 @@ def sort_exps(exps):
     if exp['bench'] == 'YCSB' and exp['zipf_theta'] in (0.00, 0.90, 0.99): pri -= 1
 
     # prefer (warehouse count) = (thread count)
-    if exp['bench'] == 'TPCC' and exp['thread_count'] == exp['warehouse_count']: pri -= 1
+    if exp['bench'].startswith('TPCC') and exp['thread_count'] == exp['warehouse_count']: pri -= 1
     # prefer standard warehouse counts
-    if exp['bench'] == 'TPCC' and exp['warehouse_count'] in (1, 4, 16, max_thread_count, max_thread_count * 2): pri -= 1
+    if exp['bench'].startswith('TPCC') and exp['warehouse_count'] in (1, 4, 16, max_thread_count, max_thread_count * 2): pri -= 1
 
     # run exps in their sequence number
     return (exp['seq'], pri)
@@ -1026,7 +1027,8 @@ def run_all(pats, prepare_only):
 
   for i, exp in enumerate(exps):
     start = time.time()
-    s = 'exp %d/%d: %s' % (i + 1, len(exps), format_exp(exp))
+    failed = len(glob.glob(os.path.join(dir_name, '*.failed')))
+    s = 'exp %d/%d (%d failed): %s' % (i + 1, len(exps), failed, format_exp(exp))
     print(COLOR_BLUE + s + COLOR_RESET)
 
     run(exp, prepare_only)
