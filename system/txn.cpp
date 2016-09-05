@@ -497,23 +497,26 @@ bool txn_man::insert_row(table_t* tbl, row_t*& row, int part_id,
   assert(part_id >= 0 && part_id < (int)tbl->mica_tbl.size());
 #if !TPCC_CF
   MICARowAccessHandle rah(mica_tx);
-  if (!MICARowAccessHandle::new_row(&rah, tbl->mica_tbl[part_id], false, tbl->get_schema()->cf_sizes)) return false;
+  if (!rah.new_row(tbl->mica_tbl[part_id], 0, MICATransaction::kNewRowID, false, tbl->get_schema()->cf_sizes[0])) return false;
   out_row_id = rah.row_id();
   row->set_row_id(out_row_id);
   row->set_part_id(part_id);
   row->table = tbl;
   row->data = rah.data();
 #else
-  MICARowAccessHandle rahs[4];
-  for (uint64_t cf_id = 0; cf_id < tbl->get_schema()->cf_count; cf_id++)
-    rahs[cf_id] = MICARowAccessHandle(mica_tx);
-  if (!MICARowAccessHandle::new_row(rahs, tbl->mica_tbl[part_id], false, tbl->get_schema()->cf_sizes)) return false;
-  out_row_id = rahs[0].row_id();
-  row->set_row_id(out_row_id);
+  MICARowAccessHandle rah(mica_tx);
+  out_row_id = MICATransaction::kNewRowID;
+  for (uint64_t cf_id = 0; cf_id < tbl->get_schema()->cf_count; cf_id++) {
+    if (!rah.new_row(tbl->mica_tbl[part_id], cf_id, out_row_id, false, tbl->get_schema()->cf_sizes[cf_id])) return false;
+    if (cf_id == 0) {
+      out_row_id = rah.row_id();
+      row->set_row_id(out_row_id);
+    }
+    row->cf_data[cf_id] = rah.data();
+    rah.reset();
+  }
   row->set_part_id(part_id);
   row->table = tbl;
-  for (uint64_t cf_id = 0; cf_id < tbl->get_schema()->cf_count; cf_id++)
-    row->cf_data[cf_id] = rahs[cf_id].data();
 #endif
   return true;
 #endif

@@ -874,7 +874,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
 #if TPCC_DELETE_ROWS
   // MICA handles row deletion directly without using remove_row().
-  if (!rah.write_row(0) || !MICARowAccessHandle::delete_row(&rah)) return false;
+  if (!rah.write_row(0) || !rah.delete_row()) return false;
 #endif
 #endif
 
