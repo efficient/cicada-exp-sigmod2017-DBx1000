@@ -3,6 +3,7 @@
 #include "mem_alloc.h"
 #include "table.h"
 #include "row.h"
+#include "helper.h"
 
 #if INDEX_STRUCT == IDX_MICA
 

@@ -8,7 +8,7 @@ TABLE=WAREHOUSE
 	2,string,W_STATE
 	9,string,W_ZIP
 	8,double,W_TAX
-	8,double,W_YTD
+	8,double,W_YTD,1
 
 TABLE=DISTRICT
 	8,int64_t,D_ID
@@ -20,8 +20,8 @@ TABLE=DISTRICT
 	2,string,D_STATE
 	9,string,D_ZIP
 	8,double,D_TAX
-	8,double,D_YTD
-	8,int64_t,D_NEXT_O_ID
+	8,double,D_YTD,1
+	8,int64_t,D_NEXT_O_ID,2
 
 TABLE=CUSTOMER
 	8,int64_t,C_ID
@@ -40,11 +40,11 @@ TABLE=CUSTOMER
 	2,string,C_CREDIT
 	8,double,C_CREDIT_LIM
 	8,double,C_DISCOUNT
-	8,double,C_BALANCE
-	8,double,C_YTD_PAYMENT
-	8,uint64_t,C_PAYMENT_CNT
-	8,uint64_t,C_DELIVERY_CNT
-	500,string,C_DATA
+	8,double,C_BALANCE,1
+	8,double,C_YTD_PAYMENT,1
+	8,uint64_t,C_PAYMENT_CNT,1
+	8,uint64_t,C_DELIVERY_CNT,1
+	500,string,C_DATA,2
 
 TABLE=HISTORY
 	8,int64_t,H_C_ID
@@ -67,7 +67,7 @@ TABLE=ORDER
 	8,int64_t,O_D_ID
 	8,int64_t,O_W_ID
 	8,int64_t,O_ENTRY_D
-	8,int64_t,O_CARRIER_ID
+	8,int64_t,O_CARRIER_ID,1
 	8,int64_t,O_OL_CNT
 	8,int64_t,O_ALL_LOCAL
 
@@ -78,7 +78,7 @@ TABLE=ORDER-LINE
 	8,int64_t,OL_NUMBER
 	8,int64_t,OL_I_ID
 	8,int64_t,OL_SUPPLY_W_ID
-	8,int64_t,OL_DELIVERY_D
+	8,int64_t,OL_DELIVERY_D,1
 	8,int64_t,OL_QUANTITY
 	8,double,OL_AMOUNT
 	24,string,OL_DIST_INFO
@@ -93,7 +93,7 @@ TABLE=ITEM
 TABLE=STOCK
 	8,int64_t,S_I_ID
 	8,int64_t,S_W_ID
-	8,int64_t,S_QUANTITY
+	8,int64_t,S_QUANTITY,1
 	24,string,S_DIST_01
 	24,string,S_DIST_02
 	24,string,S_DIST_03
@@ -104,35 +104,35 @@ TABLE=STOCK
 	24,string,S_DIST_08
 	24,string,S_DIST_09
 	24,string,S_DIST_10
-	8,int64_t,S_YTD
-	8,int64_t,S_ORDER_CNT
-	8,int64_t,S_REMOTE_CNT
+	8,int64_t,S_YTD,1
+	8,int64_t,S_ORDER_CNT,1
+	8,int64_t,S_REMOTE_CNT,1
 	50,string,S_DATA
 
 // = g_max_items
-INDEX=ITEM_IDX
+INDEX=HASH_ITEM_IDX
 ITEM,100000
 
 // The below is scaled by g_num_wh
 
 // = 1
-INDEX=WAREHOUSE_IDX
+INDEX=HASH_WAREHOUSE_IDX
 WAREHOUSE,1
 
 // = DIST_PER_WARE
-INDEX=DISTRICT_IDX
+INDEX=HASH_DISTRICT_IDX
 DISTRICT,10
 
 // = DIST_PER_WARE * g_cust_per_dist
-INDEX=CUSTOMER_ID_IDX
+INDEX=HASH_CUSTOMER_ID_IDX
 CUSTOMER,30000
 
 // = DIST_PER_WARE * g_cust_per_dist
-INDEX=CUSTOMER_LAST_IDX
+INDEX=HASH_CUSTOMER_LAST_IDX
 CUSTOMER,30000
 
 // = g_max_items
-INDEX=STOCK_IDX
+INDEX=HASH_STOCK_IDX
 STOCK,100000
 
 // = DIST_PER_WARE * g_cust_per_dist

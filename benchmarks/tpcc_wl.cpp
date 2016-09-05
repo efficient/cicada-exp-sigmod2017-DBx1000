@@ -6,8 +6,9 @@
 #include "table.h"
 #include "index_hash.h"
 #include "index_btree.h"
-#include "index_mica.h"
 #include "index_mbtree.h"
+#include "index_mica.h"
+#include "index_mica_mbtree.h"
 #include "tpcc_helper.h"
 #include "row.h"
 #include "query.h"
@@ -19,15 +20,7 @@ RC tpcc_wl::init() {
   workload::init();
 
   string path = "./benchmarks/";
-#if TPCC_SMALL
-  path += "TPCC_short_schema.txt";
-#else
-#if !TPCC_VERT_PART
   path += "TPCC_full_schema.txt";
-#else
-  path += "TPCC_full_schema_vert_part.txt";
-#endif
-#endif
   cout << "reading schema file: " << path << endl;
   init_schema(path.c_str());
   cout << "TPCC schema initialized" << endl;
@@ -48,30 +41,16 @@ RC tpcc_wl::init_schema(const char* schema_file) {
   t_item = tables["ITEM"];
   t_stock = tables["STOCK"];
 
-  i_item = indexes["ITEM_IDX"];
-  i_warehouse = indexes["WAREHOUSE_IDX"];
-  i_district = indexes["DISTRICT_IDX"];
-  i_customer_id = indexes["CUSTOMER_ID_IDX"];
-  i_customer_last = indexes["CUSTOMER_LAST_IDX"];
-  i_stock = indexes["STOCK_IDX"];
+  i_item = hash_indexes["HASH_ITEM_IDX"];
+  i_warehouse = hash_indexes["HASH_WAREHOUSE_IDX"];
+  i_district = hash_indexes["HASH_DISTRICT_IDX"];
+  i_customer_id = hash_indexes["HASH_CUSTOMER_ID_IDX"];
+  i_customer_last = hash_indexes["HASH_CUSTOMER_LAST_IDX"];
+  i_stock = hash_indexes["HASH_STOCK_IDX"];
   i_order = ordered_indexes["ORDERED_ORDER_IDX"];
   i_order_cust = ordered_indexes["ORDERED_ORDER_CUST_IDX"];
   i_neworder = ordered_indexes["ORDERED_NEWORDER_IDX"];
   i_orderline = ordered_indexes["ORDERED_ORDERLINE_IDX"];
-
-#if TPCC_VERT_PART
-  t_warehouse_ytd = tables["WAREHOUSE_YTD"];
-  t_district_ytd = tables["DISTRICT_YTD"];
-  t_district_next_o_id = tables["DISTRICT_NEXT_O_ID"];
-  t_customer_payment = tables["CUSTOMER_PAYMENT"];
-  t_customer_c_data = tables["CUSTOMER_C_DATA"];
-
-  i_warehouse_ytd = indexes["WAREHOUSE_YTD_IDX"];
-  i_district_ytd = indexes["DISTRICT_YTD_IDX"];
-  i_district_next_o_id = indexes["DISTRICT_NEXT_O_ID_IDX"];
-  i_customer_id_payment = indexes["CUSTOMER_ID_PAYMENT"];
-  i_customer_id_c_data = indexes["CUSTOMER_ID_C_DATA_IDX"];
-#endif
 
   return RCOK;
 }
@@ -184,20 +163,9 @@ void tpcc_wl::init_tab_wh(uint32_t wid) {
   double tax = (double)URand(0L, 2000L, wid - 1) / 10000.0;
   row->set_value(W_TAX, tax);
   double w_ytd = 300000.00;
-#if !TPCC_VERT_PART
   row->set_value(W_YTD, w_ytd);
-#endif
 
   index_insert(i_warehouse, warehouseKey(wid), row, wh_to_part(wid));
-
-#if TPCC_VERT_PART
-  t_warehouse_ytd->get_new_row(row, wh_to_part(wid), row_id);
-  row->set_primary_key(warehouseKey(wid));
-
-  row->set_value(W_VERT_PART_YTD, w_ytd);
-
-  index_insert(i_warehouse_ytd, warehouseKey(wid), row, wh_to_part(wid));
-#endif
 }
 
 void tpcc_wl::init_tab_dist(uint64_t wid) {
@@ -232,32 +200,10 @@ void tpcc_wl::init_tab_dist(uint64_t wid) {
     double tax = (double)URand(0L, 2000L, wid - 1) / 10000.0;
     double d_ytd = 30000.00;
     row->set_value(D_TAX, tax);
-#if !TPCC_VERT_PART
     row->set_value(D_YTD, d_ytd);
     row->set_value(D_NEXT_O_ID, uint64_t(3001));
-#endif
 
     index_insert(i_district, distKey(did, wid), row, wh_to_part(wid));
-
-#if TPCC_VERT_PART
-    {
-      t_district_ytd->get_new_row(row, wh_to_part(wid), row_id);
-      row->set_primary_key(distKey(did, wid));
-
-      row->set_value(D_VERT_PART_YTD, d_ytd);
-
-      index_insert(i_district_ytd, distKey(did, wid), row, wh_to_part(wid));
-    }
-    {
-      t_district_next_o_id->get_new_row(row, wh_to_part(wid), row_id);
-      row->set_primary_key(distKey(did, wid));
-
-      row->set_value(D_VERT_PART_NEXT_O_ID, uint64_t(3001));
-
-      index_insert(i_district_next_o_id, distKey(did, wid), row,
-                   wh_to_part(wid));
-    }
-#endif
   }
 }
 
@@ -275,7 +221,7 @@ void tpcc_wl::init_tab_stock(uint64_t wid) {
     row->set_value(S_W_ID, wid);
     row->set_value(S_QUANTITY, URand(10, 100, wid - 1));
     row->set_value(S_REMOTE_CNT, uint64_t(0));
-#if !TPCC_SMALL
+
     char s_dist[25];
     char row_name[10] = "S_DIST_";
     for (int i = 1; i <= 10; i++) {
@@ -299,7 +245,7 @@ void tpcc_wl::init_tab_stock(uint64_t wid) {
       memcpy(s_data + startORIGINAL, "ORIGINAL", 8);
     }
     row->set_value(S_DATA, s_data);
-#endif
+
     index_insert(i_stock, stockKey(sid, wid), row, wh_to_part(wid));
   }
 }
@@ -325,7 +271,7 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     else
       Lastname(NURand(255, 0, 999, wid - 1), c_last);
     row->set_value(C_LAST, c_last);
-#if !TPCC_SMALL
+
     char tmp[3] = "OE";
     row->set_value(C_MIDDLE, tmp);
     char c_first[FIRSTNAME_LEN];
@@ -351,10 +297,8 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
     row->set_value(C_CREDIT_LIM, 50000.0);
     char c_data[500];
     MakeAlphaString(300, 500, c_data, wid - 1);
-#if !TPCC_VERT_PART
     row->set_value(C_DATA, c_data);
-#endif
-#endif
+
     if (RAND(10, wid - 1) == 0) {
       char tmp[] = "GC";
       row->set_value(C_CREDIT, tmp);
@@ -363,39 +307,15 @@ void tpcc_wl::init_tab_cust(uint64_t did, uint64_t wid) {
       row->set_value(C_CREDIT, tmp);
     }
     row->set_value(C_DISCOUNT, (double)URand(1, 5000, wid - 1) / 10000.0);
-#if !TPCC_VERT_PART
+
     row->set_value(C_BALANCE, -10.0);
     row->set_value(C_YTD_PAYMENT, 10.0);
     row->set_value(C_PAYMENT_CNT, uint64_t(1));
     row->set_value(C_DELIVERY_CNT, uint64_t(0));
-#endif
+
     index_insert(i_customer_last, custNPKey(did, wid, c_last), row,
                  wh_to_part(wid));
     index_insert(i_customer_id, custKey(cid, did, wid), row, wh_to_part(wid));
-
-#if TPCC_VERT_PART
-    {
-      t_customer_payment->get_new_row(row, wh_to_part(wid), row_id);
-      row->set_primary_key(custKey(cid, did, wid));
-
-      row->set_value(C_VERT_PART_BALANCE, -10.0);
-      row->set_value(C_VERT_PART_YTD_PAYMENT, 10.0);
-      row->set_value(C_VERT_PART_PAYMENT_CNT, uint64_t(1));
-      row->set_value(C_VERT_PART_DELIVERY_CNT, uint64_t(0));
-
-      index_insert(i_customer_id_payment, custKey(cid, did, wid), row,
-                   wh_to_part(wid));
-    }
-    {
-      t_customer_c_data->get_new_row(row, wh_to_part(wid), row_id);
-      row->set_primary_key(custKey(cid, did, wid));
-
-      row->set_value(C_VERT_PART_C_DATA, c_data);
-
-      index_insert(i_customer_id_c_data, custKey(cid, did, wid), row,
-                   wh_to_part(wid));
-    }
-#endif
   }
 }
 
@@ -415,11 +335,10 @@ void tpcc_wl::init_tab_hist(uint64_t c_id, uint64_t d_id, uint64_t w_id) {
   row->set_value(H_W_ID, w_id);
   row->set_value(H_DATE, uint64_t(0));
   row->set_value(H_AMOUNT, 10.0);
-#if !TPCC_SMALL
+
   char h_data[24];
   MakeAlphaString(12, 24, h_data, w_id - 1);
   row->set_value(H_DATA, h_data);
-#endif
 }
 
 void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
@@ -456,7 +375,6 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
 #endif
 
 // ORDER-LINE
-#if !TPCC_SMALL
     for (uint64_t ol = 1; ol <= o_ol_cnt; ol++) {
       t_orderline->get_new_row(row, wh_to_part(wid), row_id);
       row->set_primary_key(orderlineKey(ol, oid, did, wid));
@@ -482,7 +400,7 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
                    wh_to_part(wid));
 #endif
     }
-#endif
+
     // NEW ORDER
     if (oid > 2100) {
       t_neworder->get_new_row(row, wh_to_part(wid), row_id);

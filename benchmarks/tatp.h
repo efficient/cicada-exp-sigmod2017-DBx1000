@@ -21,10 +21,10 @@ class tatp_wl : public workload {
   table_t* t_special_facility;
   table_t* t_call_forwarding;
 
-  INDEX* i_subscriber;
-  INDEX* i_subscriber_sub_nbr;
-  INDEX* i_access_info;
-  INDEX* i_special_facility;
+  HASH_INDEX* i_subscriber;
+  HASH_INDEX* i_subscriber_sub_nbr;
+  HASH_INDEX* i_access_info;
+  HASH_INDEX* i_special_facility;
   ORDERED_INDEX* i_call_forwarding;
 
  private:

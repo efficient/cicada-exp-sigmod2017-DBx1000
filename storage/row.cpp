@@ -48,21 +48,32 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 
   MICATransaction tx(db->context(thread_id));
 	Catalog * schema = host_table->get_schema();
-	int tuple_size = schema->get_tuple_size();
+	//int tuple_size = schema->get_tuple_size();
 	while (true) {
 		if (!tx.begin())
 			assert(false);
+#if !TPCC_CF
 		MICARowAccessHandle rah(&tx);
-                const uint64_t data_sizes[] = {static_cast<uint64_t>(tuple_size)};
-
-		if (!MICARowAccessHandle::new_row(&rah, tbl, false, data_sizes)) {
+		if (!MICARowAccessHandle::new_row(&rah, tbl, false, schema->cf_sizes)) {
 			if (!tx.abort())
 				assert(false);
 			continue;
 		}
-
 		_row_id = rah.row_id();
-	  data = rah.data();  // XXX: This can become dangling when GC is done.
+                data = rah.data();
+#else
+		MICARowAccessHandle rahs[4];
+                for (uint64_t cf_id = 0; cf_id < table->get_schema()->cf_count; cf_id++)
+                  rahs[cf_id] = MICARowAccessHandle(&tx);
+		if (!MICARowAccessHandle::new_row(rahs, tbl, false, schema->cf_sizes)) {
+			if (!tx.abort())
+				assert(false);
+			continue;
+		}
+		_row_id = rahs[0].row_id();
+                for (uint64_t cf_id = 0; cf_id < table->get_schema()->cf_count; cf_id++)
+                  cf_data[cf_id] = rahs[cf_id].data();
+#endif
 	  if (!tx.commit())
 			continue;
 
@@ -160,14 +171,27 @@ uint64_t row_t::get_field_cnt() {
 }
 
 void row_t::set_value(int id, void * ptr) {
+#if !TPCC_CF
 	int datasize = get_schema()->get_field_size(id);
 	int pos = get_schema()->get_field_index(id);
 	memcpy( &data[pos], ptr, datasize);
+#else
+	int datasize = get_schema()->get_field_size(id);
+	int pos = get_schema()->get_field_index(id);
+        int cf_id = get_schema()->get_field_cf_id(id);
+	memcpy( &cf_data[cf_id][pos], ptr, datasize);
+#endif
 }
 
 void row_t::set_value(int id, void * ptr, int size) {
+#if !TPCC_CF
 	int pos = get_schema()->get_field_index(id);
 	memcpy( &data[pos], ptr, size);
+#else
+	int pos = get_schema()->get_field_index(id);
+        int cf_id = get_schema()->get_field_cf_id(id);
+	memcpy( &cf_data[cf_id][pos], ptr, size);
+#endif
 }
 
 void row_t::set_value(const char * col_name, void * ptr) {
@@ -197,15 +221,27 @@ GET_VALUE(SInt8);
 
 
 char * row_t::get_value(int id) {
+#if !TPCC_CF
 	int pos = get_schema()->get_field_index(id);
 	return &data[pos];
+#else
+	int pos = get_schema()->get_field_index(id);
+        int cf_id = get_schema()->get_field_cf_id(id);
+	return &cf_data[cf_id][pos];
+#endif
 }
 
 char * row_t::get_value(char * col_name) {
+#if !TPCC_CF
 	uint64_t pos = get_schema()->get_field_index(col_name);
 	return &data[pos];
+#else
+	int id = get_schema()->get_field_id(col_name);
+        return get_value(id);
+#endif
 }
 
+#if !TPCC_CF
 char * row_t::get_data() { return data; }
 
 void row_t::set_data(char * data, uint64_t size) {
@@ -215,13 +251,16 @@ void row_t::set_data(char * data, uint64_t size) {
 #endif
 	memcpy(this->data, data, size);
 }
+#endif
+
 // copy from the src to this
 void row_t::copy(row_t * src) {
 #if CC_ALG == MICA
 	printf("oops\n");
 	assert(false);
-#endif
+#else
 	set_data(src->get_data(), src->get_tuple_size());
+#endif
 }
 
 void row_t::free_row() {
@@ -240,8 +279,7 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 	return ERROR;
 #else
 	// Not supported in other algorithms.
-	assert(type != PEEK);
-#endif
+	assert(type != PEEK && type != SKIP);
 
 	RC rc = RCOK;
 #if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
@@ -365,74 +403,88 @@ RC row_t::get_row(access_t type, txn_man * txn, row_t *& row) {
 #elif CC_ALG == HSTORE || CC_ALG == VLL
 	row = this;
 	return rc;
-#elif CC_ALG == MICA
-	assert(_part_id >= 0 && _part_id < table->mica_tbl.size());
-	if (type == PEEK) {
-		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
-		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, false, false))
-			return Abort;
-		row->table = table;
-		row->data = const_cast<char*>(rah.cdata());
-		return RCOK;
-	}
-
-	MICARowAccessHandle rah(txn->mica_tx);
-	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, true, false) || !rah.read_row())
-			return Abort;
-	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl[_part_id], 0, _row_id, false, true, true) || !rah.read_row() || !rah.write_row())
-			return Abort;
-	} else {
-		assert(false);
-		return Abort;
-	}
-	row->table = get_table();
-	if (type == RD)
-		row->data = const_cast<char*>(rah.cdata());
-	else
-		row->data = rah.data();
-	return rc;
 #else
 	assert(false);
+#endif
 #endif
 }
 
 #if CC_ALG == MICA
-RC row_t::get_row(access_t type, txn_man * txn, table_t* table, row_t* access_row, uint64_t row_id, uint64_t part_id) {
-	assert(part_id >= 0 && part_id < table->mica_tbl.size());
+#if !TPCC_CF
+RC row_t::get_row(access_t type, txn_man* txn, table_t* table,
+                  row_t* access_row, uint64_t row_id, uint64_t part_id) {
+#else
+RC row_t::get_row(access_t type, txn_man* txn, table_t* table,
+                  row_t* access_row, uint64_t row_id, uint64_t part_id,
+                  const access_t* cf_access_type) {
+#endif
+  assert(part_id >= 0 && part_id < table->mica_tbl.size());
 
   // printf("get_row row_id=%lu row_count=%lu\n", item->row_id,
   //        table->mica_tbl[this->get_part_id()]->row_count());
 
-	access_row->table = table;
-	access_row->set_part_id(part_id);
-	access_row->set_row_id(row_id);
+  access_row->table = table;
+  access_row->set_part_id(part_id);
+  access_row->set_row_id(row_id);
 
-	if (type == PEEK) {
-		MICARowAccessHandlePeekOnly rah(txn->mica_tx);
-		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, false, false))
-			return Abort;
-		access_row->data = const_cast<char*>(rah.cdata());
-		return RCOK;
-	}
+#if !TPCC_CF
+    access_t this_type = type;
+    uint64_t cf_id = 0;
+#else
+  for (uint64_t cf_id = 0; cf_id < table->get_schema()->cf_count; cf_id++) {
+    access_t this_type = cf_access_type != NULL ? cf_access_type[cf_id] : type;
+#endif
 
-	MICARowAccessHandle rah(txn->mica_tx);
-	if (type == RD) {
-		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, true, false) || !rah.read_row())
-			return Abort;
-	} else if (type == WR) {
-		if (!rah.peek_row(table->mica_tbl[part_id], 0, row_id, false, true, true) || !rah.read_row() || !rah.write_row())
-			return Abort;
-	} else {
-		assert(false);
-		return Abort;
-	}
-	if (type == RD)
-		access_row->data = const_cast<char*>(rah.cdata());
-	else
-		access_row->data = rah.data();
-	return RCOK;
+#if TPCC_CF
+    if (this_type == SKIP) {
+      access_row->cf_data[cf_id] = NULL;
+      continue;
+    }
+#endif
+
+    if (this_type == PEEK) {
+      MICARowAccessHandlePeekOnly rah(txn->mica_tx);
+      if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, false, false,
+                        false))
+        return Abort;
+#if !TPCC_CF
+      access_row->data = const_cast<char*>(rah.cdata());
+#else
+      access_row->cf_data[cf_id] = const_cast<char*>(rah.cdata());
+#endif
+    } else {
+      MICARowAccessHandle rah(txn->mica_tx);
+      if (this_type == RD) {
+        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, false, true,
+                          false) ||
+            !rah.read_row())
+          return Abort;
+      } else if (this_type == WR) {
+        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, false, true,
+                          true) ||
+            !rah.read_row() || !rah.write_row())
+          return Abort;
+      } else {
+        assert(false);
+        return Abort;
+      }
+#if !TPCC_CF
+      if (this_type == RD)
+        access_row->data = const_cast<char*>(rah.cdata());
+      else
+        access_row->data = rah.data();
+#else
+      if (this_type == RD)
+        access_row->cf_data[cf_id] = const_cast<char*>(rah.cdata());
+      else
+        access_row->cf_data[cf_id] = rah.data();
+#endif
+    }
+
+#if TPCC_CF
+  }
+#endif
+  return RCOK;
 }
 #endif
 

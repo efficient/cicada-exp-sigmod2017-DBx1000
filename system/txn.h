@@ -9,6 +9,7 @@ class row_t;
 class table_t;
 class base_query;
 class INDEX;
+class ARRAY_INDEX;
 class ORDERED_INDEX;
 class IndexMBTree;
 
@@ -60,8 +61,6 @@ public:
 	void 			set_ts(ts_t timestamp);
 	ts_t 			get_ts();
 
-	void			set_readonly();
-
 	pthread_mutex_t txn_lock;
 	row_t * volatile cur_row;
 #if CC_ALG == HEKATON
@@ -85,7 +84,7 @@ public:
 	ts_t 			last_tid;
 #elif CC_ALG == MICA
   MICATransaction* mica_tx;
-	bool			readonly;
+	// bool			readonly;
 #endif
 
 	// For OCC
@@ -114,12 +113,22 @@ public:
 	RC index_read_range_rev(IndexT* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id);
 
 	// get_row methods
+#if !TPCC_CF
 	template <typename IndexT>
 	row_t* get_row(IndexT* index, row_t* row, int part_id, access_t type);
+#else
+	template <typename IndexT>
+	row_t* get_row(IndexT* index, row_t* row, int part_id, access_t type, const access_t* cf_access_type = NULL);
+#endif
 
 	// search (index_read + get_row)
+#if !TPCC_CF
   template <typename IndexT>
   row_t* search(IndexT* index, size_t key, int part_id, access_t type);
+#else
+  template <typename IndexT>
+  row_t* search(IndexT* index, size_t key, int part_id, access_t type, const access_t* cf_access_type = NULL);
+#endif
 
 	// insert_row/remove_row
   bool insert_row(table_t* tbl, row_t*& row, int part_id, uint64_t& row_id);
@@ -142,13 +151,13 @@ private:
 
 	// insert/remove indexes
 	uint64_t 		   insert_idx_cnt;
-	IndexMBTree*   insert_idx_idx[MAX_ROW_PER_TXN];
+	ORDERED_INDEX*   insert_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     insert_idx_key[MAX_ROW_PER_TXN];
 	row_t* 		     insert_idx_row[MAX_ROW_PER_TXN];
 	int	       	   insert_idx_part_id[MAX_ROW_PER_TXN];
 
 	uint64_t 		   remove_idx_cnt;
-	IndexMBTree*   remove_idx_idx[MAX_ROW_PER_TXN];
+	ORDERED_INDEX*   remove_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     remove_idx_key[MAX_ROW_PER_TXN];
 	int	      	   remove_idx_part_id[MAX_ROW_PER_TXN];
 

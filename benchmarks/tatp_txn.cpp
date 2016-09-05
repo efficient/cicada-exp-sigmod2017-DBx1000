@@ -36,24 +36,45 @@ RC tatp_txn_man::run_txn(base_query* query) {
   // printf("%d\n", (int)m_query->type);
   switch (m_query->type) {
     case TATPTxnType::DeleteCallForwarding:
+#if CC_ALG == MICA
+      mica_tx->begin(false);
+#endif
       rc = run_delete_call_forwarding(m_query);
       break;
     case TATPTxnType::GetAccessData:
+#if CC_ALG == MICA
+      mica_tx->begin(true);
+#endif
       rc = run_get_access_data(m_query);
       break;
     case TATPTxnType::GetNewDestination:
+#if CC_ALG == MICA
+      mica_tx->begin(true);
+#endif
       rc = run_get_new_destination(m_query);
       break;
     case TATPTxnType::GetSubscriberData:
+#if CC_ALG == MICA
+      mica_tx->begin(true);
+#endif
       rc = run_get_subscriber_data(m_query);
       break;
     case TATPTxnType::InsertCallForwarding:
+#if CC_ALG == MICA
+      mica_tx->begin(false);
+#endif
       rc = run_insert_call_forwarding(m_query);
       break;
     case TATPTxnType::UpdateLocation:
+#if CC_ALG == MICA
+      mica_tx->begin(false);
+#endif
       rc = run_update_location(m_query);
       break;
     case TATPTxnType::UpdateSubscriberData:
+#if CC_ALG == MICA
+      mica_tx->begin(false);
+#endif
       rc = run_update_subscriber_data(m_query);
       break;
     default:
@@ -170,7 +191,11 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
     row_t tmp_row;
     auto row = &tmp_row;
     row->table = table;
+#if !TPCC_CF
     row->data = const_cast<char*>(rah.cdata());
+#else
+    row->cf_data[0] = const_cast<char*>(rah.cdata());
+#endif
 
     uint8_t start_time;
     row->get_value((int)CallForwardingConst::start_time, start_time);
@@ -197,8 +222,6 @@ RC tatp_txn_man::run_delete_call_forwarding(tatp_query* query) {
 RC tatp_txn_man::run_get_access_data(tatp_query* query) {
   auto& arg = query->args.get_access_data;
 
-  set_readonly();
-
   auto index = _wl->i_access_info;
   auto key = accessInfoKey(arg.s_id, arg.ai_type);
   auto part_id = key_to_part(arg.s_id);
@@ -221,8 +244,6 @@ RC tatp_txn_man::run_get_access_data(tatp_query* query) {
 
 RC tatp_txn_man::run_get_new_destination(tatp_query* query) {
   auto& arg = query->args.get_new_destination;
-
-  set_readonly();
 
   auto row = get_special_facility(arg.s_id, arg.sf_type);
   if (row == NULL) {
@@ -259,8 +280,6 @@ RC tatp_txn_man::run_get_new_destination(tatp_query* query) {
 
 RC tatp_txn_man::run_get_subscriber_data(tatp_query* query) {
   auto& arg = query->args.get_subscriber_data;
-
-  set_readonly();
 
   auto index = _wl->i_subscriber;
   auto key = subscriberKey(arg.s_id);

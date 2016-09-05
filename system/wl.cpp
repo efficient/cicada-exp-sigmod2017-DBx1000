@@ -4,9 +4,11 @@
 #include "row.h"
 #include "table.h"
 #include "index_hash.h"
+#include "index_array.h"
 #include "index_btree.h"
-#include "index_mica.h"
 #include "index_mbtree.h"
+#include "index_mica.h"
+#include "index_mica_mbtree.h"
 #include "catalog.h"
 #include "mem_alloc.h"
 #include <thread>
@@ -79,6 +81,7 @@ RC workload::init_schema(string schema_file) {
         int size = 0;
         string type;
         string name;
+        int cf = 0;
         while (line.length() != 0) {
           pos = line.find(",");
           if (pos == string::npos) pos = line.length();
@@ -94,6 +97,11 @@ RC workload::init_schema(string schema_file) {
             case 2:
               name = token;
               break;
+            case 3:
+#if TPCC_CF
+              cf = atoi(token.c_str());
+#endif
+              break;
             default:
               assert(false);
           }
@@ -102,8 +110,8 @@ RC workload::init_schema(string schema_file) {
 #if WORKLOAD == YCSB
         size = MAX_TUPLE_SIZE;
 #endif
-        assert(elem_num == 3);
-        schema->add_col((char*)name.c_str(), size, (char*)type.c_str());
+        assert(elem_num == 3 || elem_num == 4);
+        schema->add_col((char*)name.c_str(), size, (char*)type.c_str(), cf);
         col_count++;
       }
 
@@ -117,7 +125,7 @@ RC workload::init_schema(string schema_file) {
 #endif
 
       table_t* cur_tab = (table_t*)mem_allocator.alloc(sizeof(table_t), -1);
-			new (cur_tab) table_t;
+      new (cur_tab) table_t;
 #if CC_ALG == MICA
       cur_tab->mica_db = mica_db;
 #endif
@@ -156,26 +164,36 @@ RC workload::init_schema(string schema_file) {
       else
         table_size = stoi(items[1]) * g_num_wh;
 #elif WORKLOAD == TATP
-        table_size = stoi(items[1]) * TATP_SCALE_FACTOR;
+      table_size = stoi(items[1]) * TATP_SCALE_FACTOR;
 #endif
 
-      if (strncmp(iname.c_str(), "ORDERED_", 8) != 0) {
-        INDEX* index = (INDEX*)mem_allocator.alloc(sizeof(INDEX), -1);
-        new (index) INDEX();
-
-#if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
-        index->init(part_cnt, tables[tname], table_size * 2);
-#else
-        index->init(part_cnt, tables[tname]);
-#endif
-        indexes[iname] = index;
-      } else {
+      if (strncmp(iname.c_str(), "ORDERED_", 8) == 0) {
         ORDERED_INDEX* index =
             (ORDERED_INDEX*)mem_allocator.alloc(sizeof(ORDERED_INDEX), -1);
         new (index) ORDERED_INDEX();
 
         index->init(part_cnt, tables[tname]);
         ordered_indexes[iname] = index;
+      } else if (strncmp(iname.c_str(), "ARRAY_", 6) == 0) {
+        ARRAY_INDEX* index = (ARRAY_INDEX*)mem_allocator.alloc(sizeof(ARRAY_INDEX), -1);
+        new (index) ARRAY_INDEX();
+
+        index->init(part_cnt, tables[tname], table_size * 2);
+        array_indexes[iname] = index;
+      } else if (strncmp(iname.c_str(), "HASH_", 5) == 0) {
+        HASH_INDEX* index = (HASH_INDEX*)mem_allocator.alloc(sizeof(HASH_INDEX), -1);
+        new (index) HASH_INDEX();
+
+#if INDEX_STRUCT == IDX_HASH || INDEX_STRUCT == IDX_MICA
+        index->init(part_cnt, tables[tname], table_size * 2);
+#else
+        index->init(part_cnt, tables[tname]);
+#endif
+        hash_indexes[iname] = index;
+      }
+      else {
+        printf("unrecognized index type for %s\n", iname.c_str());
+        assert(false);
       }
     }
   }
@@ -232,6 +250,17 @@ void workload::index_insert(IndexT* index, uint64_t key, row_t* row,
 }
 
 template <>
+void workload::index_insert(IndexArray* index, uint64_t key, row_t* row,
+                            int part_id) {
+#if CC_ALG == MICA
+  row = (row_t*)row->get_row_id();
+#endif
+
+  auto rc = index->index_insert(key, row, part_id);
+  assert(rc == RCOK);
+}
+
+template <>
 void workload::index_insert(IndexMBTree* index, uint64_t key, row_t* row,
                             int part_id) {
 #if CC_ALG == MICA
@@ -242,7 +271,9 @@ void workload::index_insert(IndexMBTree* index, uint64_t key, row_t* row,
   assert(rc == RCOK);
 }
 
-template void workload::index_insert(INDEX* index, uint64_t key,
-                                     row_t* row, int part_id);
-template void workload::index_insert(ORDERED_INDEX* index, uint64_t key, row_t* row,
+template void workload::index_insert(HASH_INDEX* index, uint64_t key, row_t* row,
                                      int part_id);
+template void workload::index_insert(ARRAY_INDEX* index, uint64_t key,
+                                     row_t* row, int part_id);
+template void workload::index_insert(ORDERED_INDEX* index, uint64_t key,
+                                     row_t* row, int part_id);

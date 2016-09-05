@@ -5,6 +5,7 @@
 #include "index_hash.h"
 #include "index_btree.h"
 #include "index_mica.h"
+#include "index_mica_mbtree.h"
 #include "thread.h"
 
 RC TestWorkload::init() {
@@ -20,7 +21,7 @@ RC TestWorkload::init() {
 RC TestWorkload::init_schema(const char * schema_file) {
 	workload::init_schema(schema_file);
 	the_table = tables["MAIN_TABLE"];
-	the_index = indexes["MAIN_INDEX"];
+	the_index = hash_indexes["HASH_MAIN_INDEX"];
 	return RCOK;
 }
 

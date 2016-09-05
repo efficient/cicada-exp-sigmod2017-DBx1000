@@ -23,12 +23,22 @@ class row_t;
 #define DECL_GET_VALUE(type)\
 	void get_value(int col_id, type & value);
 
+#if !TPCC_CF
 #define GET_VALUE(type)\
 	void row_t::get_value(int col_id, type & value) {\
 		int pos = get_schema()->get_field_index(col_id);\
 		memcpy(&value, data + pos, sizeof(type));\
 	}
 		// value = *(type *)&data[pos];
+#else
+#define GET_VALUE(type)\
+	void row_t::get_value(int col_id, type & value) {\
+		int pos = get_schema()->get_field_index(col_id);\
+		int cf_id = get_schema()->get_field_cf_id(col_id);\
+		memcpy(&value, cf_data[cf_id] + pos, sizeof(type));\
+	}
+		// value = *(type *)&cf_data[cf_id][pos];
+#endif
 
 class table_t;
 class Catalog;
@@ -94,8 +104,10 @@ public:
 	DECL_GET_VALUE(SInt8);
 
 
+#if !TPCC_CF
 	void set_data(char * data, uint64_t size);
 	char * get_data();
+#endif
 
 	void free_row();
 	
@@ -107,7 +119,11 @@ public:
 	void return_row(access_t type, txn_man * txn, row_t * row);
 
 #if CC_ALG == MICA
+#if !TPCC_CF
 	static RC get_row(access_t type, txn_man * txn, table_t* table, row_t* access_row, uint64_t row_id, uint64_t part_id);
+#else
+	static RC get_row(access_t type, txn_man * txn, table_t* table, row_t* access_row, uint64_t row_id, uint64_t part_id, const access_t* cf_access_type);
+#endif
 #endif
 
 private:
@@ -157,6 +173,10 @@ public:
 #if defined(USE_INLINED_DATA) && (CC_ALG == DL_DETECT || CC_ALG == NO_WAIT || CC_ALG == WAIT_DIE || CC_ALG == SILO || CC_ALG == TICTOC)
 	char data[0] __attribute__((aligned(8)));
 #else
+#if !TPCC_CF
 	char * data;
+#else
+	char * cf_data[4];
+#endif
 #endif
 };

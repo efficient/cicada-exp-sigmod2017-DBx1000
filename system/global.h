@@ -217,7 +217,7 @@ typedef uint64_t idx_key_t; // key id for index
 typedef uint64_t (*func_ptr)(idx_key_t);	// part_id func_ptr(index_key);
 
 /* general concurrency control */
-enum access_t {RD, WR, XP, SCAN, PEEK};
+enum access_t {RD, WR, XP, SCAN, PEEK, SKIP};
 /* LOCK */
 enum lock_t {LOCK_EX, LOCK_SH, LOCK_NONE };
 /* TIMESTAMP */
@@ -230,23 +230,20 @@ enum TsType {R_REQ, W_REQ, P_REQ, XP_REQ};
 
 // principal index structure. The workload may decide to use a different
 // index structure for specific purposes. (e.g. non-primary key access should use hash)
-#if (INDEX_STRUCT == IDX_BTREE)
+#if (INDEX_STRUCT == IDX_MICA)
 
-#define INDEX		index_btree
-#define ORDERED_INDEX		index_btree
-
-#elif (INDEX_STRUCT == IDX_MICA)
-
-#define INDEX		IndexMICA
-// #define INDEX		OrderedIndexMICA
+#define HASH_INDEX		IndexMICA
+// #define HASH_INDEX		OrderedIndexMICA
+#define ARRAY_INDEX		IndexArray
 #define ORDERED_INDEX		OrderedIndexMICA
-// #define ORDERED_INDEX		IndexMBTree
+// #define ORDERED_INDEX		IndexMICAMBTree
 // #define IDX_MICA_USE_MBTREE
 
 #else  // IDX_HASH
 
-#define INDEX		IndexHash
+#define HASH_INDEX		IndexHash
 // #define ORDERED_INDEX		index_btree
+#define ARRAY_INDEX		IndexArray
 #define ORDERED_INDEX		IndexMBTree
 #endif
 

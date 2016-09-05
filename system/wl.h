@@ -5,10 +5,12 @@
 class row_t;
 class table_t;
 class IndexHash;
+class IndexArray;
 class index_btree;
+class IndexMBTree;
 class IndexMICA;
 class OrderedIndexMICA;
-class IndexMBTree;
+class IndexMICAMBTree;
 class Catalog;
 class lock_man;
 class txn_man;
@@ -23,7 +25,8 @@ class workload
 public:
 	// tables indexed by table name
 	map<string, table_t *> tables;
-	map<string, INDEX *> indexes;
+	map<string, HASH_INDEX *> hash_indexes;
+	map<string, ARRAY_INDEX *> array_indexes;
 	map<string, ORDERED_INDEX *> ordered_indexes;
 
 	::mica::util::Stopwatch mica_sw;

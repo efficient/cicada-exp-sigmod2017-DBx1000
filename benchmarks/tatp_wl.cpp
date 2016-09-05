@@ -40,10 +40,10 @@ RC tatp_wl::init_schema(string schema_file) {
   t_special_facility = tables["SPECIAL_FACILITY"];
   t_call_forwarding = tables["CALL_FORWARDING"];
 
-  i_subscriber = indexes["SUBSCRIBER_IDX"];
-  i_subscriber_sub_nbr = indexes["SUBSCRIBER_SUB_NBR_IDX"];
-  i_access_info = indexes["ACCESS_INFO_IDX"];
-  i_special_facility = indexes["SPECIAL_FACILITY_IDX"];
+  i_subscriber = hash_indexes["HASH_SUBSCRIBER_IDX"];
+  i_subscriber_sub_nbr = hash_indexes["HASH_SUBSCRIBER_SUB_NBR_IDX"];
+  i_access_info = hash_indexes["HASH_ACCESS_INFO_IDX"];
+  i_special_facility = hash_indexes["HASH_SPECIAL_FACILITY_IDX"];
   i_call_forwarding = ordered_indexes["ORDERED_CALL_FORWARDING_IDX"];
 
   return RCOK;

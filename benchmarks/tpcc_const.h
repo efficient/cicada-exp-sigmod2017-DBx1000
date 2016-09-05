@@ -1,4 +1,3 @@
-#if TPCC_SMALL 
 enum {
 	W_ID,
 	W_NAME,
@@ -22,92 +21,6 @@ enum {
 	D_TAX,
 	D_YTD,
 	D_NEXT_O_ID
-};
-enum {
-	C_ID,
-	C_D_ID,
-	C_W_ID,
-	C_MIDDLE,
-	C_LAST,
-	C_STATE,
-	C_CREDIT,
-	C_DISCOUNT,
-	C_BALANCE,
-	C_YTD_PAYMENT,
-	C_PAYMENT_CNT
-};
-enum {
-	H_C_ID,
-	H_C_D_ID,
-	H_C_W_ID,
-	H_D_ID,
-	H_W_ID,
-	H_DATE,
-	H_AMOUNT
-};
-enum {
-	NO_O_ID,
-	NO_D_ID,
-	NO_W_ID
-};
-enum {
-	O_ID,
-	O_C_ID,
-	O_D_ID,
-	O_W_ID,
-	O_ENTRY_D,
-	O_CARRIER_ID,
-	O_OL_CNT,
-	O_ALL_LOCAL
-};
-enum {
-	OL_O_ID,
-	OL_D_ID,
-	OL_W_ID,
-	OL_NUMBER,
-	OL_I_ID
-};
-enum {
-	I_ID,
-	I_IM_ID,
-	I_NAME,
-	I_PRICE,
-	I_DATA
-};
-enum {
-	S_I_ID,
-	S_W_ID,
-	S_QUANTITY,
-	S_REMOTE_CNT
-};
-#else 
-enum {
-	W_ID,
-	W_NAME,
-	W_STREET_1,
-	W_STREET_2,
-	W_CITY,
-	W_STATE,
-	W_ZIP,
-	W_TAX,
-#if !TPCC_VERT_PART
-	W_YTD
-#endif
-};
-enum {
-	D_ID,
-	D_W_ID,
-	D_NAME,
-	D_STREET_1,
-	D_STREET_2,
-	D_CITY,
-	D_STATE,
-	D_ZIP,
-	D_TAX,
-#if !TPCC_VERT_PART
-	D_YTD,
-	D_NEXT_O_ID
-#endif
 };
 enum {
 	C_ID,
@@ -126,13 +39,11 @@ enum {
 	C_CREDIT,
 	C_CREDIT_LIM,
 	C_DISCOUNT,
-#if !TPCC_VERT_PART
 	C_BALANCE,
 	C_YTD_PAYMENT,
 	C_PAYMENT_CNT,
 	C_DELIVERY_CNT,
 	C_DATA
-#endif
 };
 enum {
 	H_C_ID,
@@ -197,24 +108,3 @@ enum {
 	S_REMOTE_CNT,
 	S_DATA
 };
-#if TPCC_VERT_PART
-enum {
-	W_VERT_PART_YTD,
-};
-enum {
-	D_VERT_PART_YTD,
-};
-enum {
-	D_VERT_PART_NEXT_O_ID,
-};
-enum {
-	C_VERT_PART_BALANCE,
-	C_VERT_PART_YTD_PAYMENT,
-	C_VERT_PART_PAYMENT_CNT,
-	C_VERT_PART_DELIVERY_CNT,
-};
-enum {
-	C_VERT_PART_C_DATA,
-};
-#endif
-#endif

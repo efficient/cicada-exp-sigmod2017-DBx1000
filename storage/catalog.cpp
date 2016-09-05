@@ -8,14 +8,28 @@ Catalog::init(const char * table_name, int field_cnt) {
 	this->field_cnt = 0;
 	this->_columns = new Column [field_cnt];
 	this->tuple_size = 0;
+        cf_count = 0;
+        memset(cf_sizes, 0, sizeof(cf_sizes));
 }
 
-void Catalog::add_col(char * col_name, uint64_t size, char * type) {
+void Catalog::add_col(char * col_name, uint64_t size, char * type, int cf_id) {
+#if !TPCC_CF
+  assert(cf_id == 0);
+#endif
+
+  assert((size_t)cf_id < sizeof(cf_sizes) / sizeof(cf_sizes[0]));
+  if (cf_count < (uint64_t)cf_id + 1)
+    cf_count = (uint64_t)cf_id + 1;
+
 	_columns[field_cnt].size = size;
 	strcpy(_columns[field_cnt].type, type);
 	strcpy(_columns[field_cnt].name, col_name);
 	_columns[field_cnt].id = field_cnt;
-	_columns[field_cnt].index = tuple_size;
+	_columns[field_cnt].index = cf_sizes[cf_id];
+#if TPCC_CF
+	_columns[field_cnt].cf_id = cf_id;
+#endif
+        cf_sizes[cf_id] += size;
 	tuple_size += size;
 	field_cnt ++;
 }

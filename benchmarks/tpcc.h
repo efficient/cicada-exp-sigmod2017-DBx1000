@@ -30,30 +30,16 @@ class tpcc_wl : public workload {
   table_t* t_item;
   table_t* t_stock;
 
-  INDEX* i_item;
-  INDEX* i_warehouse;
-  INDEX* i_district;
-  INDEX* i_customer_id;
-  INDEX* i_customer_last;
-  INDEX* i_stock;
+  HASH_INDEX* i_item;
+  HASH_INDEX* i_warehouse;
+  HASH_INDEX* i_district;
+  HASH_INDEX* i_customer_id;
+  HASH_INDEX* i_customer_last;
+  HASH_INDEX* i_stock;
   ORDERED_INDEX* i_order;
   ORDERED_INDEX* i_order_cust;
   ORDERED_INDEX* i_neworder;
   ORDERED_INDEX* i_orderline;
-
-#if TPCC_VERT_PART
-  table_t* t_warehouse_ytd;
-  table_t* t_district_ytd;
-  table_t* t_district_next_o_id;
-  table_t* t_customer_payment;
-  table_t* t_customer_c_data;
-
-  INDEX* i_warehouse_ytd;
-  INDEX* i_district_ytd;
-  INDEX* i_district_next_o_id;
-  INDEX* i_customer_id_payment;
-  INDEX* i_customer_id_c_data;
-#endif
 
   bool** delivering;
   uint32_t next_tid;

@@ -26,9 +26,12 @@ public:
 	UInt64 id;
 	UInt32 size;
 	UInt32 index;
+#if TPCC_CF
+        uint64_t cf_id;
+#endif
 	char * type;
 	char * name;
-	char pad[CL_SIZE - sizeof(uint64_t)*3 - sizeof(char *)*2];
+	// char pad[CL_SIZE - sizeof(uint64_t)*3 - sizeof(char *)*2];
 };
 
 class Catalog {
@@ -36,7 +39,7 @@ public:
 	// abandoned init function
 	// field_size is the size of each each field.
 	void init(const char * table_name, int field_cnt);
-	void add_col(char * col_name, uint64_t size, char * type);
+	void add_col(char * col_name, uint64_t size, char * type, int cf_id);
 
 	UInt32 			field_cnt;
  	const char * 	table_name;
@@ -46,6 +49,9 @@ public:
 	uint64_t 		get_field_cnt() { return field_cnt; };
 	uint64_t 		get_field_size(int id) { return _columns[id].size; };
 	uint64_t 		get_field_index(int id) { return _columns[id].index; };
+#if TPCC_CF
+	uint64_t 		get_field_cf_id(int id) { return _columns[id].cf_id; };
+#endif
 	char * 			get_field_type(uint64_t id);
 	char * 			get_field_name(uint64_t id);
 	uint64_t 		get_field_id(const char * name);
@@ -55,5 +61,8 @@ public:
 	void 			print_schema();
 	Column * 		_columns;
 	UInt32 			tuple_size;
+
+        uint64_t                cf_count;
+        uint64_t                cf_sizes[4];
 };
 

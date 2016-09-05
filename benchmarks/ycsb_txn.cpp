@@ -31,6 +31,10 @@ RC ycsb_txn_man::run_txn(base_query* query) {
 
   uint64_t v = 0;
 
+#if CC_ALG == MICA
+  mica_tx->begin(false);
+#endif
+
   for (uint32_t rid = 0; rid < m_query->request_cnt; rid++) {
     ycsb_request* req = &m_query->requests[rid];
     int part_id = wl->key_to_part(req->key);
@@ -51,7 +55,11 @@ RC ycsb_txn_man::run_txn(base_query* query) {
       /*if (m_query->request_cnt > 1)*/ {
         if (req->rtype == RD || req->rtype == SCAN) {
           //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
+#if !TPCC_CF
           const char* data = row->get_data() + column * kColumnSize;
+#else
+          const char* data = row->cf_data[0] + column * kColumnSize;
+#endif
           for (uint64_t j = 0; j < kColumnSize; j += 64)
             v += static_cast<uint64_t>(data[j]);
           v += static_cast<uint64_t>(data[kColumnSize - 1]);
@@ -61,7 +69,11 @@ RC ycsb_txn_man::run_txn(base_query* query) {
           //					for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
           //int fid = 0;
           // char * data = row->get_data();
+#if !TPCC_CF
           char* data = row->get_data() + column * kColumnSize;
+#else
+          char* data = row->cf_data[0] + column * kColumnSize;
+#endif
           for (uint64_t j = 0; j < kColumnSize; j += 64) {
             v += static_cast<uint64_t>(data[j]);
             data[j] = static_cast<char>(v);

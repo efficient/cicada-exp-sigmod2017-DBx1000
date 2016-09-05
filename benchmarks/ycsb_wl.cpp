@@ -8,8 +8,9 @@
 #include "row.h"
 #include "index_hash.h"
 #include "index_btree.h"
-#include "index_mica.h"
 #include "index_mbtree.h"
+#include "index_mica.h"
+#include "index_mica_mbtree.h"
 #include "catalog.h"
 #include "manager.h"
 #include "row_lock.h"
@@ -50,7 +51,7 @@ RC ycsb_wl::init() {
 RC ycsb_wl::init_schema(string schema_file) {
   workload::init_schema(schema_file);
   the_table = tables["MAIN_TABLE"];
-  the_index = indexes["MAIN_INDEX"];
+  the_index = hash_indexes["HASH_MAIN_INDEX"];
   return RCOK;
 }
 
