@@ -146,7 +146,7 @@
 // TPCC_FULL requires TPCC_INSERT_ROWS and TPCC_UPDATE_INDEX to fully function
 #define TPCC_FULL         false
 #define TPCC_CF		  false
-#define TPCC_SPLIT_DELIVERY true
+#define TPCC_SPLIT_DELIVERY false
 //
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,
