@@ -16,13 +16,13 @@ void table_t::init(Catalog* schema, uint64_t part_cnt) {
     uint64_t thread_id = part_id % g_thread_cnt;
     ::mica::util::lcore.pin_thread(thread_id);
 
-    const uint64_t zero_data_sizes[] = {0, 0, 0, 0};
+    const uint64_t noninlined_data_sizes[] = {4096, 4096, 4096, 4096};
     const uint64_t* data_sizes;
     if (WORKLOAD != TPCC || strcmp(table_name, "ORDER-LINE") != 0) {
       data_sizes = schema->cf_sizes;
     } else {
       // Disable inlining for ORDER-LINE.
-      data_sizes = zero_data_sizes;
+      data_sizes = noninlined_data_sizes;
     }
 
     char buf[1024];
