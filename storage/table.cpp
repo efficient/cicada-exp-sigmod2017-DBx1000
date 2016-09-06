@@ -16,6 +16,16 @@ void table_t::init(Catalog* schema, uint64_t part_cnt) {
     uint64_t thread_id = part_id % g_thread_cnt;
     ::mica::util::lcore.pin_thread(thread_id);
 
+    printf("tbl_name=%s part_id=%" PRIu64 " part_cnt=%" PRIu64 "\n", buf,
+           part_id, part_cnt);
+
+    const uint64_t data_sizes[] = {0, 0, 0, 0};
+    if (WORKLOAD != TPCC || strcmp(table_name, "ORDER-LINE") != 0) {
+      data_sizes = schema->cf_sizes;
+    } else {
+      // Disable inlining for ORDER-LINE.
+    }
+
     char buf[1024];
     int i = 0;
     while (true) {
@@ -25,9 +35,6 @@ void table_t::init(Catalog* schema, uint64_t part_cnt) {
     }
     auto p = mica_db->get_table(buf);
     assert(p);
-
-    printf("tbl_name=%s part_id=%" PRIu64 " part_cnt=%" PRIu64 "\n", buf,
-           part_id, part_cnt);
 
     mica_tbl.push_back(p);
   }
