@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# vim: set expandtab softtabstop=2 shiftwidth=2:
+
 import glob
 import os
 import sys
@@ -183,11 +185,11 @@ hugepage_count = {
   'SILO-REF': 48 * 1024 / 2,
   'SILO-REF-BACKOFF': 48 * 1024 / 2,
 
-  # 64 GiB (using too much hugepages can reduce tput)
-  'ERMIA-SI-REF': 64 * 1024 / 2,
-  'ERMIA-SI-REF-BACKOFF': 64 * 1024 / 2,
-  'ERMIA-SI_SSN-REF': 64 * 1024 / 2,
-  'ERMIA-SI_SSN-REF-BACKOFF': 64 * 1024 / 2,
+  # 80 GiB (using too much hugepages can reduce tput)
+  'ERMIA-SI-REF': 80 * 1024 / 2,
+  'ERMIA-SI-REF-BACKOFF': 80 * 1024 / 2,
+  'ERMIA-SI_SSN-REF': 80 * 1024 / 2,
+  'ERMIA-SI_SSN-REF-BACKOFF': 80 * 1024 / 2,
 
   # 112 GiB
   'FOEDUS-MOCC-REF': 112 * 1024 / 2,
@@ -350,9 +352,9 @@ def enum_exps(seq):
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
                 # Broken in FOEDUS
                 continue
-            if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
-                # Broken in FOEDUS
-                continue
+            #if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
+            #    # Broken in FOEDUS
+            #    continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -362,9 +364,9 @@ def enum_exps(seq):
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
                 # Broken in FOEDUS
                 continue
-            if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
-                # Broken in FOEDUS
-                continue
+            #if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
+            #    # Broken in FOEDUS
+            #    continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -777,6 +779,18 @@ def validate_result(exp, output):
   else:
     return output.find('cleaning up') != -1
 
+def killall():
+  # DBx1000
+  os.system('sudo killall rundb 2> /dev/null')
+  # native MICA
+  os.system('sudo killall test_tx 2> /dev/null')
+  # SILO-REF
+  os.system('sudo killall dbtest 2> /dev/null')
+  # ERMIA-REF
+  os.system('sudo killall dbtest-SI 2> /dev/null')
+  os.system('sudo killall dbtest-SI_SSN 2> /dev/null')
+  # FOEDUS-REF
+  os.system('sudo killall tpcc 2> /dev/null')
 
 def make_silo_cmd(exp):
   cmd = 'silo/out-perf.masstree/benchmarks/dbtest'
@@ -970,14 +984,14 @@ def run(exp, prepare_only):
     stdout, stderr = p.communicate(timeout=120)
     killed = False
   except subprocess.TimeoutExpired:
-    p.kill()
-    stdout, stderr = p.communicate()
+    killall()
+    stdout, stderr = p.communicate(timeout=10)
     killed = True
   stdout = stdout.decode('utf-8')
   stderr = stderr.decode('utf-8')
   output = stdout + '\n\n' + stderr
   if p.returncode != 0 or killed:
-    s = 'failed to run exp for %s (status=%d, killed=%s)' % (format_exp(exp), p.returncode, killed)
+    s = 'failed to run exp for %s (status=%s, killed=%s)' % (format_exp(exp), p.returncode, killed)
     print(COLOR_RED + s + COLOR_RESET)
     open(filename + '.failed', 'w').write(output)
     return
@@ -1095,6 +1109,8 @@ if __name__ == '__main__':
 
   if not os.path.exists(dir_name):
     os.mkdir(dir_name)
+
+  killall()
 
   remove_stale()
   # update_filenames()
