@@ -169,6 +169,7 @@ max_thread_count = None
 prefix = ''
 suffix = ''
 total_seqs = 5
+max_retries = 3
 
 hugepage_count = {
   # 32 GiB
@@ -978,31 +979,40 @@ def run(exp, prepare_only):
   time.sleep(1)
 
   # run
-  p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  #p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  try:
-    stdout, stderr = p.communicate(timeout=120)
-    killed = False
-  except subprocess.TimeoutExpired:
-    killall()
-    stdout, stderr = p.communicate(timeout=10)
-    killed = True
-  stdout = stdout.decode('utf-8')
-  stderr = stderr.decode('utf-8')
-  output = stdout + '\n\n' + stderr
-  if p.returncode != 0 or killed:
-    s = 'failed to run exp for %s (status=%s, killed=%s)' % (format_exp(exp), p.returncode, killed)
-    print(COLOR_RED + s + COLOR_RESET)
-    open(filename + '.failed', 'w').write(output)
-    return
-  if not validate_result(exp, output):
-    s = 'validation failed for %s' % format_exp(exp)
-    print(COLOR_RED + s + COLOR_RESET)
-    open(filename + '.failed', 'w').write(output)
-    return
+  for trial in range(max_retries):
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+      stdout, stderr = p.communicate(timeout=120)
+      killed = False
+    except subprocess.TimeoutExpired:
+      killall()
+      stdout, stderr = p.communicate(timeout=10)
+      killed = True
 
-  # finalize
-  open(filename, 'w').write(output)
+    stdout = stdout.decode('utf-8')
+    stderr = stderr.decode('utf-8')
+    output = stdout + '\n\n' + stderr
+
+    failed = False
+    if p.returncode != 0 or killed:
+      error_s = 'failed to run exp for %s (status=%s, killed=%s)' % (format_exp(exp), p.returncode, killed)
+      failed = True
+    elif not validate_result(exp, output):
+      error_s = 'validation failed for %s' % format_exp(exp)
+      failed = True
+
+    if not failed:
+      # finalize
+      open(filename, 'w').write(output)
+      break
+
+    print(COLOR_RED + error_s + COLOR_RESET)
+
+    failed_filename = filename + '.failed'
+    if trial != 0:
+      failed_filename += '-' + str(trial)
+    open(failed_filename, 'w').write(output)
 
 def run_all(pats, prepare_only):
   exps = []
