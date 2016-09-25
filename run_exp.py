@@ -149,8 +149,8 @@ def set_mica_confs(conf, **kwargs):
   if 'slow_gc' in kwargs:
     conf = replace_def(conf, 'MICA_USE_SLOW_GC', 'true')
     conf = replace_def(conf, 'MICA_SLOW_GC', str(kwargs['slow_gc']))
-  if 'column_count' in kwargs:
-    conf = replace_def(conf, 'MICA_COLUMN_COUNT', str(kwargs['column_count']))
+  #  if 'column_count' in kwargs:
+  #    conf = replace_def(conf, 'MICA_COLUMN_COUNT', str(kwargs['column_count']))
   if 'max_scan_len' in kwargs:
     conf = replace_def(conf, 'MICA_USE_SCAN', 'true')
     conf = replace_def(conf, 'MICA_MAX_SCAN_LEN', str(kwargs['max_scan_len']))
@@ -641,8 +641,8 @@ def enum_exps(seq):
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
           ycsb.update({ 'max_scan_len': max_scan_len })
-          if record_size in [10, 100]:
-            ycsb.update({ 'column_count': 1 })
+          #  if record_size in [10, 100]:
+          #    ycsb.update({ 'column_count': 1 })
 
           read_ratio = 0.95
           zipf_theta = 0.99
@@ -654,8 +654,8 @@ def enum_exps(seq):
           yield dict(ycsb)
           del ycsb['no_inlining']
 
-          if record_size in [10, 100]:
-            del ycsb['column_count']
+          #  if record_size in [10, 100]:
+          #    del ycsb['column_count']
 
 
   tag = 'native-full-table-scan'
@@ -674,8 +674,8 @@ def enum_exps(seq):
         ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
 
         ycsb.update({ 'full_table_scan': 1 })
-        if record_size in [10, 100]:
-          ycsb.update({ 'column_count': 1 })
+        #  if record_size in [10, 100]:
+        #    ycsb.update({ 'column_count': 1 })
 
         read_ratio = 0.95
         zipf_theta = 0.99
@@ -687,8 +687,8 @@ def enum_exps(seq):
         yield dict(ycsb)
         del ycsb['no_inlining']
 
-        if record_size in [10, 100]:
-          del ycsb['column_count']
+        #  if record_size in [10, 100]:
+        #    del ycsb['column_count']
 
 
 def update_conf(conf, exp):

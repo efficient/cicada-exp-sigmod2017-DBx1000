@@ -127,7 +127,7 @@
 #define PART_PER_TXN 				1
 #define PERC_MULTI_PART				1
 #define REQ_PER_QUERY				16
-#define FIELD_PER_TUPLE				10
+#define FIELD_PER_TUPLE				1
 // ==== [TPCC] ====
 // For large warehouse count, the tables do not fit in memory
 // small tpcc schemas shrink the table size.
