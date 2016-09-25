@@ -1,0 +1,30 @@
+diff --git a/foedus-core/include/foedus/xct/retrospective_lock_list.hpp b/foedus-core/include/foedus/xct/retrospective_lock_list.hpp
+index 7c0f3c1..52fe4bc 100644
+--- a/foedus-core/include/foedus/xct/retrospective_lock_list.hpp
++++ b/foedus-core/include/foedus/xct/retrospective_lock_list.hpp
+@@ -587,8 +587,8 @@ inline ErrorCode CurrentLockList::try_or_acquire_single_lock(
+     // We can release any lock anytime.. great flexibility!
+     mcs_rw_impl->release_rw_reader(lock_addr, lock_entry->mcs_block_);
+     lock_entry->taken_mode_ = kNoLock;
+-    last_locked_entry_ = calculate_last_locked_entry_from(pos - 1U);
+-    assert_last_locked_entry();
++    lock_entry->mcs_block_ = 0;
++    last_locked_entry_ = calculate_last_locked_entry();
+   } else {
+     // This method is for unconditional acquire and try, not aync/retry.
+     // If we have a queue node already, something was misused.
+diff --git a/foedus-core/src/foedus/xct/retrospective_lock_list.cpp b/foedus-core/src/foedus/xct/retrospective_lock_list.cpp
+index c1abd15..39f8026 100644
+--- a/foedus-core/src/foedus/xct/retrospective_lock_list.cpp
++++ b/foedus-core/src/foedus/xct/retrospective_lock_list.cpp
+@@ -294,6 +294,10 @@ void RetrospectiveLockList::construct(thread::Thread* context, uint32_t read_loc
+       kNoLock);
+   }
+ 
++  if (last_active_entry_ == kLockListPositionInvalid) {
++    return;
++  }
++
+   // Now, the entries are not sorted and we might have duplicates.
+   // Sort them, and merge entries for the same record.
+   // std::set? no joke. we can't afford heap allocation here.
