@@ -298,7 +298,8 @@ def enum_exps(seq):
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-          record_size = 1000
+          # record_size = 1000
+          record_size = 100
           req_per_query = 16
           tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -312,7 +313,8 @@ def enum_exps(seq):
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
-          record_size = 1000
+          #record_size = 1000
+          record_size = 100
           req_per_query = 1
           tx_count = 2000000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -393,7 +395,8 @@ def enum_exps(seq):
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-          record_size = 1000
+          # record_size = 1000
+          record_size = 100
           req_per_query = 16
           tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -471,7 +474,8 @@ def enum_exps(seq):
       total_count = 10 * 1000 * 1000
       ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
-      record_size = 1000
+      # record_size = 1000
+      record_size = 100
       req_per_query = 16
       tx_count = 200000
       ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -490,7 +494,8 @@ def enum_exps(seq):
       yield dict(ycsb)
 
       if common['tag'] == 'backoff':
-        record_size = 1000
+        # record_size = 1000
+        record_size = 100
         req_per_query = 1
         tx_count = 2000000
         ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -503,7 +508,8 @@ def enum_exps(seq):
         yield dict(ycsb)
 
       if common['tag'] in ('factor', 'native-factor'):
-        record_size = 1000
+        # record_size = 1000
+        record_size = 100
         req_per_query = 1
         tx_count = 2000000
         ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
