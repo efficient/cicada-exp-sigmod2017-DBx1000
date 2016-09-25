@@ -240,7 +240,7 @@ def remove_stale():
   for filename in os.listdir(dir_name):
     if filename.endswith('.old'):
       continue
-    if filename.endswith('.failed'):
+    if filename.find('.failed-') != -1:
       continue
     if not (filename.startswith(prefix) and filename.endswith(suffix)):
       continue
@@ -749,7 +749,7 @@ def unique_exps(exps):
 def skip_done(exps):
   for exp in exps:
     if os.path.exists(dir_name + '/' + gen_filename(exp)): continue
-    if os.path.exists(dir_name + '/' + gen_filename(exp) + '.failed'): continue
+    if os.path.exists(dir_name + '/' + gen_filename(exp) + '.failed-0'): continue
     # if exp['alg'] == 'MICA': continue
     yield exp
 
@@ -1009,9 +1009,7 @@ def run(exp, prepare_only):
 
     print(COLOR_RED + error_s + COLOR_RESET)
 
-    failed_filename = filename + '.failed'
-    if trial != 0:
-      failed_filename += '-' + str(trial)
+    failed_filename = filename + '.failed-' + str(trial)
     open(failed_filename, 'w').write(output)
 
 def run_all(pats, prepare_only):
