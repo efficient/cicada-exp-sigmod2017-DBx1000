@@ -27,7 +27,7 @@ RC ycsb_txn_man::run_txn(base_query* query) {
   ycsb_wl* wl = (ycsb_wl*)h_wl;
   row_cnt = 0;
 
-  const uint64_t kColumnSize = MAX_TUPLE_SIZE / 10;
+  // const uint64_t kColumnSize = MAX_TUPLE_SIZE / 10;
 
   uint64_t v = 0;
 
@@ -38,7 +38,7 @@ RC ycsb_txn_man::run_txn(base_query* query) {
   for (uint32_t rid = 0; rid < m_query->request_cnt; rid++) {
     ycsb_request* req = &m_query->requests[rid];
     int part_id = wl->key_to_part(req->key);
-    uint64_t column = req->column;
+    // uint64_t column = req->column;
     bool finish_req = false;
     UInt32 iteration = 0;
     while (!finish_req) {
@@ -56,13 +56,18 @@ RC ycsb_txn_man::run_txn(base_query* query) {
         if (req->rtype == RD || req->rtype == SCAN) {
           //                  for (int fid = 0; fid < schema->get_field_cnt(); fid++) {
 #if !TPCC_CF
-          const char* data = row->get_data() + column * kColumnSize;
+          // const char* data = row->get_data() + column * kColumnSize;
+          const char* data = row->get_data();
 #else
-          const char* data = row->cf_data[0] + column * kColumnSize;
+          // const char* data = row->cf_data[0] + column * kColumnSize;
+          const char* data = row->cf_data[0];
 #endif
-          for (uint64_t j = 0; j < kColumnSize; j += 64)
+          // for (uint64_t j = 0; j < kColumnSize; j += 64)
+          //   v += static_cast<uint64_t>(data[j]);
+          // v += static_cast<uint64_t>(data[kColumnSize - 1]);
+          for (uint64_t j = 0; j < MAX_TUPLE_SIZE; j += 64)
             v += static_cast<uint64_t>(data[j]);
-          v += static_cast<uint64_t>(data[kColumnSize - 1]);
+          v += static_cast<uint64_t>(data[MAX_TUPLE_SIZE - 1]);
           //                  }
         } else {
           assert(req->rtype == WR);
@@ -70,16 +75,24 @@ RC ycsb_txn_man::run_txn(base_query* query) {
           //int fid = 0;
           // char * data = row->get_data();
 #if !TPCC_CF
-          char* data = row->get_data() + column * kColumnSize;
+          // char* data = row->get_data() + column * kColumnSize;
+          char* data = row->get_data();
 #else
-          char* data = row->cf_data[0] + column * kColumnSize;
+          // char* data = row->cf_data[0] + column * kColumnSize;
+          char* data = row->cf_data[0];
 #endif
-          for (uint64_t j = 0; j < kColumnSize; j += 64) {
+          // for (uint64_t j = 0; j < kColumnSize; j += 64) {
+          //   v += static_cast<uint64_t>(data[j]);
+          //   data[j] = static_cast<char>(v);
+          // }
+          // v += static_cast<uint64_t>(data[kColumnSize - 1]);
+          // data[kColumnSize - 1] = static_cast<char>(v);
+          for (uint64_t j = 0; j < MAX_TUPLE_SIZE; j += 64) {
             v += static_cast<uint64_t>(data[j]);
             data[j] = static_cast<char>(v);
           }
-          v += static_cast<uint64_t>(data[kColumnSize - 1]);
-          data[kColumnSize - 1] = static_cast<char>(v);
+          v += static_cast<uint64_t>(data[MAX_TUPLE_SIZE - 1]);
+          data[MAX_TUPLE_SIZE - 1] = static_cast<char>(v);
           //*(uint64_t *)(&data[fid * 10]) = 0;
           // memcpy(data, v, column_size);
           //					}
