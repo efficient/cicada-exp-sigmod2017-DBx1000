@@ -292,6 +292,10 @@ def enum_exps(seq):
       for thread_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
+        if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
+          # Broken in FOEDUS
+          continue
+
         # YCSB
         if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
           ycsb = dict(common)
@@ -352,18 +356,12 @@ def enum_exps(seq):
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
             if tag != 'macrobench': continue
-            if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
-                # Broken in FOEDUS
-                continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
           for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
             if tag != 'macrobench': continue
             if thread_count not in [max_thread_count, warehouse_count]: continue
-            if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
-                # Broken in FOEDUS
-                continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -859,6 +857,8 @@ def make_ermia_cmd(exp):
   return cmd
 
 def make_foedus_cmd(exp):
+  assert exp['thread_count'] >= 4
+
   os.system('sudo sysctl -q -w kernel.shmmax=9223372036854775807')
   os.system('sudo sysctl -q -w kernel.shmall=1152921504606846720')
   os.system('sudo sysctl -q -w kernel.shmmni=409600')
@@ -912,6 +912,8 @@ def make_foedus_cmd(exp):
     else: assert False
 
   elif exp['bench'] == 'YCSB':
+    assert exp['record_size'] == 100
+
     # porting settings from tpcc_driver.cpp
     # cmd += ' -take_snapshot=false'  # XXX: Unable to turn this off?
     cmd += ' -workload=F' # The only workload that supports Zipf
@@ -925,7 +927,6 @@ def make_foedus_cmd(exp):
       * exp['req_per_query']))
     cmd += ' -sort_keys=false'
     cmd += ' -distinct_keys=true'
-    assert exp['record_size'] == 100
 
     if exp['alg'] == 'FOEDUS-MOCC-REF': # MOCC
       cmd += ' -hot_threshold=10'
