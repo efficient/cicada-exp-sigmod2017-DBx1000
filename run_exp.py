@@ -406,7 +406,8 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
+      # if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
+      if alg.find('-REF') == -1:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -415,7 +416,7 @@ def enum_exps(seq):
         ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
         for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
-          if alg.startswith('FOEDUS-') and record_size != 100: continue
+          # if alg.startswith('FOEDUS-') and record_size != 100: continue
 
           req_per_query = 16
           tx_count = 200000
@@ -922,9 +923,11 @@ def make_foedus_cmd(exp):
     cmd += ' -initial_table_size=%d' % exp['total_count']
     cmd += ' -simple_int_keys=true'
     cmd += ' -zipfian_theta=%f' % exp['zipf_theta']
-    cmd += ' -rmw_additional_reads=%d' % round(exp['read_ratio'] * exp['req_per_query'])
-    cmd += ' -reps_per_tx=%d' % (exp['req_per_query'] - round(exp['read_ratio']
-      * exp['req_per_query']))
+    # cmd += ' -rmw_additional_reads=%d' % round(exp['read_ratio'] * exp['req_per_query'])
+    # cmd += ' -reps_per_tx=%d' % (exp['req_per_query'] - round(exp['read_ratio'] * exp['req_per_query']))
+    cmd += ' -rmw_additional_reads=0'
+    cmd += ' -reps_per_tx=%d' % exp['req_per_query']
+    cmd += ' -rmw_read_ratio=%f' % exp['read_ratio']
     cmd += ' -sort_keys=false'
     cmd += ' -distinct_keys=true'
 
