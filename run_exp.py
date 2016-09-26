@@ -297,7 +297,7 @@ def enum_exps(seq):
           continue
 
         # YCSB
-        if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
+        if alg.find('-REF') == -1 or alg.startswith('ERMIA-') or alg.startswith('FOEDUS-'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -382,7 +382,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
+        if alg.find('-REF') == -1 or alg.startswith('ERMIA-') or alg.startswith('FOEDUS-'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -406,7 +406,6 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      # if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
       if alg.find('-REF') == -1:
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
@@ -416,8 +415,6 @@ def enum_exps(seq):
         ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
         for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
-          # if alg.startswith('FOEDUS-') and record_size != 100: continue
-
           req_per_query = 16
           tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -837,17 +834,8 @@ def make_ermia_cmd(exp):
     # cmd += ' --backoff-aborted-transactions'
     pass
     assert False
-  cmd += ' --bench tpcc'
-  cmd += ' --scale-factor %d' % exp['warehouse_count']
-  cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
-  if exp['warehouse_count'] != exp['thread_count']:
-    # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
-    cmd += ' --bench-opts="--warehouse-spread=100"'
-  else:
-    # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Disabled for consistency (also not supported by devs)
-    pass
   cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
   # cmd += ' --enable-gc' # throughput decreases substantially (down to 20-50%) if the experiment runs more than 10 seconds
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
@@ -855,6 +843,34 @@ def make_ermia_cmd(exp):
   cmd += ' --log-buffer-mb 512'
   cmd += ' --log-segment-mb 8192'
   cmd += ' --null-log-device'
+  cmd += ' --num-threads %d' % exp['thread_count']
+
+  if exp['bench'] == 'TPCC':
+    cmd += ' --bench tpcc'
+    cmd += ' --scale-factor %d' % exp['warehouse_count']
+    if exp['warehouse_count'] != exp['thread_count']:
+      # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
+      cmd += ' --bench-opts="--warehouse-spread=100"'
+    else:
+      # cmd += ' --bench-opts="--enable-separate-tree-per-partition"' # Disabled for consistency (also not supported by devs)
+      pass
+
+  elif exp['bench'] == 'YCSB':
+    assert exp['record_size'] == 100
+
+    cmd += ' --bench ycsb'
+    cmd += ' --num-threads %d' % exp['thread_count']
+    cmd += ' --bench-opts='
+    cmd += '"--workload=F'
+    cmd += ' --initial-table-size=%d' % exp['total_count']
+    cmd += ' --zipf-theta=%f' % exp['zipf_theta']
+    cmd += ' --reps-per-tx=%d' % exp['req_per_query']
+    cmd += ' --rmw-additional-reads=0'
+    cmd += ' --rmw-read-ratio=%f' % exp['read_ratio']
+    cmd += '"'
+
+  else: assert False
+
   return cmd
 
 def make_foedus_cmd(exp):
@@ -991,7 +1007,6 @@ def run(exp, prepare_only):
       assert exp['bench'] == 'TPCC-FULL'
       cmd = make_silo_cmd(exp)
     elif exp['alg'].startswith('ERMIA'):
-      assert exp['bench'] == 'TPCC-FULL'
       cmd = make_ermia_cmd(exp)
     elif exp['alg'].startswith('FOEDUS'):
       cmd = make_foedus_cmd(exp)
