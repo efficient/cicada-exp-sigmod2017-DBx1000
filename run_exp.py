@@ -293,7 +293,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg.find('-REF') == -1:
+        if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -355,9 +355,6 @@ def enum_exps(seq):
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
                 # Broken in FOEDUS
                 continue
-            #if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
-            #    # Broken in FOEDUS
-            #    continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -367,9 +364,6 @@ def enum_exps(seq):
             if alg in ('FOEDUS-MOCC-REF', 'FOEDUS-OCC-REF') and thread_count < 4:
                 # Broken in FOEDUS
                 continue
-            #if alg == 'FOEDUS-MOCC-REF' and warehouse_count < thread_count:
-            #    # Broken in FOEDUS
-            #    continue
             tpcc.update({ 'warehouse_count': warehouse_count })
             yield dict(tpcc)
 
@@ -390,7 +384,7 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg.find('-REF') == -1:
+        if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -414,7 +408,7 @@ def enum_exps(seq):
   # for alg in ['MICA', 'SILO', 'TICTOC']:
   # for alg in ['MICA', 'MICA+INDEX', 'SILO', 'TICTOC']:
     for thread_count in [max_thread_count]:
-      if alg.find('-REF') == -1:
+      if alg.find('-REF') == -1 or alg.startswith('FOEDUS-'):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
@@ -423,6 +417,8 @@ def enum_exps(seq):
         ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
 
         for record_size in [10, 20, 40, 100, 200, 400, 1000, 2000]:
+          if alg.startswith('FOEDUS-') and record_size != 100: continue
+
           req_per_query = 16
           tx_count = 200000
           ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
@@ -872,18 +868,26 @@ def make_foedus_cmd(exp):
   os.system('rm -rf /dev/shm/foedus_tpcc/')
   os.system('rm -rf /tmp/libfoedus.*')
 
-  # based on foedus_code/build/experiments-core/src/foedus/tpcc/run_common.sh,run_dl580.sh
-  cmd = 'env CPUPROFILE_FREQUENCY=1 foedus_code/build/experiments-core/src/foedus/tpcc/tpcc'
-  # see tpcc_driver.cpp for options
+  # based on
+  #  foedus_code/build/experiments-core/src/foedus/tpcc/run_common.sh
+  #   .../run_dl580.sh
+  #  foedus_code/build/experiments-core/src/foedus/ycsb/run_common.sh
+  #   .../run_dl580.sh
+
+  # see tpcc_driver.cpp, ycsb_driver.cpp for options
+
+  cmd = 'env CPUPROFILE_FREQUENCY=1'
+  if exp['bench'] == 'TPCC':
+     cmd += ' foedus_code/build/experiments-core/src/foedus/tpcc/tpcc'
+  elif exp['bench'] == 'YCSB':
+     cmd += ' foedus_code/build/experiments-core/src/foedus/ycsb/ycsb_hash'
+  else: assert False
   cmd += ' -fork_workers=false' # forking seems to ignore thread count limit
-  cmd += ' -take_snapshot=false'
   cmd += ' -nvm_folder=/dev/shm'
   cmd += ' -volatile_pool_size=20'  # this determines overall memory use
   cmd += ' -snapshot_pool_size=2'
   cmd += ' -reducer_buffer_size=1'
   cmd += ' -loggers_per_node=2'
-  cmd += ' -neworder_remote_percent=1'
-  cmd += ' -payment_remote_percent=15'
   if exp['thread_count'] == 1:
     cmd += ' -thread_per_node=1'
     cmd += ' -numa_nodes=1'
@@ -893,13 +897,46 @@ def make_foedus_cmd(exp):
   cmd += ' -log_buffer_mb=1024'
   cmd += ' -null_log_device=true' # no logging
   cmd += ' -high_priority=false'
-  cmd += ' -warehouses=%d' % exp['warehouse_count']
   cmd += ' -duration_micro=%d' % (20 * 1000000) # FOEDUS requires a ton of memory, so we cannot run it for 30 seconds
-  if exp['alg'] == 'FOEDUS-MOCC-REF':
-    cmd += ' -hcc_policy=0' # MOCC
-  elif exp['alg'] == 'FOEDUS-OCC-REF':
-    cmd += ' -hcc_policy=1' # OCC
-  else: assert False
+
+  if exp['bench'] == 'TPCC':
+    cmd += ' -take_snapshot=false'
+    cmd += ' -warehouses=%d' % exp['warehouse_count']
+    cmd += ' -neworder_remote_percent=1'
+    cmd += ' -payment_remote_percent=15'
+
+    if exp['alg'] == 'FOEDUS-MOCC-REF':
+      cmd += ' -hcc_policy=0' # MOCC
+    elif exp['alg'] == 'FOEDUS-OCC-REF':
+      cmd += ' -hcc_policy=1' # OCC
+    else: assert False
+
+  elif exp['bench'] == 'YCSB':
+    # porting settings from tpcc_driver.cpp
+    # cmd += ' -take_snapshot=false'  # XXX: Unable to turn this off?
+    cmd += ' -workload=F' # The only workload that supports Zipf
+    cmd += ' -read_all_fields=true'
+    cmd += ' -write_all_fields=true'
+    cmd += ' -initial_table_size=%d' % exp['total_count']
+    cmd += ' -simple_int_keys=true'
+    cmd += ' -zipfian_theta=%f' % exp['zipf_theta']
+    cmd += ' -rmw_additional_reads=%d' % round(exp['read_ratio'] * exp['req_per_query'])
+    cmd += ' -reps_per_tx=%d' % (exp['req_per_query'] - round(exp['read_ratio']
+      * exp['req_per_query']))
+    cmd += ' -sort_keys=false'
+    cmd += ' -distinct_keys=true'
+    assert exp['record_size'] == 100
+
+    if exp['alg'] == 'FOEDUS-MOCC-REF': # MOCC
+      cmd += ' -hot_threshold=10'
+      cmd += ' -enable_retrospective_lock_list=true'
+      cmd += ' -force_canonical_xlocks_in_precommit=true'
+    elif exp['alg'] == 'FOEDUS-OCC-REF': # OCC
+      cmd += ' -hot_threshold=256'
+      cmd += ' -enable_retrospective_lock_list=false'
+      cmd += ' -force_canonical_xlocks_in_precommit=true'
+    else: assert False
+
   cmd += ' 2>&1'
   #cmd += ' | grep -m1 "Experiment ended"' # to force stop runs with MOCC
   return cmd
@@ -953,7 +990,6 @@ def run(exp, prepare_only):
       assert exp['bench'] == 'TPCC-FULL'
       cmd = make_ermia_cmd(exp)
     elif exp['alg'].startswith('FOEDUS'):
-      assert exp['bench'] == 'TPCC-FULL'
       cmd = make_foedus_cmd(exp)
     else:
       assert False
