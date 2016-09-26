@@ -297,7 +297,8 @@ def enum_exps(seq):
           continue
 
         # YCSB
-        if alg.find('-REF') == -1 or alg.startswith('ERMIA-') or alg.startswith('FOEDUS-'):
+        # if alg.find('-REF') == -1:
+        if True:
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -330,7 +331,8 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        if alg.find('-REF') == -1:
+        # if alg.find('-REF') == -1:
+        if True:
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
@@ -382,7 +384,8 @@ def enum_exps(seq):
         common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count }
 
         # YCSB
-        if alg.find('-REF') == -1 or alg.startswith('ERMIA-') or alg.startswith('FOEDUS-'):
+        # if alg.find('-REF') == -1:
+        if True:
           ycsb = dict(common)
           total_count = 10 * 1000 * 1000
           ycsb.update({ 'bench': 'YCSB', 'total_count': total_count })
@@ -799,13 +802,31 @@ def make_silo_cmd(exp):
   cmd += ' --retry-aborted-transactions'
   if exp['alg'].find('-BACKOFF') != -1:
     cmd += ' --backoff-aborted-transactions'  # Better for 1 warehouse (> 1000 Tps), worse for 4+ warehouses for TPC-C
-  cmd += ' --bench tpcc'
-  cmd += ' --scale-factor %d' % exp['warehouse_count']
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --runtime 20'  # Can run for 30 seconds but for consistency
-  cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
   cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
+
+  if exp['bench'] == 'TPCC':
+    cmd += ' --bench tpcc'
+    cmd += ' --scale-factor %d' % exp['warehouse_count']
+    cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
+
+  elif exp['bench'] == 'YCSB':
+    assert exp['record_size'] == 100
+
+    cmd += ' --bench ycsb'
+    cmd += ' --bench-opts='
+    cmd += '"--workload=0,0,100,0'
+    cmd += ' --initial-table-size=%d' % exp['total_count']
+    cmd += ' --zipf-theta=%f' % exp['zipf_theta']
+    cmd += ' --reps-per-tx=%d' % exp['req_per_query']
+    cmd += ' --rmw-additional-reads=0'
+    cmd += ' --rmw-read-ratio=%f' % exp['read_ratio']
+    cmd += '"'
+
+  else: assert False
+
   return cmd
 
 def make_ermia_cmd(exp):
@@ -859,7 +880,6 @@ def make_ermia_cmd(exp):
     assert exp['record_size'] == 100
 
     cmd += ' --bench ycsb'
-    cmd += ' --num-threads %d' % exp['thread_count']
     cmd += ' --bench-opts='
     cmd += '"--workload=F'
     cmd += ' --initial-table-size=%d' % exp['total_count']
@@ -1004,7 +1024,6 @@ def run(exp, prepare_only):
 
   if exp['alg'].find('-REF') != -1:
     if exp['alg'].startswith('SILO'):
-      assert exp['bench'] == 'TPCC-FULL'
       cmd = make_silo_cmd(exp)
     elif exp['alg'].startswith('ERMIA'):
       cmd = make_ermia_cmd(exp)
