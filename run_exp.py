@@ -331,8 +331,7 @@ def enum_exps(seq):
               yield dict(ycsb)
 
         # TPCC
-        # if alg.find('-REF') == -1:
-        if True:
+        if alg.find('-REF') == -1:
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
