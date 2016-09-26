@@ -4,7 +4,7 @@
 
 cd foedus_code || exit 1
 
-[ ! -d build ] && mkdir bulid
+[ ! -d build ] && mkdir build
 cd build
 
 cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
