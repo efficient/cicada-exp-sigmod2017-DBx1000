@@ -5,7 +5,7 @@
 cd ermia || exit 1
 
 echo Build: SI
-make clean &> /dev/null
+#make clean &> /dev/null
 MODE=perf DEBUG=0 NDEBUG=1 make -j8 dbtest
 mv ./out-perf.masstree/benchmarks/dbtest ./dbtest-SI
 
