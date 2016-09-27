@@ -803,10 +803,10 @@ def make_silo_cmd(exp):
     cmd += ' --backoff-aborted-transactions'  # Better for 1 warehouse (> 1000 Tps), worse for 4+ warehouses for TPC-C
   cmd += ' --num-threads %d' % exp['thread_count']
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 20'  # Can run for 30 seconds but for consistency
   cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
 
   if exp['bench'] == 'TPCC':
+    cmd += ' --runtime 20'  # Can run for 30 seconds but for consistency
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
     cmd += ' --bench-opts="--enable-separate-tree-per-partition"'
@@ -814,6 +814,8 @@ def make_silo_cmd(exp):
   elif exp['bench'] == 'YCSB':
     assert exp['record_size'] == 100
 
+    cmd += ' --max-runtime 20'  # Same as above
+    cmd += ' --ops-per-worker %d' % exp['tx_count']
     cmd += ' --bench ycsb'
     cmd += ' --bench-opts='
     cmd += '"--workload=0,0,100,0'
@@ -855,7 +857,6 @@ def make_ermia_cmd(exp):
     pass
     assert False
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
-  cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
   cmd += ' --node-memory-gb %d' % int(hugepage_count[exp['alg']] * 2 / 1024 / node_count * 0.99)
   # cmd += ' --enable-gc' # throughput decreases substantially (down to 20-50%) if the experiment runs more than 10 seconds
   cmd += ' --tmpfs-dir %s' % tmpfs_dir
@@ -866,6 +867,7 @@ def make_ermia_cmd(exp):
   cmd += ' --num-threads %d' % exp['thread_count']
 
   if exp['bench'] == 'TPCC':
+    cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
     if exp['warehouse_count'] != exp['thread_count']:
@@ -878,6 +880,8 @@ def make_ermia_cmd(exp):
   elif exp['bench'] == 'YCSB':
     assert exp['record_size'] == 100
 
+    cmd += ' --max-runtime 20'  # Same as above
+    cmd += ' --ops-per-worker %d' % exp['tx_count']
     cmd += ' --bench ycsb'
     cmd += ' --bench-opts='
     cmd += '"--workload=F'
@@ -949,6 +953,8 @@ def make_foedus_cmd(exp):
 
   elif exp['bench'] == 'YCSB':
     assert exp['record_size'] == 100
+
+    cmd += ' -ops_per_worker=%d' % exp['tx_count']
 
     # porting settings from tpcc_driver.cpp
     # cmd += ' -take_snapshot=false'  # XXX: Unable to turn this off?
