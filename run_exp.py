@@ -866,7 +866,7 @@ def make_ermia_cmd(exp):
   cmd += ' --null-log-device'
   cmd += ' --num-threads %d' % exp['thread_count']
 
-  if exp['bench'] == 'TPCC-FUL':
+  if exp['bench'] == 'TPCC-FULL':
     cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
