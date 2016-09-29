@@ -805,7 +805,7 @@ def make_silo_cmd(exp):
   # cmd += ' --ops-per-worker %d' % exp['tx_count']
   cmd += ' --numa-memory %dG' % int(int(hugepage_count[exp['alg']] * 0.99) * 2 / 1024)
 
-  if exp['bench'] == 'TPCC':
+  if exp['bench'] == 'TPCC-FULL':
     cmd += ' --runtime 20'  # Can run for 30 seconds but for consistency
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
@@ -866,7 +866,7 @@ def make_ermia_cmd(exp):
   cmd += ' --null-log-device'
   cmd += ' --num-threads %d' % exp['thread_count']
 
-  if exp['bench'] == 'TPCC':
+  if exp['bench'] == 'TPCC-FUL':
     cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
@@ -917,7 +917,7 @@ def make_foedus_cmd(exp):
   # see tpcc_driver.cpp, ycsb_driver.cpp for options
 
   cmd = 'env CPUPROFILE_FREQUENCY=1'
-  if exp['bench'] == 'TPCC':
+  if exp['bench'] == 'TPCC-FULL':
      cmd += ' foedus_code/build/experiments-core/src/foedus/tpcc/tpcc'
   elif exp['bench'] == 'YCSB':
      cmd += ' foedus_code/build/experiments-core/src/foedus/ycsb/ycsb_hash'
@@ -939,7 +939,7 @@ def make_foedus_cmd(exp):
   cmd += ' -high_priority=false'
   cmd += ' -duration_micro=%d' % (20 * 1000000) # FOEDUS requires a ton of memory, so we cannot run it for 30 seconds
 
-  if exp['bench'] == 'TPCC':
+  if exp['bench'] == 'TPCC-FULL':
     cmd += ' -take_snapshot=false'
     cmd += ' -warehouses=%d' % exp['warehouse_count']
     cmd += ' -neworder_remote_percent=1'
