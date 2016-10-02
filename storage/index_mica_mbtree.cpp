@@ -14,6 +14,7 @@
 #include "table.h"
 #include "row.h"
 #include "helper.h"
+#include "catalog.h"
 
 #if INDEX_STRUCT == IDX_MICA
 
@@ -44,12 +45,16 @@ RC IndexMICAMBTree::init(uint64_t part_cnt, table_t* table,
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
     mem_allocator.register_thread(part_id % g_thread_cnt);
 
-    auto t = (concurrent_mica_mbtree*)mem_allocator.alloc(sizeof(concurrent_mica_mbtree),
-                                                     part_id);
+    auto t = (concurrent_mica_mbtree*)mem_allocator.alloc(
+        sizeof(concurrent_mica_mbtree), part_id);
     new (t) concurrent_mica_mbtree;
 
     btree_idx.push_back(t);
   }
+
+#if TPCC_VALIDATE_GAP
+  validate_gap = false;
+#endif
 
   return RCOK;
 }
@@ -75,6 +80,10 @@ RC IndexMICAMBTree::index_read(MICATransaction* tx, idx_key_t key, row_t** row,
   mica_mbtree_value_type v;
   if (!idx->search(mbtree_key, v)) return ERROR;
   *row = v.row;
+
+#if TPCC_VALIDATE_GAP
+// TODO: Implement.
+#endif
 
   return RCOK;
 }
@@ -105,15 +114,15 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
   assert(max_key != 0);
   u64_varkey mbtree_key_max(max_key);
 
-  MICARowAccessHandlePeekOnly rah(tx);
+  // MICARowAccessHandlePeekOnly rah(tx);
   // MICARowAccessHandle rah(tx);
   auto mica_tbl = table->mica_tbl[part_id];
 
   uint64_t i = 0;
-  auto f = [&i, rows, count, &rah, mica_tbl](auto& k, auto& v) {
+  auto f = [&i, rows, count, /*&rah,*/ mica_tbl](auto& k, auto& v) {
     // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
     // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
-    rah.reset();
+    // rah.reset();
 
     rows[i++] = v.row;
     return i < count;
@@ -122,6 +131,24 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
   idx->search_range(mbtree_key_min, &mbtree_key_max, f);
 
   count = i;
+
+#if TPCC_VALIDATE_GAP
+  if (!tx->is_peek_only() && validate_gap) {
+    uint64_t next;
+    if (count == 0)
+      next = pos_inftys[part_id];
+    else {
+      MICARowAccessHandlePeekOnly rah(tx);
+      if (!rah.peek_row(mica_tbl, 0, (uint64_t)rows[count - 1], true, false,
+                        false))
+        return Abort;
+      next = *(uint64_t*)(rah.cdata() + gap_off + 8);
+    }
+    MICARowAccessHandle rah(tx);
+    if (!rah.peek_row(mica_tbl, 0, next, true, false, false) || !rah.read_row())
+      return Abort;
+  }
+#endif
 
   return RCOK;
 }
@@ -140,15 +167,15 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
 
   u64_varkey mbtree_key_max(max_key);
 
-  MICARowAccessHandlePeekOnly rah(tx);
+  // MICARowAccessHandlePeekOnly rah(tx);
   // MICARowAccessHandle rah(tx);
   auto mica_tbl = table->mica_tbl[part_id];
 
   uint64_t i = 0;
-  auto f = [&i, rows, count, &rah, mica_tbl](auto& k, auto& v) {
+  auto f = [&i, rows, count, /*&rah,*/ mica_tbl](auto& k, auto& v) {
     // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
     // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
-    rah.reset();
+    // rah.reset();
 
     rows[i++] = v.row;
     return i < count;
@@ -157,6 +184,24 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
   idx->rsearch_range(mbtree_key_max, &mbtree_key_min, f);
 
   count = i;
+
+#if TPCC_VALIDATE_GAP
+  if (!tx->is_peek_only() && validate_gap) {
+    uint64_t next;
+    if (count == 0)
+      next = neg_inftys[part_id];
+    else {
+      MICARowAccessHandlePeekOnly rah(tx);
+      if (!rah.peek_row(mica_tbl, 0, (uint64_t)rows[count - 1], true, false,
+                        false))
+        return Abort;
+      next = *(uint64_t*)(rah.cdata() + gap_off + 0);
+    }
+    MICARowAccessHandle rah(tx);
+    if (!rah.peek_row(mica_tbl, 0, next, true, false, false) || !rah.read_row())
+      return Abort;
+  }
+#endif
 
   return RCOK;
 }
@@ -170,6 +215,188 @@ RC IndexMICAMBTree::index_remove(MICATransaction* tx, idx_key_t key, row_t*,
   if (!idx->remove_refcount(mbtree_key, NULL)) return ERROR;
 
   return RCOK;
+}
+
+RC IndexMICAMBTree::list_init(MICADB* mica_db, uint64_t gap_off) {
+#if !TPCC_VALIDATE_GAP
+  return RCOK;
+#else
+  // printf("gap_off=%" PRIu64 "\n", gap_off);
+
+  validate_gap = true;
+  this->gap_off = gap_off;
+
+  auto thread_id = ::mica::util::lcore.lcore_id();
+
+  MICATransaction tx(mica_db->context(thread_id));
+
+  u64_varkey mbtree_key_min(0);
+
+  for (uint64_t part_id = 0; part_id < btree_idx.size(); part_id++) {
+    auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
+    auto mica_tbl = table->mica_tbl[part_id];
+    auto tuple_size = table->get_schema()->get_tuple_size();
+
+    uint64_t prev_row = (uint64_t)-1;
+    // Create -infty.
+    {
+      MICARowAccessHandle rah(&tx);
+
+      if (!tx.begin()) assert(false);
+
+      if (!rah.new_row(mica_tbl, 0, MICATransaction::kNewRowID, true,
+                       tuple_size))
+        assert(false);
+
+      *(uint64_t*)(rah.data() + gap_off + 0) = (uint64_t)-1;
+      prev_row = rah.row_id();
+      neg_inftys.push_back(rah.row_id());
+
+      if (!tx.commit()) assert(false);
+    }
+
+    // Create the main chain.
+    auto f = [&tx, &mica_tbl, &prev_row, gap_off](auto& k, auto& v) {
+      MICARowAccessHandle rah_left(&tx);
+      MICARowAccessHandle rah(&tx);
+      uint64_t row_id = (uint64_t)v.row;
+
+      if (!tx.begin()) assert(false);
+
+      if (!rah_left.peek_row(mica_tbl, 0, prev_row, true, true, true) ||
+          !rah_left.read_row() || !rah_left.write_row())
+        assert(false);
+      if (!rah.peek_row(mica_tbl, 0, row_id, true, true, true) ||
+          !rah.read_row() || !rah.write_row())
+        assert(false);
+
+      *(uint64_t*)(rah_left.data() + gap_off + 8) = row_id;
+      *(uint64_t*)(rah.data() + gap_off + 0) = prev_row;
+      prev_row = row_id;
+
+      if (!tx.commit()) assert(false);
+      return true;
+    };
+
+    idx->search_range(mbtree_key_min, NULL, f);
+
+    // Create +infty.
+    {
+      MICARowAccessHandle rah_left(&tx);
+      MICARowAccessHandle rah(&tx);
+
+      if (!tx.begin()) assert(false);
+
+      if (!rah_left.peek_row(mica_tbl, 0, prev_row, true, true, true) ||
+          !rah_left.read_row() || !rah_left.write_row())
+        assert(false);
+      if (!rah.new_row(mica_tbl, 0, MICATransaction::kNewRowID, true,
+                       tuple_size))
+        assert(false);
+
+      *(uint64_t*)(rah_left.data() + gap_off + 8) = rah.row_id();
+      *(uint64_t*)(rah.data() + gap_off + 0) = prev_row;
+      *(uint64_t*)(rah.data() + gap_off + 8) = (uint64_t)-1;
+      pos_inftys.push_back(rah.row_id());
+
+      if (!tx.commit()) assert(false);
+    }
+  }
+
+  return RCOK;
+#endif
+}
+
+RC IndexMICAMBTree::list_insert(MICATransaction* tx, idx_key_t key, row_t* row,
+                                int part_id) {
+#if !TPCC_VALIDATE_GAP
+  return RCOK;
+#else
+  if (!validate_gap) return RCOK;
+
+  auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
+  auto mica_tbl = table->mica_tbl[part_id];
+  uint64_t row_id = row->get_row_id();
+
+  // Find the right node.
+  // TODO: Do not use the index because the same transaction may insert multiple
+  // entries to the index (e.g., new_order_createOrderLine).
+  uint64_t right = pos_inftys[part_id];
+  {
+    u64_varkey mbtree_key_min(key);
+    auto f = [&right](auto& k, auto& v) {
+      right = (uint64_t)v.row;
+      return false;
+    };
+    idx->search_range(mbtree_key_min, NULL, f);
+  }
+  if (right == pos_inftys[part_id])
+    printf("warning: the right node is pos_infty\n");
+
+  // Read the right node and find the left node.
+  MICARowAccessHandle rah_right(tx);
+  uint64_t left;
+  {
+    if (!rah_right.peek_row(mica_tbl, 0, right, true, true, true) ||
+        !rah_right.read_row() || !rah_right.write_row()) {
+      printf("i right\n");
+      return Abort;
+    }
+    left = *(uint64_t*)(rah_right.data() + gap_off + 0);
+    printf("left=%" PRIu64 "\n", left);
+  }
+
+  // Read the left node.
+  MICARowAccessHandle rah_left(tx);
+  if (!rah_left.peek_row(mica_tbl, 0, left, true, true, true) ||
+      !rah_left.read_row() || !rah_left.write_row()) {
+    printf("i left\n");
+    return Abort;
+  }
+
+  // Insert the new node.
+  *(uint64_t*)(rah_left.data() + gap_off + 8) = row_id;
+  *(uint64_t*)(row->get_data() + gap_off + 0) = left;
+  *(uint64_t*)(row->get_data() + gap_off + 8) = right;
+  *(uint64_t*)(rah_right.data() + gap_off + 0) = row_id;
+  return RCOK;
+#endif
+}
+
+RC IndexMICAMBTree::list_remove(MICATransaction* tx, idx_key_t key, row_t* row,
+                                int part_id) {
+#if !TPCC_VALIDATE_GAP
+  return RCOK;
+#else
+  if (!validate_gap) return RCOK;
+
+  auto mica_tbl = table->mica_tbl[part_id];
+
+  MICARowAccessHandle rah_left(tx);
+  MICARowAccessHandle rah_right(tx);
+
+  // Find left and right nodes.
+  auto left = *(uint64_t*)(row->get_data() + gap_off + 0);
+  auto right = *(uint64_t*)(row->get_data() + gap_off + 8);
+
+  // Read the left node.
+  if (!rah_left.peek_row(mica_tbl, 0, left, true, true, true) ||
+      !rah_left.read_row() || !rah_left.write_row()) {
+    printf("r left\n");
+    return Abort;
+  }
+  // Read the right node.
+  if (!rah_right.peek_row(mica_tbl, 0, right, true, true, true) ||
+      !rah_right.read_row() || !rah_right.write_row()) {
+    printf("r right\n");
+    return Abort;
+  }
+
+  // Remove the node.
+  *(uint64_t*)(rah_left.data() + gap_off + 8) = right;
+  *(uint64_t*)(rah_right.data() + gap_off + 0) = left;
+  return RCOK;
+#endif
 }
 
 #endif

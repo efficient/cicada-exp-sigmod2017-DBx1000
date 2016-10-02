@@ -147,6 +147,7 @@
 #define TPCC_FULL         false
 #define TPCC_CF		  false
 #define TPCC_SPLIT_DELIVERY false
+#define TPCC_VALIDATE_GAP false
 //
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,

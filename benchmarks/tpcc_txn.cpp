@@ -400,6 +400,7 @@ bool tpcc_txn_man::new_order_createOrder(int64_t o_id, uint64_t d_id,
   row->set_value(O_ALL_LOCAL, all_local ? uint64_t(1) : uint64_t(0));
 
 #if TPCC_INSERT_INDEX
+  // printf("new Order o_id=%" PRId64 "\n", o_id);
   {
     auto idx = _wl->i_order;
     auto key = orderKey(o_id, d_id, w_id);
@@ -432,6 +433,7 @@ bool tpcc_txn_man::new_order_createNewOrder(int64_t o_id, uint64_t d_id,
   row->set_value(NO_W_ID, w_id);
 
 #if TPCC_INSERT_INDEX
+  // printf("new NewOrder o_id=%" PRId64 "\n", o_id);
   {
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
@@ -849,8 +851,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
   MICARowAccessHandle rah(mica_tx);
   // assert(part_id >= 0 && part_id < table->mica_tbl.size());
-  if (!rah.peek_row(table->mica_tbl[part_id], 0, (uint64_t)rows[0], false, true,
-                    true) ||
+  if (!rah.peek_row(table->mica_tbl[part_id], 0, (uint64_t)rows[0],
+                    TPCC_VALIDATE_GAP, true, true) ||
       !rah.read_row()) {
     return false;
   }
@@ -873,6 +875,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 #endif
 
 #if TPCC_DELETE_ROWS
+  // printf("remove NewOrder o_id=%" PRId64 "\n", o_id);
   // MICA handles row deletion directly without using remove_row().
   if (!rah.write_row(0) || !rah.delete_row()) return false;
 #endif
@@ -886,7 +889,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     //        w_id);
     // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 " \n",
     //        idx, key, (uint64_t)rows[0], part_id);
-    if (!remove_idx(idx, key, rows[0], part_id)) return false;
+    if (!remove_idx(idx, key, row, part_id)) return false;
   }
 #endif
   return true;
@@ -996,8 +999,8 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
   {
     int64_t o_id;
     if (!delivery_getNewOrder_deleteNewOrder(d_id, arg.w_id, &o_id)) {
+      // printf("oops0\n");
       FAIL_ON_ABORT();
-// printf("oops0\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
@@ -1014,8 +1017,8 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
     auto order = delivery_getCId(o_id, d_id, arg.w_id);
     if (order == NULL) {
       // There is no guarantee that we will see a order row even after seeing a related new_order row in this read-write transaction.
-      FAIL_ON_ABORT();
       // printf("oops1\n");
+      FAIL_ON_ABORT();
       return finish(Abort);
     }
     uint64_t c_id;
@@ -1027,8 +1030,8 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #ifndef TPCC_CAVALIA_NO_OL_UPDATE
     if (!delivery_updateOrderLine_sumOLAmount(arg.ol_delivery_d, o_id, d_id,
                                               arg.w_id, &ol_total)) {
+      // printf("oops2\n");
       FAIL_ON_ABORT();
-// printf("oops2\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif
@@ -1040,8 +1043,8 @@ RC tpcc_txn_man::run_delivery(tpcc_query* query) {
 #endif
 
     if (!delivery_updateCustomer(ol_total, c_id, d_id, arg.w_id)) {
+      // printf("oops3\n");
       FAIL_ON_ABORT();
-// printf("oops3\n");
 #ifdef TPCC_DBX1000_SERIAL_DELIVERY
       __sync_lock_release(&active_delivery[arg.w_id - 1].lock);
 #endif

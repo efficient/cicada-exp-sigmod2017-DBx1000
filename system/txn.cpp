@@ -539,6 +539,9 @@ template <>
 bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
                             int part_id) {
 #if CC_ALG == MICA
+  if (index->list_insert(mica_tx, key, row, part_id) != RCOK)
+    return false;
+
   row = (row_t*)row->get_row_id();
 #endif
 
@@ -567,6 +570,11 @@ bool txn_man::insert_idx(OrderedIndexMICA* index, uint64_t key, row_t* row,
 template <>
 bool txn_man::remove_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
                             int part_id) {
+#if CC_ALG == MICA
+  if (index->list_remove(mica_tx, key, row, part_id) != RCOK)
+    return false;
+#endif
+
   (void)row;
 	assert(remove_idx_cnt < MAX_ROW_PER_TXN);
 	remove_idx_idx[remove_idx_cnt] = index;

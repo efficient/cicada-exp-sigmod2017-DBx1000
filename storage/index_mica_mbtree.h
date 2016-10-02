@@ -29,8 +29,20 @@ class IndexMICAMBTree : public index_base {
                           idx_key_t max_key, row_t** rows, size_t& count,
                           int part_id);
 
+  RC list_init(MICADB* mica_db, uint64_t gap_off);
+  RC list_insert(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
+  RC list_remove(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
+
   table_t* table;
   std::vector<void*> btree_idx;
+
+#if TPCC_VALIDATE_GAP
+  bool validate_gap;
+  uint64_t gap_off;
+
+  std::vector<uint64_t> neg_inftys;
+  std::vector<uint64_t> pos_inftys;
+#endif
 };
 
 #endif

@@ -15,12 +15,17 @@
 #include "txn.h"
 #include "mem_alloc.h"
 #include "tpcc_const.h"
+#include "catalog.h"
 
 RC tpcc_wl::init() {
   workload::init();
 
   string path = "./benchmarks/";
+#if !TPCC_VALIDATE_GAP
   path += "TPCC_full_schema.txt";
+#else
+  path += "TPCC_full_schema_gap.txt";
+#endif
   cout << "reading schema file: " << path << endl;
   init_schema(path.c_str());
   cout << "TPCC schema initialized" << endl;
@@ -90,6 +95,18 @@ RC tpcc_wl::init_table() {
   }
   threadInitWarehouse(this);
   for (uint32_t i = 0; i < g_num_wh - 1; i++) pthread_join(p_thds[i], NULL);
+
+#if TPCC_VALIDATE_GAP
+  ::mica::util::lcore.pin_thread(0);
+  mica_db->activate(0);
+  i_neworder->list_init(mica_db,
+                        t_neworder->get_schema()->get_field_index(NO_GAP));
+  // i_order_cust->list_init(mica_db,
+  //                         t_order->get_schema()->get_field_index(O_GAP));
+  // i_orderline->list_init(mica_db,
+  //                        t_orderline->get_schema()->get_field_index(OL_GAP));
+  mica_db->deactivate(0);
+#endif
 
   printf("TPCC Data Initialization Complete!\n");
   return RCOK;
@@ -374,7 +391,7 @@ void tpcc_wl::init_tab_order(uint64_t did, uint64_t wid) {
                  wh_to_part(wid));
 #endif
 
-// ORDER-LINE
+    // ORDER-LINE
     for (uint64_t ol = 1; ol <= o_ol_cnt; ol++) {
       t_orderline->get_new_row(row, wh_to_part(wid), row_id);
       row->set_primary_key(orderlineKey(ol, oid, did, wid));
