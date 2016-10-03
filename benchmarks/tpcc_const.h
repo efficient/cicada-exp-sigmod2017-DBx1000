@@ -59,9 +59,6 @@ enum {
 	NO_O_ID,
 	NO_D_ID,
 	NO_W_ID,
-#if TPCC_VALIDATE_GAP
-	NO_GAP
-#endif
 };
 enum {
 	O_ID,
@@ -72,9 +69,6 @@ enum {
 	O_CARRIER_ID,
 	O_OL_CNT,
 	O_ALL_LOCAL,
-#if TPCC_VALIDATE_GAP
-	// O_GAP
-#endif
 };
 enum {
 	OL_O_ID,
@@ -87,9 +81,6 @@ enum {
 	OL_QUANTITY,
 	OL_AMOUNT,
 	OL_DIST_INFO,
-#if TPCC_VALIDATE_GAP
-	// OL_GAP
-#endif
 };
 enum {
 	I_ID,

@@ -21,11 +21,7 @@ RC tpcc_wl::init() {
   workload::init();
 
   string path = "./benchmarks/";
-#if !TPCC_VALIDATE_GAP
   path += "TPCC_full_schema.txt";
-#else
-  path += "TPCC_full_schema_gap.txt";
-#endif
   cout << "reading schema file: " << path << endl;
   init_schema(path.c_str());
   cout << "TPCC schema initialized" << endl;
@@ -88,6 +84,15 @@ RC tpcc_wl::init_table() {
   // RNG will use warehouse-specific states (wid - 1) because each warehouse data is initialized by a single thread.
   // It could use thread-specific states (which is idential to above) for consistency, but we just keep those functions with no thread ID unchanged.
 
+#if TPCC_VALIDATE_GAP
+  ::mica::util::lcore.pin_thread(0);
+  mica_db->activate(0);
+  i_neworder->list_init(mica_db, 0);
+  // i_order_cust->list_init(mica_db, 0);
+  // i_orderline->list_init(mica_db, 0);
+  mica_db->deactivate(0);
+#endif
+
   pthread_t* p_thds = new pthread_t[g_num_wh - 1];
   for (uint32_t i = 0; i < g_num_wh; i++) tid_lock[i] = 0;
   for (uint32_t i = 0; i < g_num_wh - 1; i++) {
@@ -99,12 +104,9 @@ RC tpcc_wl::init_table() {
 #if TPCC_VALIDATE_GAP
   ::mica::util::lcore.pin_thread(0);
   mica_db->activate(0);
-  i_neworder->list_init(mica_db,
-                        t_neworder->get_schema()->get_field_index(NO_GAP));
-  // i_order_cust->list_init(mica_db,
-  //                         t_order->get_schema()->get_field_index(O_GAP));
-  // i_orderline->list_init(mica_db,
-  //                        t_orderline->get_schema()->get_field_index(OL_GAP));
+  i_neworder->list_make(mica_db);
+  // i_order_cust->list_make(mica_db);
+  // i_orderline->list_make(mica_db);
   mica_db->deactivate(0);
 #endif
 

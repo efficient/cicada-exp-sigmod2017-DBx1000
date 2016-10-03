@@ -54,7 +54,7 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 			assert(false);
 #if !TPCC_CF
 		MICARowAccessHandle rah(&tx);
-		if (!rah.new_row(tbl, 0, MICATransaction::kNewRowID, TPCC_VALIDATE_GAP, schema->cf_sizes[0])) {
+		if (!rah.new_row(tbl, 0, MICATransaction::kNewRowID, false, schema->cf_sizes[0])) {
 			if (!tx.abort())
 				assert(false);
 			continue;
@@ -65,7 +65,7 @@ row_t::init(table_t * host_table, uint64_t part_id, uint64_t row_id) {
 		MICARowAccessHandle rah(&tx);
                 _row_id = MICATransaction::kNewRowID;
                 for (uint64_t cf_id = 0; cf_id < table->get_schema()->cf_count; cf_id++) {
-                  if (!rah.new_row(tbl, cf_id, _row_id, TPCC_VALIDATE_GAP, schema->cf_sizes[cf_id])) {
+                  if (!rah.new_row(tbl, cf_id, _row_id, false, schema->cf_sizes[cf_id])) {
 			if (!tx.abort())
 				assert(false);
 			continue;
@@ -457,12 +457,12 @@ RC row_t::get_row(access_t type, txn_man* txn, table_t* table,
     } else {
       MICARowAccessHandle rah(txn->mica_tx);
       if (this_type == RD) {
-        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, TPCC_VALIDATE_GAP, true,
+        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, false, true,
                           false) ||
             !rah.read_row())
           return Abort;
       } else if (this_type == WR) {
-        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, TPCC_VALIDATE_GAP, true,
+        if (!rah.peek_row(table->mica_tbl[part_id], cf_id, row_id, false, true,
                           true) ||
             !rah.read_row() || !rah.write_row())
           return Abort;

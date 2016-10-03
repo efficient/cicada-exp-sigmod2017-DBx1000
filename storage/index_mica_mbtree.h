@@ -31,6 +31,7 @@ class IndexMICAMBTree : public index_base {
 
 #if TPCC_VALIDATE_GAP
   RC list_init(MICADB* mica_db, uint64_t gap_off);
+  RC list_make(MICADB* mica_db);
   RC list_insert(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
   RC list_remove(MICATransaction* tx, idx_key_t key, row_t* row, int part_id);
 #endif
@@ -42,8 +43,8 @@ class IndexMICAMBTree : public index_base {
   bool validate_gap;
   uint64_t gap_off;
 
-  std::vector<uint64_t> neg_inftys;
-  std::vector<uint64_t> pos_inftys;
+  uint64_t neg_infty;
+  uint64_t pos_infty;
 #endif
 };
 

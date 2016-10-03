@@ -840,10 +840,6 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1].o_id = o_id + 1;
 #endif
 
-#if TPCC_DELETE_ROWS
-  if (!remove_row(shared)) return false;
-#endif
-
 #else  // CC_ALG == MICA
 
   // Use the raw interface directly for deletion.
@@ -851,8 +847,8 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
   MICARowAccessHandle rah(mica_tx);
   // assert(part_id >= 0 && part_id < table->mica_tbl.size());
-  if (!rah.peek_row(table->mica_tbl[part_id], 0, (uint64_t)rows[0],
-                    TPCC_VALIDATE_GAP, true, true) ||
+  if (!rah.peek_row(table->mica_tbl[part_id], 0, (uint64_t)rows[0], false, true,
+                    true) ||
       !rah.read_row()) {
     return false;
   }
@@ -860,6 +856,7 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   row_t tmp_row;
   auto row = &tmp_row;
   row->table = table;
+  row->set_row_id((uint64_t)rows[0]);
 #if !TPCC_CF
   row->data = const_cast<char*>(rah.cdata());
 #else
@@ -872,12 +869,6 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
 
 #ifdef TPCC_SILO_REF_LAST_NO_O_IDS
   last_no_o_ids[(w_id - 1) * DIST_PER_WARE + d_id - 1].o_id = o_id + 1;
-#endif
-
-#if TPCC_DELETE_ROWS
-  // printf("remove NewOrder o_id=%" PRId64 "\n", o_id);
-  // MICA handles row deletion directly without using remove_row().
-  if (!rah.write_row(0) || !rah.delete_row()) return false;
 #endif
 #endif
 
@@ -892,6 +883,17 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
     if (!remove_idx(idx, key, row, part_id)) return false;
   }
 #endif
+
+#if TPCC_DELETE_ROWS
+#if CC_ALG != MICA
+  if (!remove_row(shared)) return false;
+#else
+  // printf("remove NewOrder o_id=%" PRId64 "\n", o_id);
+  // MICA handles row deletion directly without using remove_row().
+  if (!rah.write_row(0) || !rah.delete_row()) return false;
+#endif
+#endif
+
   return true;
 }
 
