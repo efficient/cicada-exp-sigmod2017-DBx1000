@@ -134,19 +134,19 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
 
 #if TPCC_VALIDATE_GAP
   if (!tx->is_peek_only() && validate_gap) {
-    uint64_t next;
-    if (count == 0)
-      next = pos_infty;
-    else {
-      MICARowAccessHandlePeekOnly rah(tx);
-      if (!rah.peek_row(mica_tbl, 1, (uint64_t)rows[count - 1], true, false,
-                        false))
-        return Abort;
-      next = *(uint64_t*)(rah.cdata() + gap_off + 8);
-    }
     MICARowAccessHandle rah(tx);
-    if (!rah.peek_row(mica_tbl, 1, next, true, true, false) || !rah.read_row())
-      return Abort;
+    if (count == 0) {
+      if (!rah.peek_row(mica_tbl, 1, pos_infty, false, true, false) ||
+          !rah.read_row())
+        return Abort;
+    } else {
+      for (uint64_t i = 0; i < count; i++) {
+        if (!rah.peek_row(mica_tbl, 1, (uint64_t)rows[i], false, true, false) ||
+            !rah.read_row())
+          return Abort;
+        rah.reset();
+      }
+    }
   }
 #endif
 
@@ -187,19 +187,19 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
 
 #if TPCC_VALIDATE_GAP
   if (!tx->is_peek_only() && validate_gap) {
-    uint64_t next;
-    if (count == 0)
-      next = neg_infty;
-    else {
-      MICARowAccessHandlePeekOnly rah(tx);
-      if (!rah.peek_row(mica_tbl, 1, (uint64_t)rows[count - 1], true, false,
-                        false))
-        return Abort;
-      next = *(uint64_t*)(rah.cdata() + gap_off + 0);
-    }
     MICARowAccessHandle rah(tx);
-    if (!rah.peek_row(mica_tbl, 1, next, true, true, false) || !rah.read_row())
-      return Abort;
+    if (count == 0) {
+      if (!rah.peek_row(mica_tbl, 1, neg_infty, false, true, false) ||
+          !rah.read_row())
+        return Abort;
+    } else {
+      for (uint64_t i = 0; i < count; i++) {
+        if (!rah.peek_row(mica_tbl, 1, (uint64_t)rows[i], false, true, false) ||
+            !rah.read_row())
+          return Abort;
+        rah.reset();
+      }
+    }
   }
 #endif
 
