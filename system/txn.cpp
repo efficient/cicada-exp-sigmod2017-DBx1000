@@ -539,8 +539,10 @@ template <>
 bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
                             int part_id) {
 #if CC_ALG == MICA
+#if TPCC_VALIDATE_GAP
   if (index->list_insert(mica_tx, key, row, part_id) != RCOK)
     return false;
+#endif
 
   row = (row_t*)row->get_row_id();
 #endif
@@ -571,8 +573,10 @@ template <>
 bool txn_man::remove_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
                             int part_id) {
 #if CC_ALG == MICA
+#if TPCC_VALIDATE_GAP
   if (index->list_remove(mica_tx, key, row, part_id) != RCOK)
     return false;
+#endif
 #endif
 
   (void)row;

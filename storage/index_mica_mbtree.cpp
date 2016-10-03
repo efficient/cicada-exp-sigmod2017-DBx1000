@@ -217,10 +217,8 @@ RC IndexMICAMBTree::index_remove(MICATransaction* tx, idx_key_t key, row_t*,
   return RCOK;
 }
 
+#if TPCC_VALIDATE_GAP
 RC IndexMICAMBTree::list_init(MICADB* mica_db, uint64_t gap_off) {
-#if !TPCC_VALIDATE_GAP
-  return RCOK;
-#else
   // printf("gap_off=%" PRIu64 "\n", gap_off);
 
   validate_gap = true;
@@ -304,14 +302,10 @@ RC IndexMICAMBTree::list_init(MICADB* mica_db, uint64_t gap_off) {
   }
 
   return RCOK;
-#endif
 }
 
 RC IndexMICAMBTree::list_insert(MICATransaction* tx, idx_key_t key, row_t* row,
                                 int part_id) {
-#if !TPCC_VALIDATE_GAP
-  return RCOK;
-#else
   if (!validate_gap) return RCOK;
 
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
@@ -360,14 +354,10 @@ RC IndexMICAMBTree::list_insert(MICATransaction* tx, idx_key_t key, row_t* row,
   *(uint64_t*)(row->get_data() + gap_off + 8) = right;
   *(uint64_t*)(rah_right.data() + gap_off + 0) = row_id;
   return RCOK;
-#endif
 }
 
 RC IndexMICAMBTree::list_remove(MICATransaction* tx, idx_key_t key, row_t* row,
                                 int part_id) {
-#if !TPCC_VALIDATE_GAP
-  return RCOK;
-#else
   if (!validate_gap) return RCOK;
 
   auto mica_tbl = table->mica_tbl[part_id];
@@ -396,7 +386,7 @@ RC IndexMICAMBTree::list_remove(MICATransaction* tx, idx_key_t key, row_t* row,
   *(uint64_t*)(rah_left.data() + gap_off + 8) = right;
   *(uint64_t*)(rah_right.data() + gap_off + 0) = left;
   return RCOK;
-#endif
 }
+#endif
 
 #endif
