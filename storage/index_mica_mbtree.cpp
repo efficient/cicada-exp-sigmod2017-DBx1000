@@ -130,6 +130,10 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
 
   idx->search_range(mbtree_key_min, &mbtree_key_max, f);
 
+  // Validating read index entries' value is not necessary if the indexed value
+  // does not change.  Whether rows are visible is checked in the application
+  // code.
+
   count = i;
 
 #if TPCC_VALIDATE_GAP
@@ -182,6 +186,10 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
   };
 
   idx->rsearch_range(mbtree_key_max, &mbtree_key_min, f);
+
+  // Validating read index entries' value is not necessary if the indexed value
+  // does not change.  Whether rows are visible is checked in the application
+  // code.
 
   count = i;
 
