@@ -118,8 +118,8 @@ RC IndexMBTree::index_insert(txn_man* txn, idx_key_t key, row_t* row,
   if (txn) {
     auto it = txn->node_map.find((void*)insert_info.node);
     if (it == txn->node_map.end()) {
-      txn->node_map.emplace_hint(it, (void*)insert_info.node,
-                                 insert_info.new_version);
+      // txn->node_map.emplace_hint(it, (void*)insert_info.node,
+      //                            insert_info.new_version);
     } else if ((*it).second != insert_info.old_version) {
       // printf("index node version mismatch: %p previously seen: %" PRIu64
       //        " now: %" PRIu64 "\n",
