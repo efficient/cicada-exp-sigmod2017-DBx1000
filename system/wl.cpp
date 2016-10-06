@@ -233,7 +233,7 @@ void workload::index_insert(IndexT* index, uint64_t key, row_t* row,
     // row_id);
     if (!tx.begin()) assert(false);
 
-    auto rc = index->index_insert(&tx, key, row, part_id);
+    auto rc = index->index_insert(NULL, &tx, key, row, part_id);
 
     if (rc != RCOK) {
       if (!tx.abort()) assert(false);
@@ -244,7 +244,7 @@ void workload::index_insert(IndexT* index, uint64_t key, row_t* row,
     break;
   }
 #else
-  auto rc = index->index_insert(key, row, part_id);
+  auto rc = index->index_insert(NULL, key, row, part_id);
   assert(rc == RCOK);
 #endif
 }
@@ -256,7 +256,7 @@ void workload::index_insert(IndexArray* index, uint64_t key, row_t* row,
   row = (row_t*)row->get_row_id();
 #endif
 
-  auto rc = index->index_insert(key, row, part_id);
+  auto rc = index->index_insert(NULL, key, row, part_id);
   assert(rc == RCOK);
 }
 
@@ -267,7 +267,7 @@ void workload::index_insert(IndexMBTree* index, uint64_t key, row_t* row,
   row = (row_t*)row->get_row_id();
 #endif
 
-  auto rc = index->index_insert(key, row, part_id);
+  auto rc = index->index_insert(NULL, key, row, part_id);
   assert(rc == RCOK);
 }
 

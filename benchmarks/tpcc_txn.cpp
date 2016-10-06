@@ -692,7 +692,11 @@ row_t* tpcc_txn_man::order_status_getLastOrder(uint64_t w_id, uint64_t d_id,
   uint64_t count = 1;
 
   auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
+#if CC_ALG == MICA
   assert(idx_rc != Abort);
+#else
+  if (idx_rc == Abort) return NULL;
+#endif
   assert(idx_rc == RCOK);
 
   // printf("order_status_getLastOrder: %" PRIu64 "\n", count);
@@ -729,7 +733,11 @@ bool tpcc_txn_man::order_status_getOrderLines(uint64_t w_id, uint64_t d_id,
   uint64_t count = 16;
 
   auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
+#if CC_ALG == MICA
   assert(idx_rc != Abort);
+#else
+  if (idx_rc == Abort) return false;
+#endif
   assert(idx_rc == RCOK);
   assert(count != 16);
 
@@ -876,11 +884,15 @@ bool tpcc_txn_man::delivery_getNewOrder_deleteNewOrder(uint64_t d_id,
   {
     auto idx = _wl->i_neworder;
     auto key = neworderKey(o_id, d_id, w_id);
-    // printf("o_id=%" PRIi64 " d_id=%" PRIu64 " w_id=%" PRIu64 "\n", o_id, d_id,
-    //        w_id);
-    // printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 " \n",
-    //        idx, key, (uint64_t)rows[0], part_id);
+// printf("o_id=%" PRIi64 " d_id=%" PRIu64 " w_id=%" PRIu64 "\n", o_id, d_id,
+//        w_id);
+// printf("requesting remove_idx idx=%p key=%" PRIu64 " row_id=%" PRIu64 " part_id=%" PRIu64 " \n",
+//        idx, key, (uint64_t)rows[0], part_id);
+#if CC_ALG != MICA
+    if (!remove_idx(idx, key, rows[0], part_id)) return false;
+#else
     if (!remove_idx(idx, key, row, part_id)) return false;
+#endif
   }
 #endif
 
@@ -1110,7 +1122,11 @@ bool tpcc_txn_man::stock_level_getStockCount(uint64_t ol_w_id, uint64_t ol_d_id,
   uint64_t count = 301;
 
   auto idx_rc = index_read_range(index, key, max_key, rows, count, part_id);
+#if CC_ALG == MICA
   assert(idx_rc != Abort);
+#else
+  if (idx_rc == Abort) return false;
+#endif
   assert(idx_rc == RCOK);
 
   for (uint64_t i = 0; i < count; i++) {

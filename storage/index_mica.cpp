@@ -4,6 +4,7 @@
 #include "table.h"
 #include "row.h"
 #include "helper.h"
+#include "txn.h"
 
 #if INDEX_STRUCT == IDX_MICA
 
@@ -114,8 +115,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::init(uint64_t part_cnt, table_t* table,
 }
 
 template <>
-RC IndexMICAGeneric<MICAIndex>::index_insert(MICATransaction* tx, idx_key_t key,
-                                             row_t* row, int part_id) {
+RC IndexMICAGeneric<MICAIndex>::index_insert(txn_man* txn, MICATransaction* tx,
+                                             idx_key_t key, row_t* row,
+                                             int part_id) {
   auto ret = mica_idx[part_id]->insert(tx, key, (uint64_t)row);
   if (ret == MICAIndex::kHaveToAbort) return Abort;
   if (ret != 1) return ERROR;
@@ -124,8 +126,9 @@ RC IndexMICAGeneric<MICAIndex>::index_insert(MICATransaction* tx, idx_key_t key,
 }
 
 template <>
-RC IndexMICAGeneric<MICAIndex>::index_remove(MICATransaction* tx, idx_key_t key,
-                                             row_t* row, int part_id) {
+RC IndexMICAGeneric<MICAIndex>::index_remove(txn_man* txn, MICATransaction* tx,
+                                             idx_key_t key, row_t* row,
+                                             int part_id) {
   auto ret = mica_idx[part_id]->remove(tx, key, (uint64_t)row);
   if (ret == MICAIndex::kHaveToAbort) return Abort;
   if (ret != 1) return ERROR;
@@ -134,8 +137,9 @@ RC IndexMICAGeneric<MICAIndex>::index_remove(MICATransaction* tx, idx_key_t key,
 }
 
 template <>
-RC IndexMICAGeneric<MICAIndex>::index_read(MICATransaction* tx, idx_key_t key,
+RC IndexMICAGeneric<MICAIndex>::index_read(txn_man* txn, idx_key_t key,
                                            row_t** row, int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
 
   auto ret = mica_idx[part_id]->lookup(tx, key, skip_validation,
@@ -150,10 +154,10 @@ RC IndexMICAGeneric<MICAIndex>::index_read(MICATransaction* tx, idx_key_t key,
 }
 
 template <>
-RC IndexMICAGeneric<MICAIndex>::index_read_multiple(MICATransaction* tx,
-                                                    idx_key_t key, row_t** rows,
-                                                    size_t& count,
+RC IndexMICAGeneric<MICAIndex>::index_read_multiple(txn_man* txn, idx_key_t key,
+                                                    row_t** rows, size_t& count,
                                                     int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
 
   uint64_t i = 0;
@@ -170,7 +174,7 @@ RC IndexMICAGeneric<MICAIndex>::index_read_multiple(MICATransaction* tx,
 }
 
 template <>
-RC IndexMICAGeneric<MICAIndex>::index_read_range(MICATransaction* tx,
+RC IndexMICAGeneric<MICAIndex>::index_read_range(txn_man* txn,
                                                  idx_key_t min_key,
                                                  idx_key_t max_key,
                                                  row_t** rows, size_t& count,
@@ -182,7 +186,7 @@ RC IndexMICAGeneric<MICAIndex>::index_read_range(MICATransaction* tx,
 
 template <>
 RC IndexMICAGeneric<MICAIndex>::index_read_range_rev(
-    MICATransaction* tx, idx_key_t min_key, idx_key_t max_key, row_t** rows,
+    txn_man* txn, idx_key_t min_key, idx_key_t max_key, row_t** rows,
     size_t& count, int part_id) {
   // Not supported.
   assert(false);
@@ -190,7 +194,8 @@ RC IndexMICAGeneric<MICAIndex>::index_read_range_rev(
 }
 
 template <>
-RC IndexMICAGeneric<MICAOrderedIndex>::index_insert(MICATransaction* tx,
+RC IndexMICAGeneric<MICAOrderedIndex>::index_insert(txn_man* txn,
+                                                    MICATransaction* tx,
                                                     idx_key_t key, row_t* row,
                                                     int part_id) {
   auto ret = mica_idx[part_id]->insert(tx, key, (uint64_t)row);
@@ -201,7 +206,8 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_insert(MICATransaction* tx,
 }
 
 template <>
-RC IndexMICAGeneric<MICAOrderedIndex>::index_remove(MICATransaction* tx,
+RC IndexMICAGeneric<MICAOrderedIndex>::index_remove(txn_man* txn,
+                                                    MICATransaction* tx,
                                                     idx_key_t key, row_t* row,
                                                     int part_id) {
   auto ret = mica_idx[part_id]->remove(tx, key, (uint64_t)row);
@@ -212,9 +218,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_remove(MICATransaction* tx,
 }
 
 template <>
-RC IndexMICAGeneric<MICAOrderedIndex>::index_read(MICATransaction* tx,
-                                                  idx_key_t key, row_t** row,
-                                                  int part_id) {
+RC IndexMICAGeneric<MICAOrderedIndex>::index_read(txn_man* txn, idx_key_t key,
+                                                  row_t** row, int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
   // bool skip_validation = false;
 
@@ -238,11 +244,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read(MICATransaction* tx,
 }
 
 template <>
-RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(MICATransaction* tx,
-                                                           idx_key_t key,
-                                                           row_t** rows,
-                                                           size_t& count,
-                                                           int part_id) {
+RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(
+    txn_man* txn, idx_key_t key, row_t** rows, size_t& count, int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
   // bool skip_validation = false;
 
@@ -271,8 +275,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(MICATransaction* tx,
 
 template <>
 RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
-    MICATransaction* tx, idx_key_t min_key, idx_key_t max_key, row_t** rows,
+    txn_man* txn, idx_key_t min_key, idx_key_t max_key, row_t** rows,
     size_t& count, int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
   // bool skip_validation = false;
 
@@ -302,8 +307,9 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
 
 template <>
 RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range_rev(
-    MICATransaction* tx, idx_key_t min_key, idx_key_t max_key, row_t** rows,
+    txn_man* txn, idx_key_t min_key, idx_key_t max_key, row_t** rows,
     size_t& count, int part_id) {
+  auto tx = txn->mica_tx;
   bool skip_validation = !(MICA_FULLINDEX);
   // bool skip_validation = false;
 

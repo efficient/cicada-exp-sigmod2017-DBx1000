@@ -15,6 +15,7 @@
 #include "row.h"
 #include "helper.h"
 #include "catalog.h"
+#include "txn.h"
 
 #if INDEX_STRUCT == IDX_MICA
 
@@ -31,6 +32,45 @@ struct mica_mbtree_params : public Masstree::nodeparams<> {
 };
 
 typedef mbtree<mica_mbtree_params> concurrent_mica_mbtree;
+
+class IndexMICAMBTree_cb
+    : public concurrent_mica_mbtree::low_level_search_range_callback {
+ public:
+  IndexMICAMBTree_cb(txn_man* txn, row_t** rows, uint64_t count, uint64_t& i)
+      : txn_(txn), rows_(rows), count_(count), i_(i), abort_(false) {}
+
+  void on_resp_node(const concurrent_mica_mbtree::node_opaque_t* n,
+                    uint64_t version) override {
+#if TPCC_VALIDATE_NODE
+    auto it = txn_->node_map.find((void*)n);
+    if (it == txn_->node_map.end()) {
+      // printf("index node seen: %p %" PRIu64 "\n", n, version);
+      txn_->node_map.emplace_hint(it, (void*)n, version);
+    } else if ((*it).second != version)
+      abort_ = true;
+#endif
+  }
+
+  bool invoke(const concurrent_mica_mbtree::string_type& k,
+              concurrent_mica_mbtree::value_type v,
+              const concurrent_mica_mbtree::node_opaque_t* n,
+              uint64_t version) override {
+    (void)k;
+    (void)n;
+    (void)version;
+    rows_[i_++] = v.row;
+    return i_ < count_;
+  }
+
+  bool need_to_abort() const { return abort_; }
+
+ private:
+  txn_man* txn_;
+  row_t** rows_;
+  uint64_t count_;
+  uint64_t& i_;
+  bool abort_;
+};
 
 RC IndexMICAMBTree::init(uint64_t part_cnt, table_t* table) {
   return init(part_cnt, table, 0);
@@ -59,26 +99,68 @@ RC IndexMICAMBTree::init(uint64_t part_cnt, table_t* table,
   return RCOK;
 }
 
-RC IndexMICAMBTree::index_insert(MICATransaction* tx, idx_key_t key, row_t* row,
-                                 int part_id) {
+RC IndexMICAMBTree::index_insert(txn_man* txn, MICATransaction* tx,
+                                 idx_key_t key, row_t* row, int part_id) {
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
 
   u64_varkey mbtree_key(key);
 
   mica_mbtree_value_type v{row, 1};
+#if !TPCC_VALIDATE_NODE
   if (!idx->insert_refcount(mbtree_key, v)) return ERROR;
+#else
+  concurrent_mica_mbtree::insert_info_t insert_info;
+  if (!idx->insert_refcount(mbtree_key, v, &insert_info)) return ERROR;
+
+  // assert(concurrent_mbtree::ExtractVersionNumber(insert_info.node) ==
+  //        insert_info.new_version);  // for single-threaded debugging
+
+  if (txn) {
+    auto it = txn->node_map.find((void*)insert_info.node);
+    if (it == txn->node_map.end()) {
+      txn->node_map.emplace_hint(it, (void*)insert_info.node,
+                                 insert_info.new_version);
+    } else if ((*it).second != insert_info.old_version) {
+      // printf("index node version mismatch: %p previously seen: %" PRIu64
+      //        " now: %" PRIu64 "\n",
+      //        insert_info.node, (*it).second, insert_info.old_version);
+      return Abort;
+    } else {
+      (*it).second = insert_info.new_version;
+    }
+
+    // printf("index node updated: %p old %" PRIu64 " new %" PRIu64 "\n",
+    //        insert_info.node, insert_info.old_version, insert_info.new_version);
+  }
+#endif
 
   return RCOK;
 }
 
-RC IndexMICAMBTree::index_read(MICATransaction* tx, idx_key_t key, row_t** row,
+RC IndexMICAMBTree::index_read(txn_man* txn, idx_key_t key, row_t** row,
                                int part_id) {
+  // auto tx = txn->mica_tx;
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
 
   u64_varkey mbtree_key(key);
 
   mica_mbtree_value_type v;
-  if (!idx->search(mbtree_key, v)) return ERROR;
+
+  concurrent_mica_mbtree::versioned_node_t search_info;
+  if (!idx->search(mbtree_key, v, &search_info)) {
+#if TPCC_VALIDATE_NODE
+    auto it = txn->node_map.find((void*)search_info.first);
+    if (it == txn->node_map.end()) {
+      txn->node_map.emplace_hint(it, (void*)search_info.first,
+                                 search_info.second);
+      // printf("index node seen: %p %" PRIu64 "\n", search_info.first,
+      //        search_info.second);
+    } else if ((*it).second != search_info.second)
+      return Abort;
+#endif
+    return ERROR;
+  }
+
   *row = v.row;
 
 #if TPCC_VALIDATE_GAP
@@ -88,11 +170,12 @@ RC IndexMICAMBTree::index_read(MICATransaction* tx, idx_key_t key, row_t** row,
   return RCOK;
 }
 
-RC IndexMICAMBTree::index_read_multiple(MICATransaction* tx, idx_key_t key,
+RC IndexMICAMBTree::index_read_multiple(txn_man* txn, idx_key_t key,
                                         row_t** rows, uint64_t& count,
                                         int part_id) {
   // Duplicate keys are currently not supported in IndexMBTree.
   assert(false);
+  (void)txn;
   (void)key;
   (void)rows;
   (void)count;
@@ -100,10 +183,11 @@ RC IndexMICAMBTree::index_read_multiple(MICATransaction* tx, idx_key_t key,
   return ERROR;
 }
 
-RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
+RC IndexMICAMBTree::index_read_range(txn_man* txn, idx_key_t min_key,
                                      idx_key_t max_key, row_t** rows,
                                      uint64_t& count, int part_id) {
   if (count == 0) return RCOK;
+  // auto tx = txn->mica_tx;
 
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
 
@@ -116,19 +200,22 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
 
   // MICARowAccessHandlePeekOnly rah(tx);
   // MICARowAccessHandle rah(tx);
-  auto mica_tbl = table->mica_tbl[part_id];
+  // auto mica_tbl = table->mica_tbl[part_id];
 
   uint64_t i = 0;
-  auto f = [&i, rows, count, /*&rah,*/ mica_tbl](auto& k, auto& v) {
-    // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
-    // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
-    // rah.reset();
+  auto cb = IndexMICAMBTree_cb(txn, rows, count, i);
 
-    rows[i++] = v.row;
-    return i < count;
-  };
+  // auto f = [&i, rows, count, [>&rah,<] mica_tbl](auto& k, auto& v) {
+  //   // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
+  //   // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
+  //   // rah.reset();
+  //
+  //   rows[i++] = v.row;
+  //   return i < count;
+  // };
 
-  idx->search_range(mbtree_key_min, &mbtree_key_max, f);
+  idx->search_range_call(mbtree_key_min, &mbtree_key_max, cb);
+  if (cb.need_to_abort()) return Abort;
 
   // Validating read index entries' value is not necessary if the indexed value
   // does not change.  Whether rows are visible is checked in the application
@@ -157,10 +244,11 @@ RC IndexMICAMBTree::index_read_range(MICATransaction* tx, idx_key_t min_key,
   return RCOK;
 }
 
-RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
+RC IndexMICAMBTree::index_read_range_rev(txn_man* txn, idx_key_t min_key,
                                          idx_key_t max_key, row_t** rows,
                                          uint64_t& count, int part_id) {
   if (count == 0) return RCOK;
+  // auto tx = txn->mica_tx;
 
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
 
@@ -173,19 +261,22 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
 
   // MICARowAccessHandlePeekOnly rah(tx);
   // MICARowAccessHandle rah(tx);
-  auto mica_tbl = table->mica_tbl[part_id];
+  // auto mica_tbl = table->mica_tbl[part_id];
 
   uint64_t i = 0;
-  auto f = [&i, rows, count, /*&rah,*/ mica_tbl](auto& k, auto& v) {
-    // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
-    // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
-    // rah.reset();
+  auto cb = IndexMICAMBTree_cb(txn, rows, count, i);
 
-    rows[i++] = v.row;
-    return i < count;
-  };
+  // auto f = [&i, rows, count, [>&rah,<] mica_tbl](auto& k, auto& v) {
+  //   // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, false, false, false)) return true;
+  //   // if (!rah.peek_row(mica_tbl, 0, (uint64_t)v.row, true, false, false)) return true;
+  //   // rah.reset();
+  //
+  //   rows[i++] = v.row;
+  //   return i < count;
+  // };
 
-  idx->rsearch_range(mbtree_key_max, &mbtree_key_min, f);
+  idx->rsearch_range_call(mbtree_key_min, &mbtree_key_max, cb);
+  if (cb.need_to_abort()) return Abort;
 
   // Validating read index entries' value is not necessary if the indexed value
   // does not change.  Whether rows are visible is checked in the application
@@ -214,8 +305,8 @@ RC IndexMICAMBTree::index_read_range_rev(MICATransaction* tx, idx_key_t min_key,
   return RCOK;
 }
 
-RC IndexMICAMBTree::index_remove(MICATransaction* tx, idx_key_t key, row_t*,
-                                 int part_id) {
+RC IndexMICAMBTree::index_remove(txn_man* txn, MICATransaction* tx,
+                                 idx_key_t key, row_t*, int part_id) {
   auto idx = reinterpret_cast<concurrent_mica_mbtree*>(btree_idx[part_id]);
 
   u64_varkey mbtree_key(key);
@@ -334,6 +425,24 @@ RC IndexMICAMBTree::list_make(MICADB* mica_db) {
       if (!tx.commit()) assert(false);
     }
   }
+
+  return RCOK;
+}
+
+RC IndexMICAMBTree::validate(txn_man* txn) {
+#if TPCC_VALIDATE_NODE
+
+  for (auto it : txn->node_map) {
+    auto n = (concurrent_mbtree::node_opaque_t*)it.first;
+    if (concurrent_mbtree::ExtractVersionNumber(n) != it.second) {
+      // printf("node wts validation failure!\n");
+      return Abort;
+    }
+  }
+
+// printf("node validation succeeded\n");
+
+#endif  // TPCC_VALIDATE_NODE
 
   return RCOK;
 }

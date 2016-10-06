@@ -32,6 +32,7 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
+  node_map.clear();
 	accesses = (Access **) mem_allocator.alloc(sizeof(Access *) * MAX_ROW_PER_TXN, thd_id);
 	for (int i = 0; i < MAX_ROW_PER_TXN; i++)
 		accesses[i] = NULL;
@@ -83,56 +84,39 @@ ts_t txn_man::get_ts() {
 }
 
 RC txn_man::apply_index_changes(RC rc) {
-	if (rc != RCOK)
-	return rc;
+#if RCU_ALLOC
+  assert(rcu::s_instance.in_rcu_region());
+#endif
 
 #if INDEX_STRUCT != IDX_MICA || (INDEX_STRUCT == IDX_MICA && defined(IDX_MICA_USE_MBTREE))
-	// XXX: This only provides snapshot isolation.  For serializability, the version of all leaf nodes used for search must be used for timestamp calculation and the version of leaf nodes updated by a commit must be bumped to the commit timestamp.
 
-#if RCU_ALLOC
-	assert(rcu::s_instance.in_rcu_region());
-#endif
-
-	for (size_t i = 0; i < insert_idx_cnt; i++) {
-		auto idx = insert_idx_idx[i];
-		auto key = insert_idx_key[i];
-		auto row = insert_idx_row[i];
-		auto part_id = insert_idx_part_id[i];
-		// printf("insert_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
-
-		assert(part_id != -1);
-
-#if INDEX_STRUCT != IDX_MICA
-	  auto rc_insert = idx->index_insert(key, row, part_id);
-#else
-	  auto rc_insert = idx->index_insert(mica_tx, key, row, part_id);
-#endif
-
-		if (rc_insert != RCOK) {
-			// Roll back previous inserts upon insert failure.
-
-			while (i > 0) {
-				i--;
-				auto idx = insert_idx_idx[i];
-				auto key = insert_idx_key[i];
-				// auto row = insert_idx_row[i];
-				auto part_id = insert_idx_part_id[i];
+  if (rc != RCOK) {
+    for (size_t i = 0; i < insert_idx_cnt; i++) {
+      auto idx = insert_idx_idx[i];
+      auto key = insert_idx_key[i];
+      // auto row = insert_idx_row[i];
+      auto part_id = insert_idx_part_id[i];
+      auto rc_remove = idx->index_remove(this, key, NULL, part_id);
+      assert(rc_remove == RCOK);
+    }
+    insert_idx_cnt = 0;
+    return rc;
+  }
 
 #if INDEX_STRUCT != IDX_MICA
-				auto rc_remove = idx->index_remove(key, NULL, part_id);
-#else
-				auto rc_remove = idx->index_remove(mica_tx, key, NULL, part_id);
+  // Update placeholders.
+  for (size_t i = 0; i < insert_idx_cnt; i++) {
+    auto idx = insert_idx_idx[i];
+    auto key = insert_idx_key[i];
+    auto row = insert_idx_row[i];
+    auto part_id = insert_idx_part_id[i];
+    auto rc_insert = idx->index_insert(this, key, row, part_id);
+    // We are updating existing entries, so !found == false (see
+    // mbtree<P>::insert()).
+    assert(rc_insert != RCOK);
+  }
 #endif
-				assert(rc_remove == RCOK);
-
-				// New rows that are not inserted will be freed in cleanup()
-			}
-
-			insert_idx_cnt = 0;
-			return rc_insert;
-		}
-	}
-	insert_idx_cnt = 0;
+  insert_idx_cnt = 0;
 
 	for (size_t i = 0; i < remove_idx_cnt; i++) {
 		auto idx = remove_idx_idx[i];
@@ -141,9 +125,9 @@ RC txn_man::apply_index_changes(RC rc) {
 		// printf("remove_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
 
 #if INDEX_STRUCT != IDX_MICA
-		auto rc_remove = idx->index_remove(key, NULL, part_id);
+		auto rc_remove = idx->index_remove(this, key, NULL, part_id);
 #else
-		auto rc_remove = idx->index_remove(mica_tx, key, NULL, part_id);
+		auto rc_remove = idx->index_remove(this, mica_tx, key, NULL, part_id);
 #endif
 		assert(rc_remove == RCOK);
 	}
@@ -181,6 +165,7 @@ void txn_man::cleanup(RC rc) {
 	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
+  node_map.clear();
 	return;
 
 #else
@@ -230,6 +215,7 @@ void txn_man::cleanup(RC rc) {
 	remove_cnt = 0;
 	insert_idx_cnt = 0;
 	remove_idx_cnt = 0;
+  node_map.clear();
 #if CC_ALG == DL_DETECT
 	dl_detector.clear_dep(get_txn_id());
 #endif
@@ -240,98 +226,26 @@ void txn_man::cleanup(RC rc) {
 template <typename IndexT>
 RC
 txn_man::index_read(IndexT* index, idx_key_t key, row_t** row, int part_id) {
-	return index->index_read(key, row, part_id);
+	return index->index_read(this, key, row, part_id);
 }
-
-#if INDEX_STRUCT == IDX_MICA
-template <>
-RC
-txn_man::index_read(IndexMICA* index, idx_key_t key, row_t** row, int part_id) {
-	return index->index_read(mica_tx, key, row, part_id);
-}
-template <>
-RC
-txn_man::index_read(OrderedIndexMICA* index, idx_key_t key, row_t** row, int part_id) {
-	return index->index_read(mica_tx, key, row, part_id);
-}
-template <>
-RC
-txn_man::index_read(IndexMICAMBTree* index, idx_key_t key, row_t** row, int part_id) {
-	return index->index_read(mica_tx, key, row, part_id);
-}
-#endif
 
 template <typename IndexT>
 RC
 txn_man::index_read_multiple(IndexT* index, idx_key_t key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_multiple(key, rows, count, part_id);
+	return index->index_read_multiple(this, key, rows, count, part_id);
 }
-
-#if INDEX_STRUCT == IDX_MICA
-template <>
-RC
-txn_man::index_read_multiple(IndexMICA* index, idx_key_t key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_multiple(mica_tx, key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_multiple(OrderedIndexMICA* index, idx_key_t key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_multiple(mica_tx, key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_multiple(IndexMICAMBTree* index, idx_key_t key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_multiple(mica_tx, key, rows, count, part_id);
-}
-#endif
 
 template <typename IndexT>
 RC
 txn_man::index_read_range(IndexT* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range(min_key, max_key, rows, count, part_id);
+	return index->index_read_range(this, min_key, max_key, rows, count, part_id);
 }
-
-#if INDEX_STRUCT == IDX_MICA
-template <>
-RC
-txn_man::index_read_range(IndexMICA* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range(mica_tx, min_key, max_key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_range(OrderedIndexMICA* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range(mica_tx, min_key, max_key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_range(IndexMICAMBTree* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range(mica_tx, min_key, max_key, rows, count, part_id);
-}
-#endif
 
 template <typename IndexT>
 RC
 txn_man::index_read_range_rev(IndexT* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range_rev(min_key, max_key, rows, count, part_id);
+	return index->index_read_range_rev(this, min_key, max_key, rows, count, part_id);
 }
-
-#if INDEX_STRUCT == IDX_MICA
-template <>
-RC
-txn_man::index_read_range_rev(IndexMICA* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range_rev(mica_tx, min_key, max_key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_range_rev(OrderedIndexMICA* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range_rev(mica_tx, min_key, max_key, rows, count, part_id);
-}
-template <>
-RC
-txn_man::index_read_range_rev(IndexMICAMBTree* index, idx_key_t min_key, idx_key_t max_key, row_t** rows, size_t& count, int part_id) {
-	return index->index_read_range_rev(mica_tx, min_key, max_key, rows, count, part_id);
-}
-#endif
 
 // get_row methods
 #if CC_ALG != MICA
@@ -547,6 +461,15 @@ bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
   row = (row_t*)row->get_row_id();
 #endif
 
+#if INDEX_STRUCT != IDX_MICA
+  // Add a placeholder.
+  auto rc_insert = index->index_insert(this, key, (row_t*)-1, part_id);
+#else
+  auto rc_insert = index->index_insert(this, mica_tx, key, row, part_id);
+#endif
+  if (rc_insert != RCOK)
+    return false;
+
 	assert(insert_idx_cnt < MAX_ROW_PER_TXN);
 	insert_idx_idx[insert_idx_cnt] = index;
 	insert_idx_key[insert_idx_cnt] = key;
@@ -560,11 +483,9 @@ bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
 template <>
 bool txn_man::insert_idx(OrderedIndexMICA* index, uint64_t key, row_t* row,
                             int part_id) {
-  row = (row_t*)row->get_row_id();
-
   auto& mica_idx = index->mica_idx;
   // if (mica_idx[part_id]->insert(mica_tx, make_pair(key, row->row_id), 0) != 1)
-  return mica_idx[part_id]->insert(mica_tx, key, (uint64_t)row) == 1;
+  return mica_idx[part_id]->insert(mica_tx, key, row->get_row_id()) == 1;
 }
 #endif
 
@@ -593,7 +514,7 @@ template <>
 bool txn_man::remove_idx(OrderedIndexMICA* index, uint64_t key, row_t* row, int part_id) {
   auto& mica_idx = index->mica_idx;
   // return mica_idx[part_id]->remove(mica_tx, make_pair(key, row_id), 0) == 1;
-  return mica_idx[part_id]->remove(mica_tx, key, (uint64_t)row) == 1;
+  return mica_idx[part_id]->remove(mica_tx, key, row->get_row_id()) == 1;
 }
 #endif
 
@@ -696,23 +617,22 @@ RC txn_man::finish(RC rc) {
 	rc = validate_hekaton(rc);
 	cleanup(rc);
 #elif CC_ALG == MICA
-	if (rc == RCOK) {
-		if (mica_tx->has_began())
+  if (rc == RCOK) {
+    if (mica_tx->has_began())
 #ifndef IDX_MICA_USE_MBTREE
-			rc = mica_tx->commit() ? RCOK : Abort;
+      rc = mica_tx->commit() ? RCOK : Abort;
 #else
-                {
-                        auto write_func = [this]() { return apply_index_changes(RCOK) == RCOK; };
-			rc = mica_tx->commit(NULL, write_func) ? RCOK : Abort;
-                }
+    {
+      auto write_func = [this]() { return apply_index_changes(RCOK) == RCOK; };
+      rc = mica_tx->commit(NULL, write_func) ? RCOK : Abort;
+      if (rc != RCOK) rc = apply_index_changes(rc)
+    }
 #endif
-		else
-			rc = RCOK;
-	}
-	else
-		if (mica_tx->has_began() && !mica_tx->abort())
-			assert(false);
-	cleanup(rc);
+    else
+      rc = RCOK;
+  } else if (mica_tx->has_began() && !mica_tx->abort())
+    assert(false);
+  cleanup(rc);
 #else
 	rc = apply_index_changes(rc);
 	cleanup(rc);

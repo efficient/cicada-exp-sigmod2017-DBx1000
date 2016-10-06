@@ -13,8 +13,7 @@ RC IndexArray::init(uint64_t part_cnt, uint64_t bucket_cnt) {
   locked = false;
   size = bucket_cnt;
   arr = (row_t**)mem_allocator.alloc(sizeof(row_t*) * size, 0);
-  for (size_t i = 0; i < size; i++)
-    arr[i] = reinterpret_cast<row_t*>(-1);
+  for (size_t i = 0; i < size; i++) arr[i] = reinterpret_cast<row_t*>(-1);
   return RCOK;
 }
 
@@ -26,14 +25,12 @@ RC IndexArray::init(uint64_t part_cnt, table_t* table, uint64_t bucket_cnt) {
   locked = false;
   size = bucket_cnt;
   arr = (row_t**)mem_allocator.alloc(sizeof(row_t*) * size, 0);
-  for (size_t i = 0; i < size; i++)
-    arr[i] = reinterpret_cast<row_t*>(-1);
+  for (size_t i = 0; i < size; i++) arr[i] = reinterpret_cast<row_t*>(-1);
   return RCOK;
 }
 
 void IndexArray::get_latch() {
-  while (!ATOM_CAS(locked, false, true))
-    PAUSE;
+  while (!ATOM_CAS(locked, false, true)) PAUSE;
 }
 
 void IndexArray::release_latch() {
@@ -42,7 +39,7 @@ void IndexArray::release_latch() {
   (void)ok;
 }
 
-RC IndexArray::index_insert(idx_key_t key, row_t* row, int part_id) {
+RC IndexArray::index_insert(txn_man* txn, idx_key_t key, row_t* row, int part_id) {
   (void)part_id;
 
   get_latch();
@@ -67,7 +64,9 @@ RC IndexArray::index_insert(idx_key_t key, row_t* row, int part_id) {
   return RCOK;
 }
 
-RC IndexArray::index_read(idx_key_t key, row_t** row, int part_id) {
+RC IndexArray::index_read(txn_man* txn, idx_key_t key, row_t** row,
+                          int part_id) {
+  (void)txn;
   (void)part_id;
 
   if (key >= size) return ERROR;

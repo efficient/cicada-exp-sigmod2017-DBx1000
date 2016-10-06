@@ -5,6 +5,7 @@
 #if CC_ALG == MICA
 #include "row.h"
 #endif
+#include "txn.h"
 
 RC IndexHash::init(uint64_t part_cnt, uint64_t bucket_cnt) {
   _bucket_cnt = bucket_cnt;
@@ -41,7 +42,7 @@ void IndexHash::release_latch(BucketHeader* bucket) {
   assert(ok);
 }
 
-RC IndexHash::index_insert(idx_key_t key, row_t* row, int part_id) {
+RC IndexHash::index_insert(txn_man* txn, idx_key_t key, row_t* row, int part_id) {
   itemid_t* m_item = (itemid_t*)mem_allocator.alloc(sizeof(itemid_t), part_id);
   m_item->init();
   m_item->type = DT_row;
@@ -63,7 +64,7 @@ RC IndexHash::index_insert(idx_key_t key, row_t* row, int part_id) {
   return rc;
 }
 
-RC IndexHash::index_read(idx_key_t key, row_t** row, int part_id) {
+RC IndexHash::index_read(txn_man* txn, idx_key_t key, row_t** row, int part_id) {
   uint64_t bkt_idx = hash(key);
   assert(bkt_idx < _bucket_cnt_per_part);
   BucketHeader* cur_bkt = &_buckets[part_id][bkt_idx];
@@ -79,7 +80,7 @@ RC IndexHash::index_read(idx_key_t key, row_t** row, int part_id) {
   return rc;
 }
 
-RC IndexHash::index_read_multiple(idx_key_t key, row_t** rows, size_t& count,
+RC IndexHash::index_read_multiple(txn_man* txn, idx_key_t key, row_t** rows, size_t& count,
                          int part_id) {
   uint64_t bkt_idx = hash(key);
   assert(bkt_idx < _bucket_cnt_per_part);

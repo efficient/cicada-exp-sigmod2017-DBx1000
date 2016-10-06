@@ -2,6 +2,7 @@
 
 #include "global.h"
 #include "helper.h"
+#include <unordered_map>
 
 class workload;
 class thread_t;
@@ -160,6 +161,15 @@ private:
 	ORDERED_INDEX*   remove_idx_idx[MAX_ROW_PER_TXN];
 	idx_key_t	     remove_idx_key[MAX_ROW_PER_TXN];
 	int	      	   remove_idx_part_id[MAX_ROW_PER_TXN];
+
+        // node set for phantom avoidance
+        std::unordered_map<void*, uint64_t>  node_map;
+        friend class IndexHash;
+        friend class IndexArray;
+        friend class IndexMBTree;
+        friend class IndexMBTree_cb;
+        friend class IndexMICAMBTree;
+        friend class IndexMICAMBTree_cb;
 
 	txnid_t 		txn_id;
 	ts_t 			timestamp;
