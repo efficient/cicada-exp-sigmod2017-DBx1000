@@ -52,8 +52,10 @@ class IndexMBTree_cb
     (void)k;
     (void)n;
     (void)version;
+#if !SIMPLE_INDEX_UPDATE
     // Ignore placeholders.
     if (v == (row_t*)-1) return true;
+#endif
     rows_[i_++] = v;
     return i_ < count_;
   }
@@ -156,8 +158,10 @@ RC IndexMBTree::index_read(txn_man* txn, idx_key_t key, row_t** row,
     return ERROR;
   }
 
+#if !SIMPLE_INDEX_UPDATE
   // Ignore placeholders.
   if (*row == (row_t*)-1) return ERROR;
+#endif
 
   return RCOK;
 }
