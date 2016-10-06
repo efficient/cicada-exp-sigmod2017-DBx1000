@@ -90,39 +90,74 @@ RC txn_man::apply_index_changes(RC rc) {
 
 #if INDEX_STRUCT != IDX_MICA || (INDEX_STRUCT == IDX_MICA && defined(IDX_MICA_USE_MBTREE))
 
+#if !SIMPLE_INDEX_UPDATE
+  if (rc == RCOK) rc = ORDERED_INDEX::validate(this);
+
   if (rc != RCOK) {
+    // Remove previously inserted placeholders.
     for (size_t i = 0; i < insert_idx_cnt; i++) {
       auto idx = insert_idx_idx[i];
       auto key = insert_idx_key[i];
       // auto row = insert_idx_row[i];
       auto part_id = insert_idx_part_id[i];
+#if INDEX_STRUCT != IDX_MICA
       auto rc_remove = idx->index_remove(this, key, NULL, part_id);
+#else
+      auto rc_remove = idx->index_remove(this, mica_tx, key, NULL, part_id);
+#endif
       assert(rc_remove == RCOK);
     }
     insert_idx_cnt = 0;
     return rc;
   }
+#else
+  if (rc != RCOK) return rc;
+#endif  // SIMPLE_INDEX_UPDATE
 
-#if INDEX_STRUCT != IDX_MICA
-  // Update placeholders.
   for (size_t i = 0; i < insert_idx_cnt; i++) {
     auto idx = insert_idx_idx[i];
     auto key = insert_idx_key[i];
     auto row = insert_idx_row[i];
     auto part_id = insert_idx_part_id[i];
+
+    // printf("insert_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
+#if INDEX_STRUCT != IDX_MICA
     auto rc_insert = idx->index_insert(this, key, row, part_id);
-    // We are updating existing entries, so !found == false (see
-    // mbtree<P>::insert()).
-    assert(rc_insert != RCOK);
-  }
+#else
+    auto rc_insert = idx->index_insert(this, mica_tx, key, row, part_id);
 #endif
+
+#if !SIMPLE_INDEX_UPDATE
+    // We are updating placeholders, so !found == false (see mbtree<P>::insert()).
+    assert(rc_insert != RCOK);
+#else // SIMPLE_INDEX_UPDATE
+    if (rc_insert != RCOK) {
+      // Remove previously inserted entries.
+      while (i > 0) {
+        i--;
+        auto idx = insert_idx_idx[i];
+        auto key = insert_idx_key[i];
+        // auto row = insert_idx_row[i];
+        auto part_id = insert_idx_part_id[i];
+#if INDEX_STRUCT != IDX_MICA
+        auto rc_remove = idx->index_remove(this, key, NULL, part_id);
+#else
+        auto rc_remove = idx->index_remove(this, mica_tx, key, NULL, part_id);
+#endif
+        assert(rc_remove == RCOK);
+      }
+      insert_idx_cnt = 0;
+      return Abort;
+    }
+#endif  // SIMPLE_INDEX_UPDATE
+  }
   insert_idx_cnt = 0;
 
 	for (size_t i = 0; i < remove_idx_cnt; i++) {
 		auto idx = remove_idx_idx[i];
 		auto key = remove_idx_key[i];
 		auto part_id = remove_idx_part_id[i];
-		// printf("remove_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
+    // printf("remove_idx idx=%p key=%" PRIu64 " part_id=%d\n", idx, key, part_id);
 
 #if INDEX_STRUCT != IDX_MICA
 		auto rc_remove = idx->index_remove(this, key, NULL, part_id);
@@ -461,6 +496,7 @@ bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
   row = (row_t*)row->get_row_id();
 #endif
 
+#if !SIMPLE_INDEX_UPDATE
 #if INDEX_STRUCT != IDX_MICA
   // Add a placeholder.
   auto rc_insert = index->index_insert(this, key, (row_t*)-1, part_id);
@@ -469,6 +505,7 @@ bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
 #endif
   if (rc_insert != RCOK)
     return false;
+#endif  // SIMPLE_INDEX_UPDATE
 
 	assert(insert_idx_cnt < MAX_ROW_PER_TXN);
 	insert_idx_idx[insert_idx_cnt] = index;
@@ -618,17 +655,15 @@ RC txn_man::finish(RC rc) {
 	cleanup(rc);
 #elif CC_ALG == MICA
   if (rc == RCOK) {
-    if (mica_tx->has_began())
+    if (mica_tx->has_began()) {
 #ifndef IDX_MICA_USE_MBTREE
       rc = mica_tx->commit() ? RCOK : Abort;
 #else
-    {
       auto write_func = [this]() { return apply_index_changes(RCOK) == RCOK; };
       rc = mica_tx->commit(NULL, write_func) ? RCOK : Abort;
-      if (rc != RCOK) rc = apply_index_changes(rc)
-    }
+      if (rc != RCOK) rc = apply_index_changes(rc);
 #endif
-    else
+    } else
       rc = RCOK;
   } else if (mica_tx->has_began() && !mica_tx->abort())
     assert(false);

@@ -80,6 +80,8 @@ RC IndexMICAMBTree::init(uint64_t part_cnt, table_t* table,
                          uint64_t bucket_cnt) {
   (void)bucket_cnt;
 
+  assert(SIMPLE_INDEX_UPDATE);
+
   this->table = table;
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {
@@ -275,7 +277,7 @@ RC IndexMICAMBTree::index_read_range_rev(txn_man* txn, idx_key_t min_key,
   //   return i < count;
   // };
 
-  idx->rsearch_range_call(mbtree_key_min, &mbtree_key_max, cb);
+  idx->rsearch_range_call(mbtree_key_max, &mbtree_key_min, cb);
   if (cb.need_to_abort()) return Abort;
 
   // Validating read index entries' value is not necessary if the indexed value
@@ -283,6 +285,7 @@ RC IndexMICAMBTree::index_read_range_rev(txn_man* txn, idx_key_t min_key,
   // code.
 
   count = i;
+  // printf("%" PRIu64 "\n", i);
 
 #if TPCC_VALIDATE_GAP
   if (!tx->is_peek_only() && validate_gap) {

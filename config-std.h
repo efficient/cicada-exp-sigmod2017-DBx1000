@@ -149,6 +149,7 @@
 #define TPCC_SPLIT_DELIVERY false
 #define TPCC_VALIDATE_GAP false
 #define TPCC_VALIDATE_NODE true
+#define SIMPLE_INDEX_UPDATE false
 //
 enum TPCCTxnType {TPCC_ALL,
 				TPCC_PAYMENT,

@@ -107,6 +107,11 @@ def set_tpcc(conf, thread_count, bench, warehouse_count, tx_count, **kwargs):
   else:
     assert False
 
+  if 'simple_index_update' in kwargs:
+    conf = replace_def(conf, 'TPCC_VALIDATE_GAP', 'false')
+    conf = replace_def(conf, 'TPCC_VALIDATE_NODE', 'false')
+    conf = replace_def(conf, 'SIMPLE_INDEX_UPDATE', 'true')
+
   return conf
 
 
@@ -222,7 +227,9 @@ def parse_filename(filename):
       p_value = int(value)
     elif key in ('read_ratio', 'zipf_theta', 'fixed_backoff'):
       p_value = float(value)
-    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost', 'no_wait', 'no_inlining', 'no_backoff', 'full_table_scan'):
+    elif key in ('no_tsc', 'no_preval', 'no_newest', 'no_wsort', 'no_tscboost',
+        'no_wait', 'no_inlining', 'no_backoff', 'full_table_scan',
+        'simple_index_update'):
       p_value = 1
     elif key in ('bench', 'alg', 'tag'):
       p_value = value
@@ -358,6 +365,26 @@ def enum_exps(seq):
           tpcc = dict(common)
           tx_count = 200000
           tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count })
+
+          # for warehouse_count in [1, 4, 16, max_thread_count]:
+          for warehouse_count in [1, 4, max_thread_count]:
+            if tag != 'macrobench': continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+          for warehouse_count in [1, 2] + list(range(4, max_thread_count + 1, 4)):
+            if tag != 'macrobench': continue
+            if thread_count not in [max_thread_count, warehouse_count]: continue
+            tpcc.update({ 'warehouse_count': warehouse_count })
+            yield dict(tpcc)
+
+        # full TPCC with simple index update
+        # (delayed index update, no phantom avoidance)
+        if alg not in ('MICA',) and alg.find('-REF') == -1:
+          tpcc = dict(common)
+          tx_count = 200000
+          tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count,
+            'simple_index_update': 1 })
 
           # for warehouse_count in [1, 4, 16, max_thread_count]:
           for warehouse_count in [1, 4, max_thread_count]:
