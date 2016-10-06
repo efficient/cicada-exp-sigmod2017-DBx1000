@@ -189,6 +189,8 @@ hugepage_count = {
   # 80 GiB (using too much hugepages can reduce tput)
   'ERMIA-SI-REF': 80 * 1024 / 2,
   'ERMIA-SI-REF-BACKOFF': 80 * 1024 / 2,
+  'ERMIA-SSI-REF': 80 * 1024 / 2,
+  'ERMIA-SSI-REF-BACKOFF': 80 * 1024 / 2,
   'ERMIA-SI_SSN-REF': 80 * 1024 / 2,
   'ERMIA-SI_SSN-REF-BACKOFF': 80 * 1024 / 2,
 
@@ -269,8 +271,11 @@ def enum_exps(seq):
               'SILO', 'TICTOC', 'HEKATON', 'NO_WAIT',
               'SILO-REF',
               # 'SILO-REF-BACKOFF',
-              'ERMIA-SI-REF',
+              #'ERMIA-SI-REF',
+              #'ERMIA-SSI-REF',
+              'ERMIA-SI_SSN-REF',
               # 'ERMIA-SI-REF-BACKOFF',
+              # 'ERMIA-SSI-REF-BACKOFF',
               # 'ERMIA-SI_SSN-REF-BACKOFF',
               'FOEDUS-MOCC-REF',
               'FOEDUS-OCC-REF',
@@ -789,6 +794,7 @@ def killall():
   os.system('sudo killall dbtest 2> /dev/null')
   # ERMIA-REF
   os.system('sudo killall dbtest-SI 2> /dev/null')
+  os.system('sudo killall dbtest-SSI 2> /dev/null')
   os.system('sudo killall dbtest-SI_SSN 2> /dev/null')
   # FOEDUS-REF
   os.system('sudo killall tpcc 2> /dev/null')
@@ -845,6 +851,8 @@ def make_ermia_cmd(exp):
 
   if exp['alg'].find('-SI_SSN') != -1:
     cmd = 'ermia/dbtest-SI_SSN'
+  elif exp['alg'].find('-SSI') != -1:
+    cmd = 'ermia/dbtest-SSI'
   elif exp['alg'].find('-SI') != -1:
     cmd = 'ermia/dbtest-SI'
   else: assert False
@@ -867,7 +875,7 @@ def make_ermia_cmd(exp):
   cmd += ' --num-threads %d' % exp['thread_count']
 
   if exp['bench'] == 'TPCC-FULL':
-    cmd += ' --runtime 20'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
+    cmd += ' --runtime 15'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
     if exp['warehouse_count'] != exp['thread_count']:
@@ -880,7 +888,7 @@ def make_ermia_cmd(exp):
   elif exp['bench'] == 'YCSB':
     assert exp['record_size'] == 100
 
-    cmd += ' --max-runtime 20'  # Same as above
+    cmd += ' --max-runtime 20'  # Same as Silo; YCSB uses less memory
     cmd += ' --ops-per-worker %d' % exp['tx_count']
     cmd += ' --bench ycsb'
     cmd += ' --bench-opts='
