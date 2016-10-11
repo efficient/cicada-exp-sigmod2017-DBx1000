@@ -27,6 +27,12 @@ txn_man::validate_hekaton(RC rc)
 	rc = apply_index_changes(rc);
 
 	// postprocess
+  if (rc == RCOK) {
+    for (UInt32 i = 0; i < insert_cnt; i++) {
+      row_t * row = insert_rows[i];
+      row->manager->set_ts(commit_ts);
+    }
+  }
 	for (int rid = 0; rid < row_cnt; rid ++) {
 		if (accesses[rid]->type == RD)
 			continue;

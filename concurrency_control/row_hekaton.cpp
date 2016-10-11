@@ -204,4 +204,29 @@ Row_hekaton::post_process(txn_man * txn, ts_t commit_ts, RC rc)
 	blatch = false;
 }
 
+void
+Row_hekaton::lock()
+{
+  while (!ATOM_CAS(blatch, false, true))
+		PAUSE
+}
+
+void
+Row_hekaton::release()
+{
+  assert(blatch);
+  blatch = false;
+}
+
+void
+Row_hekaton::set_ts(ts_t commit_ts)
+{
+  assert(blatch);
+  assert(_his_latest == 0);
+
+  _write_history[0].begin = commit_ts;
+
+	blatch = false;
+}
+
 #endif

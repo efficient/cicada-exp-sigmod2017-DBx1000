@@ -114,6 +114,7 @@ RC txn_man::apply_index_changes(RC rc) {
   if (rc != RCOK) return rc;
 #endif  // SIMPLE_INDEX_UPDATE
 
+#if SIMPLE_INDEX_UPDATE
   for (size_t i = 0; i < insert_idx_cnt; i++) {
     auto idx = insert_idx_idx[i];
     auto key = insert_idx_key[i];
@@ -127,10 +128,6 @@ RC txn_man::apply_index_changes(RC rc) {
     auto rc_insert = idx->index_insert(this, mica_tx, key, row, part_id);
 #endif
 
-#if !SIMPLE_INDEX_UPDATE
-    // We are updating placeholders, so !found == false (see mbtree<P>::insert()).
-    assert(rc_insert != RCOK);
-#else // SIMPLE_INDEX_UPDATE
     if (rc_insert != RCOK) {
       // Remove previously inserted entries.
       while (i > 0) {
@@ -149,8 +146,8 @@ RC txn_man::apply_index_changes(RC rc) {
       insert_idx_cnt = 0;
       return Abort;
     }
-#endif  // SIMPLE_INDEX_UPDATE
   }
+#endif  // SIMPLE_INDEX_UPDATE
   insert_idx_cnt = 0;
 
 	for (size_t i = 0; i < remove_idx_cnt; i++) {
@@ -194,6 +191,15 @@ RC txn_man::apply_index_changes(RC rc) {
 
 void txn_man::cleanup(RC rc) {
 #if CC_ALG == HEKATON || CC_ALG == MICA
+#if CC_ALG == HEKATON
+	if (rc == Abort) {
+		for (UInt32 i = 0; i < insert_cnt; i ++) {
+			row_t * row = insert_rows[i];
+      row->manager->release();
+    }
+  }
+#endif
+
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
@@ -235,7 +241,21 @@ void txn_man::cleanup(RC rc) {
 	if (rc == Abort) {
 		for (UInt32 i = 0; i < insert_cnt; i ++) {
 			row_t * row = insert_rows[i];
-			assert(g_part_alloc == false);
+
+#if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
+      auto rc = row->manager->lock_release(this);
+      assert(rc == RCOK);
+#elif CC_ALG == TICTOC || CC_ALG == SILO
+      row->manager->release();
+#elif CC_ALG == HEKATON
+      // This is handled above.
+      // row->manager->release();
+      assert(false);
+#else
+      // Not implemented.
+      assert(false);
+#endif
+
 #if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA && !defined(USE_INLINED_DATA)
 			// XXX: Need to find the manager size.
 			mem_allocator.free(row->manager, 0);
@@ -243,7 +263,24 @@ void txn_man::cleanup(RC rc) {
 			row->free_row();
 			mem_allocator.free(row, row_t::alloc_size(row->get_table()));
 		}
-	}
+	} else {
+		for (UInt32 i = 0; i < insert_cnt; i ++) {
+			row_t * row = insert_rows[i];
+#if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
+      auto rc = row->manager->lock_release(this);
+      assert(rc == RCOK);
+#elif CC_ALG == TICTOC || CC_ALG == SILO
+      // Unlocking new rows is done in validate_*() to initialize row TID.
+      (void)row;
+#elif CC_ALG == HEKATON
+      // Unlocking new rows is done in validate_*() to initialize row TID.
+      (void)row;
+#else
+      // Not implemented.
+      assert(false);
+#endif
+    }
+  }
 	row_cnt = 0;
 	wr_cnt = 0;
 	insert_cnt = 0;
@@ -440,6 +477,19 @@ bool txn_man::insert_row(table_t* tbl, row_t*& row, int part_id,
   if (tbl->get_new_row(row, part_id, out_row_id) != RCOK) return false;
 	assert(insert_cnt < MAX_ROW_PER_TXN);
 	insert_rows[insert_cnt ++] = row;
+
+#if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
+	auto rc = row->manager->lock_get(LOCK_EX, this);
+  assert(rc == RCOK);
+#elif CC_ALG == TICTOC || CC_ALG == SILO
+	row->manager->lock();
+#elif CC_ALG == HEKATON
+	row->manager->lock();
+#else
+  // Not implemented.
+  assert(false);
+#endif
+
   return true;
 #else
   assert(row != NULL);
@@ -498,8 +548,7 @@ bool txn_man::insert_idx(ORDERED_INDEX* index, uint64_t key, row_t* row,
 
 #if !SIMPLE_INDEX_UPDATE
 #if INDEX_STRUCT != IDX_MICA
-  // Add a placeholder.
-  auto rc_insert = index->index_insert(this, key, (row_t*)-1, part_id);
+  auto rc_insert = index->index_insert(this, key, row, part_id);
 #else
   auto rc_insert = index->index_insert(this, mica_tx, key, row, part_id);
 #endif

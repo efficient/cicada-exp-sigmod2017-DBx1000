@@ -80,8 +80,6 @@ RC IndexMICAMBTree::init(uint64_t part_cnt, table_t* table,
                          uint64_t bucket_cnt) {
   (void)bucket_cnt;
 
-  assert(SIMPLE_INDEX_UPDATE);
-
   this->table = table;
 
   for (uint64_t part_id = 0; part_id < part_cnt; part_id++) {

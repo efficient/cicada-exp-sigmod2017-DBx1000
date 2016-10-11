@@ -243,6 +243,10 @@ final:
 			assert(false);
 		} else {
 #if WR_VALIDATION_SEPARATE
+		  for (UInt32 i = 0; i < insert_cnt; i++) {
+        row_t * row = insert_rows[i];
+        row->manager->set_ts_word(commit_wts);  // unlocking is done as well
+		  }
 			for (int i = 0; i < wr_cnt; i++) {
 				Access * access = accesses[ write_set[i] ];
 				access->orig_row->manager->write_data(

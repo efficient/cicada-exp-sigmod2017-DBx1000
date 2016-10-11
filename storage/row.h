@@ -11,6 +11,7 @@ class row_t;
 #include "row_tictoc.h"
 #include "row_silo.h"
 #endif
+#include "row_hekaton.h"
 
 #define DECL_SET_VALUE(type) \
 	void set_value(int col_id, type value);

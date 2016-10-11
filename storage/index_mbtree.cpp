@@ -52,10 +52,6 @@ class IndexMBTree_cb
     (void)k;
     (void)n;
     (void)version;
-#if !SIMPLE_INDEX_UPDATE
-    // Ignore placeholders.
-    if (v == (row_t*)-1) return true;
-#endif
     rows_[i_++] = v;
     return i_ < count_;
   }
@@ -102,15 +98,7 @@ RC IndexMBTree::index_insert(txn_man* txn, idx_key_t key, row_t* row,
   if (!idx->insert_if_absent(mbtree_key, row)) return ERROR;
 #else
   concurrent_mbtree::insert_info_t insert_info;
-#if !SIMPLE_INDEX_UPDATE
-  if (row == (row_t*)-1) {
-    if (!idx->insert_if_absent(mbtree_key, row, &insert_info)) return ERROR;
-  } else {
-    if (!idx->insert(mbtree_key, row, NULL, &insert_info)) return ERROR;
-  }
-#else // SIMPLE_INDEX_UPDATE
   if (!idx->insert_if_absent(mbtree_key, row, &insert_info)) return ERROR;
-#endif // SIMPLE_INDEX_UPDATE
 
   // assert(concurrent_mbtree::ExtractVersionNumber(insert_info.node) ==
   //        insert_info.new_version);  // for single-threaded debugging
@@ -157,11 +145,6 @@ RC IndexMBTree::index_read(txn_man* txn, idx_key_t key, row_t** row,
 #endif
     return ERROR;
   }
-
-#if !SIMPLE_INDEX_UPDATE
-  // Ignore placeholders.
-  if (*row == (row_t*)-1) return ERROR;
-#endif
 
   return RCOK;
 }

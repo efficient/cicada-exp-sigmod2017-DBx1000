@@ -39,6 +39,8 @@ public:
 	bool 				renew_lease(ts_t wts, ts_t rts);
 	bool 				try_renew(ts_t wts, ts_t rts, ts_t &new_rts, uint64_t thd_id);
 	
+	void 				set_ts_word(uint64_t wts);
+
 	void 				lock();
 	bool  				try_lock();
 	void 				release();

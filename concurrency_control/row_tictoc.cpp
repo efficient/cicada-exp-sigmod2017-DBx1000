@@ -185,6 +185,12 @@ Row_tictoc::try_renew(ts_t wts, ts_t rts, ts_t &new_rts, uint64_t thd_id)
 #endif
 }
 
+void
+Row_tictoc::set_ts_word(uint64_t wts)
+{
+  assert(_ts_word & LOCK_BIT);
+  _ts_word = wts & WTS_MASK;
+}
 
 ts_t
 Row_tictoc::get_wts()

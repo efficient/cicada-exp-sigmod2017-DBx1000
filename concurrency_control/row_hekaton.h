@@ -28,6 +28,10 @@ public:
 	RC 				prepare_read(txn_man * txn, row_t * row, ts_t commit_ts);
 	void 			post_process(txn_man * txn, ts_t commit_ts, RC rc);
 
+  void      lock();
+  void      release();
+  void      set_ts(ts_t commit_ts);
+
 private:
 	volatile bool 	blatch;
 	uint32_t 		reserveRow(txn_man * txn);

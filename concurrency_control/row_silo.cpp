@@ -80,6 +80,16 @@ Row_silo::write(row_t * data, uint64_t tid) {
 }
 
 void
+Row_silo::set_tid(uint64_t tid) {
+  assert(_tid_word & LOCK_BIT);
+#if ATOMIC_WORD
+	_tid_word = tid;
+#else
+	_tid = tid;
+#endif
+}
+
+void
 Row_silo::lock() {
 #if ATOMIC_WORD
 	uint64_t v = _tid_word;
