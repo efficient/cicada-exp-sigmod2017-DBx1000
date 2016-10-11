@@ -195,7 +195,16 @@ void txn_man::cleanup(RC rc) {
 	if (rc == Abort) {
 		for (UInt32 i = 0; i < insert_cnt; i ++) {
 			row_t * row = insert_rows[i];
+      row->is_deleted = 1;
       row->manager->release();
+
+#if CC_ALG != HSTORE && CC_ALG != OCC && CC_ALG != MICA && !defined(USE_INLINED_DATA)
+			// XXX: Need to find the manager size.
+			mem_allocator.free(row->manager, 0);
+#endif
+      // We cannot free data for Hekaton because of pending reads.
+			//row->free_row();
+			mem_allocator.free(row, row_t::alloc_size(row->get_table()));
     }
   }
 #endif
@@ -241,6 +250,7 @@ void txn_man::cleanup(RC rc) {
 	if (rc == Abort) {
 		for (UInt32 i = 0; i < insert_cnt; i ++) {
 			row_t * row = insert_rows[i];
+      row->is_deleted = 1;
 
 #if CC_ALG == WAIT_DIE || CC_ALG == NO_WAIT || CC_ALG == DL_DETECT
       auto rc = row->manager->lock_release(this);
