@@ -1123,6 +1123,14 @@ def run(exp, prepare_only):
       failed = True
 
     if not failed:
+      # compact the log
+      if exp['alg'].startswith('FOEDUS'):
+        new_output = ''
+        for line in output.splitlines(True):
+          if line.find('<DirectIoFile>') != -1 or line.fine('<AlignedMemory>') != -1:
+            continue
+          new_output += line
+        output = new_output
       # finalize
       open(filename, 'w').write(output)
       break
