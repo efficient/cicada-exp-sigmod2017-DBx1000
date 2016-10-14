@@ -221,7 +221,7 @@ template <>
 RC IndexMICAGeneric<MICAOrderedIndex>::index_read(txn_man* txn, idx_key_t key,
                                                   row_t** row, int part_id) {
   auto tx = txn->mica_tx;
-#if SIMPLE_INDEX_UPDATE
+#if SIMPLE_INDEX_UPDATE || !TPCC_VALIDATE_NODE
   bool skip_validation = !(MICA_FULLINDEX);
 #else
   bool skip_validation = false;
@@ -250,7 +250,7 @@ template <>
 RC IndexMICAGeneric<MICAOrderedIndex>::index_read_multiple(
     txn_man* txn, idx_key_t key, row_t** rows, size_t& count, int part_id) {
   auto tx = txn->mica_tx;
-#if SIMPLE_INDEX_UPDATE
+#if SIMPLE_INDEX_UPDATE || !TPCC_VALIDATE_NODE
   bool skip_validation = !(MICA_FULLINDEX);
 #else
   bool skip_validation = false;
@@ -284,7 +284,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range(
     txn_man* txn, idx_key_t min_key, idx_key_t max_key, row_t** rows,
     size_t& count, int part_id) {
   auto tx = txn->mica_tx;
-#if SIMPLE_INDEX_UPDATE
+#if SIMPLE_INDEX_UPDATE || !TPCC_VALIDATE_NODE
   bool skip_validation = !(MICA_FULLINDEX);
 #else
   bool skip_validation = false;
@@ -319,7 +319,7 @@ RC IndexMICAGeneric<MICAOrderedIndex>::index_read_range_rev(
     txn_man* txn, idx_key_t min_key, idx_key_t max_key, row_t** rows,
     size_t& count, int part_id) {
   auto tx = txn->mica_tx;
-#if SIMPLE_INDEX_UPDATE
+#if SIMPLE_INDEX_UPDATE || !TPCC_VALIDATE_NODE
   bool skip_validation = !(MICA_FULLINDEX);
 #else
   bool skip_validation = false;
