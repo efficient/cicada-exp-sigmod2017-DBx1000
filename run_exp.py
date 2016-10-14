@@ -600,7 +600,8 @@ def enum_exps(seq):
   # for alg in ['MICA', 'MICA+INDEX']:
   for alg in ['MICA+INDEX']:
     thread_count = max_thread_count
-    for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
+    #for backoff in [round(1.25 ** v - 1.0, 2) for v in range(24)]:
+    for backoff in [round(1.25 ** v - 1.0, 2) for v in range(16)]:
       common = { 'seq': seq, 'tag': tag, 'alg': alg, 'thread_count': thread_count, 'fixed_backoff': backoff }
 
       for exp in _common_exps(common): yield exp
