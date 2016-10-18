@@ -906,6 +906,10 @@ def make_ermia_cmd(exp):
     cmd += ' --runtime 15'  # ERMIA requires more memory than Silo, so it is unreliable to run it for 30 seconds
     cmd += ' --bench tpcc'
     cmd += ' --scale-factor %d' % exp['warehouse_count']
+    # safe snapshots seem to decrease tput a lot even though R/O transactions
+    # are not aborted
+    #if exp['alg'].find('SSN') != -1 or exp['alg'].find('SSI') != -1:
+    #  cmd += ' --safesnap'
     if exp['warehouse_count'] != exp['thread_count']:
       # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
       cmd += ' --bench-opts="--warehouse-spread=100"'
