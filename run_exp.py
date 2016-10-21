@@ -558,6 +558,10 @@ def enum_exps(seq):
       tx_count = 200000
       tpcc.update({ 'bench': 'TPCC', 'tx_count': tx_count })
 
+      warehouse_count = 1
+      tpcc.update({ 'warehouse_count': warehouse_count })
+      yield dict(tpcc)
+
       warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
       yield dict(tpcc)
@@ -577,6 +581,10 @@ def enum_exps(seq):
       tpcc = dict(common)
       tx_count = 200000
       tpcc.update({ 'bench': 'TPCC-FULL', 'tx_count': tx_count })
+
+      warehouse_count = 1
+      tpcc.update({ 'warehouse_count': warehouse_count })
+      yield dict(tpcc)
 
       warehouse_count = 4
       tpcc.update({ 'warehouse_count': warehouse_count })
