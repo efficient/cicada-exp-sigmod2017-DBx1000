@@ -435,6 +435,20 @@ def enum_exps(seq):
               ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
               yield dict(ycsb)
 
+          # record_size = 1000
+          record_size = 100
+          req_per_query = 1
+          tx_count = 2000000
+          ycsb.update({ 'record_size': record_size, 'req_per_query': req_per_query, 'tx_count': tx_count })
+
+          for read_ratio in [0.50, 0.95]:
+            for zipf_theta in [0.00, 0.40, 0.60, 0.80, 0.90, 0.95, 0.99]:
+              #if zipf_theta >= 0.95:
+              #  if read_ratio == 0.50 and alg == 'NO_WAIT': continue
+              #  if read_ratio == 0.50 and alg == 'HEKATON': continue
+              ycsb.update({ 'read_ratio': read_ratio, 'zipf_theta': zipf_theta })
+              yield dict(ycsb)
+
   tag = 'inlining'
   for alg in all_algs:
   # for alg in ['MICA', 'SILO', 'TICTOC']:
