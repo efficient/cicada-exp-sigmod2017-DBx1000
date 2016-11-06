@@ -932,7 +932,7 @@ def make_ermia_cmd(exp):
     # are not aborted
     #if exp['alg'].find('SSN') != -1 or exp['alg'].find('SSI') != -1:
     #  cmd += ' --safesnap'
-    if exp['warehouse_count'] != exp['thread_count']:
+    if exp['warehouse_count'] > exp['thread_count']:
       # cmd += ' --bench-opts="--enable-separate-tree-per-partition --warehouse-spread=100"'  # Causes zero throughput
       cmd += ' --bench-opts="--warehouse-spread=100"'
     else:
