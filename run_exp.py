@@ -1060,26 +1060,26 @@ def run(exp, prepare_only):
     conf = update_conf(conf, exp)
     open('config.h', 'w').write(conf)
 
-    shutil.copy('../src/mica/test/test_tx_conf_org.h',
-                '../src/mica/test/test_tx_conf.h')
+    shutil.copy('mica/src/mica/test/test_tx_conf_org.h',
+                'mica/src/mica/test/test_tx_conf.h')
   else:
     shutil.copy('config-std.h', 'config.h')
 
-    conf = open('../src/mica/test/test_tx_conf_org.h').read()
+    conf = open('mica/src/mica/test/test_tx_conf_org.h').read()
     conf = update_conf(conf, exp)
-    open('../src/mica/test/test_tx_conf.h', 'w').write(conf)
+    open('mica/src/mica/test/test_tx_conf.h', 'w').write(conf)
 
   # clean up
   os.system('make clean -j > /dev/null')
   os.system('rm -f ./rundb')
 
   if hugepage_status != (hugepage_count[exp['alg']], exp['alg']):
-    os.system('../script/setup.sh %d %d > /dev/null' % \
+    os.system('mica/script/setup.sh %d %d > /dev/null' % \
       (hugepage_count[exp['alg']] / 2, hugepage_count[exp['alg']] / 2))
     hugepage_status = (hugepage_count[exp['alg']], exp['alg'])
   # else:
   #   if hugepage_status != (0, ''):
-  #     os.system('../script/setup.sh 0 0 > /dev/null')
+  #     os.system('mica/script/setup.sh 0 0 > /dev/null')
   #     hugepage_status = (0, '')
 
   # os.system('sudo bash -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"')
@@ -1102,7 +1102,7 @@ def run(exp, prepare_only):
     # cmd = 'sudo ./rundb | tee %s' % (filename + '.tmp')
     cmd = 'sudo ./rundb'
   else:
-    cmd = 'sudo ../build/test_tx 0 0 0 0 0 0'
+    cmd = 'sudo mica/build/test_tx 0 0 0 0 0 0'
 
   print('  ' + cmd)
 
@@ -1116,7 +1116,7 @@ def run(exp, prepare_only):
     ret = os.system('make -j > /dev/null')
   else:
     pdir = os.getcwd()
-    os.chdir('../build')
+    os.chdir('mica/build')
     ret = os.system('make -j > /dev/null')
     os.chdir(pdir)
   assert ret == 0, 'failed to compile for %s' % exp
